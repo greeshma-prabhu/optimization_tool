@@ -7,39 +7,98 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
-            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
-            <ul class="nav-links">
-                <li><a href="index.html" class="nav-link active" data-i18n="nav.dashboard">📊 Dashboard</a></li>
-                <li><a href="orders.html" class="nav-link" data-i18n="nav.orders">📋 Orders</a></li>
-                <li><a href="optimization.html" class="nav-link" data-i18n="nav.optimization">⚡ Optimization</a></li>
-                <li><a href="cart-loading.html" class="nav-link" data-i18n="nav.cartLoading">🛒 Cart Loading</a></li>
-                <li><a href="trucks.html" class="nav-link" data-i18n="nav.trucks">🚚 Trucks</a></li>
-                <li><a href="costs.html" class="nav-link" data-i18n="nav.costs">💰 Costs</a></li>
-            </ul>
-            <div class="nav-user">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <!-- Language Switcher -->
-                    <div style="display: flex; gap: 5px; background: #f3f4f6; padding: 4px; border-radius: 8px;">
-                        <button onclick="setLanguage('nl')" id="lang-btn-nl" style="padding: 6px 12px; border: none; background: var(--primary); color: white; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" class="lang-btn active">🇳🇱 NL</button>
-                        <button onclick="setLanguage('en')" id="lang-btn-en" style="padding: 6px 12px; border: none; background: transparent; color: var(--text-primary); border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" class="lang-btn">🇬🇧 EN</button>
-                    </div>
-                    <div id="auth-status" class="auth-status"></div>
-                    <span id="last-sync-time" style="font-size: 0.8rem; color: var(--text-secondary);">Never</span>
-                </div>
-            </div>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <button class="sidebar-close" onclick="toggleSidebar()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+
+        <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+
+        <div class="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32">
+                <rect x="4" y="8" width="24" height="16" rx="2" fill="#f97316"/>
+                <rect x="6" y="12" width="8" height="8" fill="#fff"/>
+                <rect x="18" y="12" width="8" height="8" fill="#fff"/>
+            </svg>
+            <span>Zuidplas</span>
         </div>
-    </nav>
+
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-link active">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            
+            <a href="orders.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                </svg>
+                <span>Orders</span>
+            </a>
+            
+            <a href="optimization.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
+                </svg>
+                <span>Optimization</span>
+            </a>
+            
+            <a href="trucks.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="3" width="15" height="13"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <span>Trucks</span>
+            </a>
+            
+            <a href="costs.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                <span>Costs</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="lang-switcher">
+                <button onclick="setLanguage('nl')" id="lang-btn-nl" class="lang-btn active">NL</button>
+                <button onclick="setLanguage('en')" id="lang-btn-en" class="lang-btn">EN</button>
+            </div>
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-top: 8px;"></div>
+        </div>
+    </aside>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
 
     <!-- Main Content -->
-    <div class="container">
+    <main class="main-content">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 data-i18n="dashboard.title">Route Optimization System</h1>
-            <p class="subtitle" data-i18n="dashboard.subtitle">Optimize truck allocation across 3 routes - Fit all carts efficiently</p>
+            <h1 class="page-title" data-i18n="dashboard.title">Dashboard</h1>
+            <p class="page-subtitle" data-i18n="dashboard.subtitle">Route optimization overview for today</p>
             <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; align-items: center;">
                 <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center;">
                     <div style="display: flex; flex-direction: column; gap: 5px;">
@@ -49,7 +108,7 @@
                     <button class="btn btn-primary" onclick="syncOrders(false)" id="sync-btn" data-i18n="dashboard.syncOrders">
                         🔄 Sync Orders from API
                     </button>
-                    <button class="btn btn-secondary" onclick="loadDemoData()" id="demo-btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; font-weight: 600;" data-i18n="dashboard.loadDemo">
+                    <button class="btn btn-primary" onclick="loadDemoData()" id="demo-btn" data-i18n="dashboard.loadDemo">
                         📦 Load Demo Data
                     </button>
                 </div>
@@ -60,26 +119,62 @@
 
         <!-- Stats Cards -->
         <div class="stats-grid">
-            <div class="stat-card primary">
-                <div class="icon">📋</div>
-                <div class="label" data-i18n="dashboard.todayOrders">Today's Orders</div>
-                <div class="value" id="total-orders-count">0</div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value" id="total-orders-count">0</div>
+                        <div class="stat-label" data-i18n="dashboard.todayOrders">Today's Orders</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        </svg>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card success">
-                <div class="icon">🛒</div>
-                <div class="label" data-i18n="dashboard.totalCarts">Total Carts Needed</div>
-                <div class="value" id="total-carts-needed">0</div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value" id="total-carts-needed">0</div>
+                        <div class="stat-label" data-i18n="dashboard.totalCarts">Total Carts Needed</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card warning">
-                <div class="icon">🚚</div>
-                <div class="label" data-i18n="dashboard.routesStatus">Routes Status</div>
-                <div class="value" id="routes-status">0/3</div>
-                <div class="label" style="margin-top: 10px; font-size: 0.85rem;">planned</div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value" id="routes-status">0/3</div>
+                        <div class="stat-label" data-i18n="dashboard.routesStatus">Active Routes</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="1" y="3" width="15" height="13"></rect>
+                            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                        </svg>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card danger">
-                <div class="icon">📊</div>
-                <div class="label" data-i18n="dashboard.optimizationScore">Optimization Score</div>
-                <div class="value" id="optimization-score">0%</div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value" id="optimization-score">0%</div>
+                        <div class="stat-label" data-i18n="dashboard.optimizationScore">Optimization Score</div>
+                    </div>
+                    <div class="stat-icon-wrapper">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
+                        </svg>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -347,6 +442,42 @@
             `;
         }
 
+        // Toggle sidebar collapse (desktop)
+        function toggleSidebarCollapse() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            // Save state
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+        
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (window.innerWidth <= 768 && 
+                sidebar.classList.contains('open') && 
+                !sidebar.contains(event.target) && 
+                !menuBtn.contains(event.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+        
+        // Restore sidebar state on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed && window.innerWidth > 768) {
+                sidebar.classList.add('collapsed');
+            }
+        });
+        
         // Language switcher - Make it global
         window.setLanguage = function(lang) {
             if (typeof i18n !== 'undefined') {
@@ -363,15 +494,11 @@
             const currentLang = i18n.getLanguage();
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.remove('active');
-                btn.style.background = 'transparent';
-                btn.style.color = 'var(--text-primary)';
             });
             
             const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
             if (activeBtn) {
                 activeBtn.classList.add('active');
-                activeBtn.style.background = 'var(--primary)';
-                activeBtn.style.color = 'white';
             }
         }
         

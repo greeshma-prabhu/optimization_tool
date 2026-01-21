@@ -7,28 +7,106 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
-            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
-            <ul class="nav-links">
-                <li><a href="index.html" class="nav-link">📊 Dashboard</a></li>
-                <li><a href="orders.html" class="nav-link">📋 Orders</a></li>
-                <li><a href="optimization.html" class="nav-link">⚡ Optimization</a></li>
-                <li><a href="cart-loading.html" class="nav-link">🛒 Cart Loading</a></li>
-                <li><a href="trucks.html" class="nav-link active">🚚 Trucks</a></li>
-                <li><a href="costs.html" class="nav-link">💰 Costs</a></li>
-            </ul>
-            <div class="nav-user">
-                <div id="auth-status"></div>
-            </div>
-        </div>
-    </nav>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <button class="sidebar-close" onclick="toggleSidebar()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
 
-    <div class="container">
+        <div class="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32">
+                <rect x="4" y="8" width="24" height="16" rx="2" fill="#f97316"/>
+                <rect x="6" y="12" width="8" height="8" fill="#fff"/>
+                <rect x="18" y="12" width="8" height="8" fill="#fff"/>
+            </svg>
+            <span>Zuidplas</span>
+        </div>
+
+        <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+
+        <div class="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32">
+                <rect x="4" y="8" width="24" height="16" rx="2" fill="#f97316"/>
+                <rect x="6" y="12" width="8" height="8" fill="#fff"/>
+                <rect x="18" y="12" width="8" height="8" fill="#fff"/>
+            </svg>
+            <span>Zuidplas</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            
+            <a href="orders.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                </svg>
+                <span>Orders</span>
+            </a>
+            
+            <a href="optimization.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
+                </svg>
+                <span>Optimization</span>
+            </a>
+            
+            <a href="trucks.html" class="nav-link active">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="3" width="15" height="13"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <span>Trucks</span>
+            </a>
+            
+            <a href="costs.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                <span>Costs</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="lang-switcher">
+                <button onclick="setLanguage('nl')" id="lang-btn-nl" class="lang-btn active">NL</button>
+                <button onclick="setLanguage('en')" id="lang-btn-en" class="lang-btn">EN</button>
+            </div>
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-top: 8px;"></div>
+        </div>
+    </aside>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- Main Content -->
+    <main class="main-content">
         <div class="page-header">
-            <h1>Truck Fleet Management</h1>
-            <p class="subtitle">Monitor truck status and cart loading</p>
+            <h1 class="page-title">Truck Fleet Management</h1>
+            <p class="page-subtitle">Monitor truck status and cart loading</p>
         </div>
 
         <!-- Truck Status Board -->
@@ -212,6 +290,57 @@
                 updateCartLoadingViz();
             }
         });
+        
+        // Toggle sidebar collapse (desktop)
+        function toggleSidebarCollapse() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+        
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (window.innerWidth <= 768 && 
+                sidebar.classList.contains('open') && 
+                !sidebar.contains(event.target) && 
+                !menuBtn.contains(event.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+        
+        // Restore sidebar state on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed && window.innerWidth > 768) {
+                sidebar.classList.add('collapsed');
+            }
+        });
+        
+        // Language switcher
+        window.setLanguage = function(lang) {
+            if (typeof i18n !== 'undefined') {
+                i18n.setLanguage(lang);
+                updateLanguageButtons();
+            }
+        };
+        
+        function updateLanguageButtons() {
+            if (typeof i18n === 'undefined') return;
+            const currentLang = i18n.getLanguage();
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
     </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,28 +7,106 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
-            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
-            <ul class="nav-links">
-                <li><a href="index.html" class="nav-link">📊 Dashboard</a></li>
-                <li><a href="orders.html" class="nav-link">📋 Orders</a></li>
-                <li><a href="optimization.html" class="nav-link">⚡ Optimization</a></li>
-                <li><a href="cart-loading.html" class="nav-link">🛒 Cart Loading</a></li>
-                <li><a href="trucks.html" class="nav-link">🚚 Trucks</a></li>
-                <li><a href="costs.html" class="nav-link active">💰 Costs</a></li>
-            </ul>
-            <div class="nav-user">
-                <div id="auth-status"></div>
-            </div>
-        </div>
-    </nav>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <button class="sidebar-close" onclick="toggleSidebar()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
 
-    <div class="container">
+        <div class="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32">
+                <rect x="4" y="8" width="24" height="16" rx="2" fill="#f97316"/>
+                <rect x="6" y="12" width="8" height="8" fill="#fff"/>
+                <rect x="18" y="12" width="8" height="8" fill="#fff"/>
+            </svg>
+            <span>Zuidplas</span>
+        </div>
+
+        <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+
+        <div class="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 32 32">
+                <rect x="4" y="8" width="24" height="16" rx="2" fill="#f97316"/>
+                <rect x="6" y="12" width="8" height="8" fill="#fff"/>
+                <rect x="18" y="12" width="8" height="8" fill="#fff"/>
+            </svg>
+            <span>Zuidplas</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+            
+            <a href="orders.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                </svg>
+                <span>Orders</span>
+            </a>
+            
+            <a href="optimization.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
+                </svg>
+                <span>Optimization</span>
+            </a>
+            
+            <a href="trucks.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="3" width="15" height="13"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <span>Trucks</span>
+            </a>
+            
+            <a href="costs.html" class="nav-link active">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                <span>Costs</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="lang-switcher">
+                <button onclick="setLanguage('nl')" id="lang-btn-nl" class="lang-btn active">NL</button>
+                <button onclick="setLanguage('en')" id="lang-btn-en" class="lang-btn">EN</button>
+            </div>
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-top: 8px;"></div>
+        </div>
+    </aside>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- Main Content -->
+    <main class="main-content">
         <div class="page-header">
-            <h1>Cost Optimization Dashboard</h1>
-            <p class="subtitle">Compare scenarios and optimize costs</p>
+            <h1 class="page-title">Cost Optimization Dashboard</h1>
+            <p class="page-subtitle">Compare scenarios and optimize costs</p>
         </div>
 
         <!-- Cost Breakdown Table -->
@@ -60,28 +138,9 @@
 
         <!-- Cost Factors -->
         <div class="card">
-            <h2>Cost Factors</h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="label">Own Truck</div>
-                    <div class="value">€${COSTS.ownTruckPerRoute}</div>
-                    <div class="label" style="margin-top: 10px; font-size: 0.85rem;">per route</div>
-                </div>
-                <div class="stat-card">
-                    <div class="label">External Truck</div>
-                    <div class="value">€${COSTS.externalTruckPerTrip}</div>
-                    <div class="label" style="margin-top: 10px; font-size: 0.85rem;">per trip</div>
-                </div>
-                <div class="stat-card">
-                    <div class="label">Neighbor Truck</div>
-                    <div class="value">€${COSTS.neighborTruck}</div>
-                    <div class="label" style="margin-top: 10px; font-size: 0.85rem;">free partnership</div>
-                </div>
-                <div class="stat-card">
-                    <div class="label">External Carrier</div>
-                    <div class="value">€${COSTS.externalCarrierPerCart}</div>
-                    <div class="label" style="margin-top: 10px; font-size: 0.85rem;">per cart</div>
-                </div>
+            <h2 data-i18n="costs.costFactors">Cost Factors</h2>
+            <div class="stats-grid" id="cost-factors-grid">
+                <!-- Populated by JavaScript -->
             </div>
         </div>
 
@@ -92,8 +151,9 @@
                 <!-- Populated by JavaScript -->
             </div>
         </div>
-    </div>
+    </main>
 
+    <script src="js/i18n.js"></script>
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
@@ -102,86 +162,281 @@
     <script src="js/optimizer.js"></script>
     <script src="js/navigation.js"></script>
     <script>
-        function updateCostComparison() {
-            if (!currentOptimizer) return;
+        // Language switcher
+        window.setLanguage = function(lang) {
+            if (typeof i18n !== 'undefined') {
+                i18n.setLanguage(lang);
+                updateLanguageButtons();
+                updateCostFactors();
+                updateCostComparison();
+                updateCostTips();
+            }
+        };
+        
+        function updateLanguageButtons() {
+            if (typeof i18n === 'undefined') return;
+            const currentLang = i18n.getLanguage();
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--text-primary)';
+            });
+            const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.style.background = 'var(--primary)';
+                activeBtn.style.color = 'white';
+            }
+        }
+
+        // Update cost factors display
+        function updateCostFactors() {
+            const container = document.getElementById('cost-factors-grid');
+            if (!container) return;
             
-            const options = currentOptimizer.generateOptions();
+            container.innerHTML = `
+                <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <div class="label" style="color: rgba(255,255,255,0.9);">Own Truck</div>
+                    <div class="value" style="font-size: 2rem; margin: 10px 0;">€${COSTS.ownTruckPerRoute}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.8);">per route</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+                    <div class="label" style="color: rgba(255,255,255,0.9);">External Truck</div>
+                    <div class="value" style="font-size: 2rem; margin: 10px 0;">€${COSTS.externalTruckPerTrip}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.8);">per trip</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <div class="label" style="color: rgba(255,255,255,0.9);">Neighbor Truck</div>
+                    <div class="value" style="font-size: 2rem; margin: 10px 0;">€${COSTS.neighborTruck}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.8);">free partnership</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                    <div class="label" style="color: rgba(255,255,255,0.9);">External Carrier</div>
+                    <div class="value" style="font-size: 2rem; margin: 10px 0;">€${COSTS.externalCarrierPerCart}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.8);">per cart</div>
+                </div>
+            `;
+        }
+
+        // Load orders and create optimizer
+        function initializeCostAnalysis() {
+            // Try to load orders from localStorage
+            const storedOrders = localStorage.getItem('zuidplas_orders');
+            let orders = [];
+            
+            if (storedOrders) {
+                try {
+                    orders = JSON.parse(storedOrders);
+                } catch (e) {
+                    console.error('Error parsing stored orders:', e);
+                }
+            }
+            
+            // If no orders, use dummy data
+            if (orders.length === 0 && typeof DUMMY_ORDERS !== 'undefined') {
+                orders = DUMMY_ORDERS;
+            }
+            
+            if (orders.length === 0) {
+                // Show message to load orders first
+                document.getElementById('cost-comparison-table').innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px;">
+                            <div style="color: var(--text-secondary);">
+                                <p style="font-size: 1.1rem; margin-bottom: 15px;">📋 No orders loaded yet</p>
+                                <p style="margin-bottom: 20px;">Please load orders from the Dashboard first</p>
+                                <a href="index.html" class="btn btn-primary" style="display: inline-block;">Go to Dashboard</a>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Create optimizer
+            const optimizer = new RouteOptimizer(orders, ROUTES, TRUCKS);
+            const options = optimizer.generateOptions();
+            
+            updateCostComparison(options);
+            updateCostTips(options);
+        }
+
+        function updateCostComparison(options) {
             const tbody = document.getElementById('cost-comparison-table');
+            if (!tbody) return;
+            
+            if (!options || options.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            Run optimization to see cost comparison
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
             
             tbody.innerHTML = '';
             
-            options.forEach(option => {
+            options.forEach((option, index) => {
                 const row = document.createElement('tr');
                 
-                const route1Cost = option.allocation.route1?.cost || 0;
-                const route2Cost = option.allocation.route2?.cost || 0;
-                const route3Cost = option.allocation.route3?.cost || 0;
-                const externalCost = option.cost - route1Cost - route2Cost - route3Cost;
+                // Calculate route costs
+                const route1Cost = option.allocation?.route1?.cost || (option.allocation?.route1 === 'own-truck-1' ? COSTS.ownTruckPerRoute : option.allocation?.route1 === 'external-truck' ? COSTS.externalTruckPerTrip : option.allocation?.route1 === 'neighbor-truck' ? COSTS.neighborTruck : 0);
+                const route2Cost = option.allocation?.route2?.cost || (option.allocation?.route2 === 'own-truck-2' ? COSTS.ownTruckPerRoute : option.allocation?.route2 === 'external-truck' ? COSTS.externalTruckPerTrip : option.allocation?.route2 === 'neighbor-truck' ? COSTS.neighborTruck : 0);
+                const route3Cost = option.allocation?.route3?.cost || (option.allocation?.route3 === 'own-truck-1' ? COSTS.ownTruckPerRoute : option.allocation?.route3 === 'external-truck' ? COSTS.externalTruckPerTrip : option.allocation?.route3 === 'neighbor-truck' ? COSTS.neighborTruck : 0);
                 
-                const recommendation = option.recommended 
-                    ? '<span class="badge primary">⭐ Recommended</span>'
-                    : option.cost === Math.min(...options.map(o => o.cost))
-                    ? '<span class="badge success">💰 Best Cost</span>'
-                    : '<span class="badge">Alternative</span>';
+                const total = option.cost || (route1Cost + route2Cost + route3Cost);
+                const externalCost = total - route1Cost - route2Cost - route3Cost;
+                
+                let recommendation = '';
+                if (option.recommended) {
+                    recommendation = '<span class="badge" style="background: var(--primary); color: white;">⭐ Recommended</span>';
+                } else if (option.cost === Math.min(...options.map(o => o.cost))) {
+                    recommendation = '<span class="badge" style="background: var(--success); color: white;">💰 Best Cost</span>';
+                } else {
+                    recommendation = '<span class="badge" style="background: var(--text-secondary); color: white;">Alternative</span>';
+                }
                 
                 row.innerHTML = `
-                    <td><strong>Option ${option.id}: ${option.name}</strong></td>
+                    <td><strong>Option ${option.id || String.fromCharCode(65 + index)}: ${option.name || 'Scenario ' + (index + 1)}</strong></td>
                     <td>€${route1Cost}</td>
                     <td>€${route2Cost}</td>
                     <td>€${route3Cost}</td>
-                    <td>€${externalCost > 0 ? externalCost : '-'}</td>
-                    <td><strong>€${option.cost}</strong></td>
+                    <td>${externalCost > 0 ? '€' + externalCost : '-'}</td>
+                    <td><strong style="font-size: 1.1rem; color: var(--primary);">€${total}</strong></td>
                     <td>${recommendation}</td>
                 `;
                 
                 if (option.recommended) {
                     row.style.background = '#f0f9ff';
+                    row.style.borderLeft = '4px solid var(--primary)';
                 }
                 
                 tbody.appendChild(row);
             });
         }
 
-        function updateCostTips() {
-            if (!currentOptimizer) return;
-            
-            const options = currentOptimizer.generateOptions();
-            const bestOption = options[0];
-            const cheapestOption = options.reduce((min, opt) => opt.cost < min.cost ? opt : min, options[0]);
-            
+        function updateCostTips(options) {
             const container = document.getElementById('cost-tips');
-            const savings = bestOption.cost - cheapestOption.cost;
+            if (!container) return;
             
-            container.innerHTML = `
-                ${savings > 0 ? `
-                <div class="info-box info" style="margin-bottom: 15px;">
-                    <strong>💡 Cost Savings Opportunity:</strong> Consider ${cheapestOption.name} to save €${savings} per day
-                </div>
-                ` : ''}
-                
-                ${bestOption.allocation.route1?.truck === 'neighbor-truck' ? `
-                <div class="info-box success" style="margin-bottom: 15px;">
-                    <strong>✅ Neighbor's Truck Available:</strong> Using neighbor's truck for Route 1 saves €${COSTS.externalTruckPerTrip} compared to external truck
-                </div>
-                ` : ''}
-                
+            if (!options || options.length === 0) {
+                container.innerHTML = `
+                    <div class="info-box info">
+                        <strong>💡 Tip:</strong> Load orders and run optimization to see cost-saving recommendations
+                    </div>
+                `;
+                return;
+            }
+            
+            const bestOption = options[0];
+            const cheapestOption = options.reduce((min, opt) => (opt.cost || 999999) < (min.cost || 999999) ? opt : min, options[0]);
+            const savings = (bestOption.cost || 0) - (cheapestOption.cost || 0);
+            
+            let tipsHTML = '';
+            
+            if (savings > 0) {
+                tipsHTML += `
+                    <div class="info-box" style="background: #fef3c7; border-left: 4px solid var(--warning); margin-bottom: 15px;">
+                        <strong>💡 Cost Savings Opportunity:</strong> Consider "${cheapestOption.name}" to save <strong>€${savings}</strong> per day (€${savings * 30} per month)
+                    </div>
+                `;
+            }
+            
+            if (bestOption.allocation?.route1 === 'neighbor-truck' || bestOption.requiresAction?.includes('neighbor')) {
+                tipsHTML += `
+                    <div class="info-box" style="background: #d1fae5; border-left: 4px solid var(--success); margin-bottom: 15px;">
+                        <strong>✅ Neighbor's Truck Available:</strong> Using neighbor's truck for Route 1 saves <strong>€${COSTS.externalTruckPerTrip}</strong> compared to external truck
+                    </div>
+                `;
+            }
+            
+            tipsHTML += `
                 <div class="info-box info">
                     <strong>📊 Daily Cost Analysis:</strong>
-                    <ul style="margin-top: 10px; line-height: 2;">
-                        <li>Recommended option: <strong>€${bestOption.cost}</strong> per day</li>
-                        <li>Cheapest option: <strong>€${cheapestOption.cost}</strong> per day</li>
+                    <ul style="margin-top: 10px; line-height: 2.5; padding-left: 20px;">
+                        <li>Recommended option: <strong>€${bestOption.cost || 0}</strong> per day</li>
+                        <li>Cheapest option: <strong>€${cheapestOption.cost || 0}</strong> per day</li>
                         <li>Potential monthly savings: <strong>€${savings * 30}</strong> (if using cheapest option)</li>
+                        <li>Average daily cost: <strong>€${Math.round(options.reduce((sum, opt) => sum + (opt.cost || 0), 0) / options.length)}</strong></li>
                     </ul>
                 </div>
             `;
+            
+            container.innerHTML = tipsHTML;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            if (currentOptimizer) {
+            // Initialize language
+            setTimeout(() => {
+                if (typeof i18n !== 'undefined') {
+                    const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
+                    i18n.setLanguage(savedLang);
+                    updateLanguageButtons();
+                }
+            }, 100);
+            
+            // Update cost factors
+            updateCostFactors();
+            
+            // Initialize cost analysis
+            initializeCostAnalysis();
+        });
+        
+        // Toggle sidebar collapse (desktop)
+        function toggleSidebarCollapse() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+        
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (window.innerWidth <= 768 && 
+                sidebar.classList.contains('open') && 
+                !sidebar.contains(event.target) && 
+                !menuBtn.contains(event.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+        
+        // Restore sidebar state on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed && window.innerWidth > 768) {
+                sidebar.classList.add('collapsed');
+            }
+        });
+        
+        // Language switcher
+        window.setLanguage = function(lang) {
+            if (typeof i18n !== 'undefined') {
+                i18n.setLanguage(lang);
+                updateLanguageButtons();
+                updateCostFactors();
                 updateCostComparison();
                 updateCostTips();
             }
-        });
+        };
+        
+        function updateLanguageButtons() {
+            if (typeof i18n === 'undefined') return;
+            const currentLang = i18n.getLanguage();
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
     </script>
 </body>
 </html>
