@@ -33,8 +33,12 @@
         <div class="page-header">
             <h1>Route Optimization System</h1>
             <p class="subtitle">Optimize truck allocation across 3 routes - Fit all carts efficiently</p>
-            <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary);">Select Date:</label>
+                        <input type="date" id="order-date-picker" style="padding: 8px 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 0.9rem;" value="">
+                    </div>
                     <button class="btn btn-primary" onclick="syncOrders(false)" id="sync-btn">
                         🔄 Sync Orders from API
                     </button>
@@ -44,6 +48,7 @@
                 </div>
                 <div class="date-time" id="currentDateTime"></div>
             </div>
+            <div id="api-status-message" style="margin-top: 15px; text-align: center; font-size: 0.9rem; color: var(--text-secondary);"></div>
         </div>
 
         <!-- Stats Cards -->
@@ -123,6 +128,15 @@
         }
         updateDateTime();
         setInterval(updateDateTime, 60000);
+        
+        // Set default date to today
+        document.addEventListener('DOMContentLoaded', () => {
+            const datePicker = document.getElementById('order-date-picker');
+            if (datePicker && !datePicker.value) {
+                const today = new Date();
+                datePicker.value = today.toISOString().split('T')[0];
+            }
+        });
 
         // Use dummy data flag
         let useDummyData = false;
@@ -131,14 +145,23 @@
         async function syncOrders(useDummy = false) {
             const syncBtn = document.getElementById('sync-btn');
             const originalText = syncBtn.innerHTML;
+            const statusMsg = document.getElementById('api-status-message');
             useDummyData = useDummy;
             
             try {
                 syncBtn.disabled = true;
                 syncBtn.innerHTML = useDummy ? '📦 Loading Demo Data...' : '⏳ Syncing...';
+                if (statusMsg) statusMsg.innerHTML = '';
+                
+                // Get selected date or use today
+                const datePicker = document.getElementById('order-date-picker');
+                let selectedDate = null;
+                if (datePicker && datePicker.value) {
+                    selectedDate = new Date(datePicker.value);
+                }
                 
                 // Fetch orders (will auto-fallback to dummy if API fails)
-                const orders = await orderManager.fetchOrders(null, useDummy);
+                const orders = await orderManager.fetchOrders(selectedDate, useDummy);
                 
                 // Assign carts
                 orderManager.assignCarts();
@@ -153,6 +176,22 @@
                 updateDashboard(orders, options);
                 
                 syncBtn.innerHTML = useDummy ? '✅ Demo Data Loaded' : '✅ Synced';
+                
+                // Show status message
+                if (statusMsg) {
+                    if (useDummy) {
+                        statusMsg.innerHTML = '✅ Using demo data (20 sample orders)';
+                        statusMsg.style.color = 'var(--success)';
+                    } else if (orders.length === 0) {
+                        const dateStr = selectedDate ? selectedDate.toLocaleDateString() : 'today';
+                        statusMsg.innerHTML = `ℹ️ No orders found for ${dateStr}. Try a different date or use demo data.`;
+                        statusMsg.style.color = 'var(--warning)';
+                    } else {
+                        statusMsg.innerHTML = `✅ Found ${orders.length} orders from API`;
+                        statusMsg.style.color = 'var(--success)';
+                    }
+                }
+                
                 setTimeout(() => {
                     syncBtn.innerHTML = originalText;
                     syncBtn.disabled = false;
@@ -160,6 +199,10 @@
                 
             } catch (error) {
                 syncBtn.innerHTML = '❌ Error';
+                if (statusMsg) {
+                    statusMsg.innerHTML = `❌ Error: ${error.message}. Try using demo data or check proxy server.`;
+                    statusMsg.style.color = 'var(--danger)';
+                }
                 setTimeout(() => {
                     syncBtn.innerHTML = originalText;
                     syncBtn.disabled = false;

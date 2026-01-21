@@ -73,8 +73,9 @@ class AuthManager {
             return storedToken;
         }
 
-        // Need to authenticate
-        return await this.authenticate();
+        // Need to authenticate (returns null if proxy not available - OK for demo mode)
+        const token = await this.authenticate();
+        return token; // Can be null for demo mode
     }
 
     /**
@@ -82,13 +83,28 @@ class AuthManager {
      */
     async authenticate() {
         try {
+            // Try to authenticate, but handle connection errors gracefully (for demo mode)
             const response = await fetch(`${this.apiBase}/authenticate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(this.credentials)
+                body: JSON.stringify(this.credentials),
+                // Add timeout handling
+                signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : null
+            }).catch(err => {
+                // Connection refused or network error - return null for demo mode
+                if (err.message.includes('Failed to fetch') || err.message.includes('CONNECTION_REFUSED')) {
+                    console.log('ℹ️ API proxy not available - using demo mode (this is OK)');
+                    return null; // Return null instead of throwing
+                }
+                throw err; // Re-throw other errors
             });
+            
+            // If response is null (connection failed), return null for demo mode
+            if (!response) {
+                return null;
+            }
 
             if (!response.ok) {
                 throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
@@ -117,6 +133,11 @@ class AuthManager {
             
             return token;
         } catch (error) {
+            // Handle connection errors gracefully (for demo mode)
+            if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('CONNECTION_REFUSED'))) {
+                console.log('ℹ️ API proxy not available - using demo mode (this is OK)');
+                return null; // Return null instead of throwing for demo mode
+            }
             console.error('Authentication error:', error);
             this.updateAuthStatus(false, error.message);
             throw error;
@@ -172,17 +193,25 @@ class AuthManager {
 // Global instance
 const authManager = new AuthManager();
 
-// Auto-authenticate on load
+// Auto-authenticate on load (silent - doesn't block demo mode)
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        // Try to authenticate, but don't block if it fails (for demo mode)
         const token = await authManager.getValidToken();
         if (token) {
             console.log('✅ Auto-authentication successful');
             authManager.updateAuthStatus(true);
         }
     } catch (error) {
-        console.error('Auto-authentication failed:', error);
-        authManager.updateAuthStatus(false, error.message);
+        // Silent failure - don't show error for demo mode
+        // Only log if it's not a connection refused (proxy not running)
+        if (!error.message.includes('Failed to fetch') && !error.message.includes('CONNECTION_REFUSED')) {
+            console.warn('⚠️ Auto-authentication failed (non-critical):', error.message);
+        } else {
+            console.log('ℹ️ API proxy not running - using demo mode (this is OK)');
+        }
+        // Show "Demo Mode" instead of "Auth Failed" when proxy isn't available
+        authManager.updateAuthStatus(false, null, true); // true = demo mode
     }
 });
 

@@ -105,7 +105,10 @@ class OrderManager {
             
             // Show message if no orders
             if (this.orders.length === 0) {
-                this.showInfo('No orders found for this date. Using dummy data for demonstration.');
+                const dateStr = targetDate instanceof Date 
+                    ? targetDate.toLocaleDateString() 
+                    : targetDate;
+                this.showInfo(`No orders found for ${dateStr}. This is normal if there are no orders for that date. Using dummy data for demonstration.`);
                 // Auto-fallback to dummy data
                 return await this.fetchOrders(date, true);
             }
