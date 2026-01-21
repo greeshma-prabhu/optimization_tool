@@ -9,6 +9,37 @@ class OrderManager {
         this.filteredOrders = [];
         this.currentDate = new Date();
         this.api = florinetAPI;
+        
+        // Try to load orders from localStorage on initialization
+        this.loadOrdersFromStorage();
+    }
+
+    /**
+     * Load orders from localStorage (for cross-page access)
+     */
+    loadOrdersFromStorage() {
+        try {
+            const storedOrders = localStorage.getItem('zuidplas_orders');
+            const timestamp = localStorage.getItem('zuidplas_orders_timestamp');
+            
+            // Only use stored orders if they're less than 24 hours old
+            if (storedOrders && timestamp) {
+                const age = Date.now() - parseInt(timestamp);
+                if (age < 24 * 60 * 60 * 1000) { // 24 hours
+                    this.orders = JSON.parse(storedOrders);
+                    this.filteredOrders = [...this.orders];
+                    console.log('📦 Loaded orders from storage:', this.orders.length);
+                    return true;
+                } else {
+                    // Clear old data
+                    localStorage.removeItem('zuidplas_orders');
+                    localStorage.removeItem('zuidplas_orders_timestamp');
+                }
+            }
+        } catch (e) {
+            console.warn('Could not load orders from localStorage:', e);
+        }
+        return false;
     }
 
     /**
@@ -37,6 +68,15 @@ class OrderManager {
             this.updateOrderCount();
             this.displayOrders();
             this.showInfo('✅ Using dummy order data for demonstration. All features are working!');
+            
+            // Store in localStorage for cross-page access
+            try {
+                localStorage.setItem('zuidplas_orders', JSON.stringify(this.orders));
+                localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+            } catch (e) {
+                console.warn('Could not save orders to localStorage:', e);
+            }
+            
             return this.orders;
         }
 
@@ -54,6 +94,14 @@ class OrderManager {
             // Update UI
             this.updateOrderCount();
             this.displayOrders();
+            
+            // Store in localStorage for cross-page access
+            try {
+                localStorage.setItem('zuidplas_orders', JSON.stringify(this.orders));
+                localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+            } catch (e) {
+                console.warn('Could not save orders to localStorage:', e);
+            }
             
             // Show message if no orders
             if (this.orders.length === 0) {

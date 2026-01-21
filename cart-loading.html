@@ -384,9 +384,29 @@
         }
 
         function optimizeCartLoading() {
+            // Try to load orders from storage if not in memory
             if (!orderManager || !orderManager.orders || orderManager.orders.length === 0) {
-                alert('Please load orders first from Dashboard');
-                return;
+                // Try loading from localStorage
+                const loaded = orderManager.loadOrdersFromStorage();
+                
+                // If still no orders, try loading demo data automatically
+                if (!loaded || !orderManager.orders || orderManager.orders.length === 0) {
+                    console.log('📦 No orders found, loading demo data automatically...');
+                    orderManager.fetchOrders(null, true).then(() => {
+                        // Retry optimization after loading
+                        if (orderManager.orders && orderManager.orders.length > 0) {
+                            cartLoadingOptimizer = new CartLoadingOptimizer(orderManager.orders);
+                            const result = cartLoadingOptimizer.optimizeAssignment();
+                            updateTruckVisualization(result);
+                            updateCartList(result.allCarts);
+                            updateSummaryStats(result);
+                        }
+                    }).catch(err => {
+                        console.error('Error loading demo data:', err);
+                        alert('Please load orders first from Dashboard, or enable demo data.');
+                    });
+                    return;
+                }
             }
 
             cartLoadingOptimizer = new CartLoadingOptimizer(orderManager.orders);
@@ -582,8 +602,18 @@
 
         // Auto-optimize on load if orders available
         document.addEventListener('DOMContentLoaded', () => {
-            if (orderManager && orderManager.orders && orderManager.orders.length > 0) {
-                optimizeCartLoading();
+            // Try loading from storage first
+            if (orderManager) {
+                orderManager.loadOrdersFromStorage();
+                
+                // If orders found, auto-optimize
+                if (orderManager.orders && orderManager.orders.length > 0) {
+                    console.log('📦 Found orders, auto-optimizing...');
+                    optimizeCartLoading();
+                } else {
+                    // Show helpful message
+                    console.log('💡 No orders found. Click "Optimize Cart Loading" to load demo data automatically.');
+                }
             }
         });
     </script>

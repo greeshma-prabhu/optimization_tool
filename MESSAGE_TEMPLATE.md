@@ -36,14 +36,18 @@ I've completed the **Cart Loading Optimizer** for Zuidplas Logistics. The system
 
 1. **Open the link** above
 2. **Click "📦 Load Demo Data"** on the dashboard (uses sample orders)
-3. **Go to "🛒 Cart Loading"** page (main feature)
-4. **Click "🔄 Optimize Cart Loading"**
-5. You'll see:
-   - Two trucks side by side
+3. **IMPORTANT: Click "🛒 Cart Loading" in the navigation bar** (top menu)
+   - This is different from "⚡ Optimization" page
+   - Look for the shopping cart icon 🛒 in the navigation
+4. **Click "🔄 Optimize Cart Loading"** button on the Cart Loading page
+5. **You'll see the visual trucks:**
+   - Two trucks side by side with 17 cart slots each
    - Visual cart slots (Blue = Standard, Purple = Danish)
    - Which carts are assigned to which truck
-   - Route assignments
-   - Capacity utilization
+   - Route assignments (badges showing routes)
+   - Capacity utilization bars
+
+**Note:** The "⚡ Optimization" page shows route planning. The "🛒 Cart Loading" page shows the visual truck loading with cart slots - that's the main feature!
 
 ## 📋 Current Status
 
