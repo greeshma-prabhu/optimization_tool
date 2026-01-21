@@ -223,11 +223,12 @@ class I18n {
     }
 
     /**
-     * Set language
+     * Set language - SAVES TO LOCALSTORAGE FOR ALL PAGES
      */
     setLanguage(lang) {
         if (this.translations[lang]) {
             this.currentLang = lang;
+            // CRITICAL: Save to localStorage so ALL pages can read it
             localStorage.setItem('zuidplas_language', lang);
             this.updatePage();
             return true;
@@ -274,8 +275,11 @@ class I18n {
 // Global instance
 const i18n = new I18n();
 
-// Auto-update on load
+// Auto-update on load - LOAD LANGUAGE FROM LOCALSTORAGE
 document.addEventListener('DOMContentLoaded', () => {
+    // Load saved language from localStorage (set by dashboard)
+    const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
+    i18n.setLanguage(savedLang);
     i18n.updatePage();
 });
 

@@ -37,8 +37,8 @@ body {
     flex-direction: column;
     z-index: 1000;
     transition: transform 0.3s ease, width 0.3s ease;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden; /* No scrolling - everything fits */
+    padding-right: 0; /* No padding - toggle button is outside */
 }
 
 .sidebar.collapsed {
@@ -80,49 +80,68 @@ body {
 }
 
 .sidebar-toggle {
-    position: absolute;
-    right: -15px;
+    position: fixed;
+    left: 232px; /* 260px sidebar - 28px (half button) = fully visible */
     top: 20px;
-    width: 30px;
-    height: 30px;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    background: #f97316;
+    border: 3px solid #f97316;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.5);
     z-index: 1001;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
+    overflow: visible;
 }
 
 .sidebar-toggle:hover {
-    background: #f9fafb;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    background: #ea580c;
+    border-color: #ea580c;
+    box-shadow: 0 8px 24px rgba(249, 115, 22, 0.6);
+    transform: scale(1.08);
 }
 
 .sidebar-toggle svg {
-    width: 16px;
-    height: 16px;
-    color: #6b7280;
+    width: 32px;
+    height: 32px;
+    color: white;
+    transition: color 0.2s;
+    display: block;
+    overflow: visible;
+    padding: 0;
+}
+
+.sidebar-toggle svg line {
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke: white;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+    left: 42px; /* 70px - 28px (half of button width) = fully visible */
 }
 
 .sidebar.collapsed .sidebar-toggle svg {
-    transform: rotate(180deg);
+    transform: none;
 }
 
 .sidebar-logo {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 24px 20px;
+    padding: 16px 20px;
     border-bottom: 1px solid #e5e7eb;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: #1f2937;
     position: relative;
     transition: padding 0.3s ease;
+    flex-shrink: 0;
+    min-height: 60px;
 }
 
 .sidebar-logo svg {
@@ -131,25 +150,29 @@ body {
 
 .sidebar-logo span {
     transition: opacity 0.2s;
+    white-space: nowrap;
 }
 
 .sidebar-nav {
     flex: 1;
-    padding: 16px 0;
-    overflow-y: auto;
+    padding: 8px 0;
+    overflow: hidden; /* No scrolling */
+    display: flex;
+    flex-direction: column;
 }
 
 .nav-link {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 20px;
+    padding: 10px 20px;
     color: #6b7280;
     text-decoration: none;
-    font-size: 15px;
+    font-size: 14px;
     transition: all 0.2s;
     border-left: 3px solid transparent;
     position: relative;
+    flex-shrink: 0;
 }
 
 .nav-link:hover {
@@ -182,12 +205,13 @@ body {
 /* === Sidebar Footer === */
 .sidebar-footer {
     margin-top: auto;
-    padding: 16px 20px;
+    padding: 12px 20px;
     border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
 }
 
 .sidebar.collapsed .sidebar-footer {
-    padding: 16px 0;
+    padding: 12px 0;
 }
 
 .lang-switcher {
@@ -234,26 +258,36 @@ body {
 .mobile-menu-btn {
     display: none;
     position: fixed;
-    top: 20px;
-    left: 20px;
-    z-index: 999;
+    top: 16px;
+    left: 16px;
+    z-index: 1002;
     background: white;
-    border: 1px solid #e5e7eb;
+    border: 2px solid #f97316;
     border-radius: 8px;
-    padding: 10px;
+    padding: 12px;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
     transition: all 0.2s;
+    width: 48px;
+    height: 48px;
+    align-items: center;
+    justify-content: center;
 }
 
 .mobile-menu-btn:hover {
-    background: #f9fafb;
+    background: #f97316;
+    box-shadow: 0 6px 16px rgba(249, 115, 22, 0.35);
+}
+
+.mobile-menu-btn:hover svg {
+    color: white;
 }
 
 .mobile-menu-btn svg {
     width: 24px;
     height: 24px;
-    color: #1f2937;
+    color: #f97316;
+    transition: color 0.2s;
 }
 
 /* === Main Content === */
@@ -262,10 +296,14 @@ body {
     min-height: 100vh;
     background: #ffffff;
     transition: margin-left 0.3s ease;
+    padding-left: 30px; /* Proper spacing from sidebar */
+    padding-right: 30px;
+    padding-top: 20px;
 }
 
 .sidebar.collapsed ~ .main-content {
     margin-left: 70px;
+    padding-left: 30px; /* Maintain spacing even when collapsed */
 }
 
 .container {
@@ -648,12 +686,13 @@ body {
 /* === Responsive Design === */
 @media (max-width: 768px) {
     .mobile-menu-btn {
-        display: block;
+        display: flex;
     }
     
     .sidebar {
         transform: translateX(-100%);
-        width: 260px;
+        width: 280px;
+        box-shadow: 2px 0 12px rgba(0,0,0,0.1);
     }
     
     .sidebar.open {
@@ -661,11 +700,24 @@ body {
     }
     
     .sidebar.collapsed {
-        width: 260px;
+        width: 280px;
     }
     
     .sidebar-close {
         display: block;
+        top: 12px;
+        right: 12px;
+        width: 40px;
+        height: 40px;
+        background: #f97316;
+        border-radius: 8px;
+        z-index: 1002;
+    }
+    
+    .sidebar-close svg {
+        color: white;
+        width: 20px;
+        height: 20px;
     }
     
     .sidebar-toggle {
@@ -674,6 +726,7 @@ body {
     
     .main-content {
         margin-left: 0;
+        padding-top: 0;
     }
     
     .sidebar.collapsed ~ .main-content {
@@ -681,15 +734,62 @@ body {
     }
     
     .container {
-        padding: 20px;
+        padding: 16px;
+        margin-top: 0;
+    }
+    
+    .page-header {
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+    
+    .page-title {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+    
+    .page-subtitle {
+        font-size: 14px;
     }
     
     .stats-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
     }
     
-    .page-title {
-        font-size: 24px;
+    .stat-card {
+        padding: 16px;
+    }
+    
+    .stat-value {
+        font-size: 28px;
+    }
+    
+    .stat-label {
+        font-size: 13px;
+    }
+    
+    .card {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+    
+    .btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+    
+    /* Better mobile spacing */
+    .page-header > * {
+        margin-bottom: 12px;
+    }
+    
+    input[type="date"],
+    input[type="text"],
+    select {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px; /* Prevents zoom on iOS */
     }
 }
 

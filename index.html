@@ -17,8 +17,10 @@
         </button>
 
         <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="15 18 9 12 15 6"></polyline>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
         </button>
 
@@ -478,20 +480,28 @@
             }
         });
         
-        // Language switcher - Make it global
+        // Language switcher - Make it global and persistent across ALL pages
         window.setLanguage = function(lang) {
+            // Save to localStorage IMMEDIATELY - this is the key!
+            localStorage.setItem('zuidplas_language', lang);
+            
             if (typeof i18n !== 'undefined') {
                 i18n.setLanguage(lang);
                 updateLanguageButtons();
-            } else {
-                console.error('i18n not loaded');
             }
+            
+            // Force reload to apply language to all pages
+            // But first, save the language preference
+            setTimeout(() => {
+                // Update current page
+                if (typeof i18n !== 'undefined') {
+                    i18n.updatePage();
+                }
+            }, 100);
         };
         
         function updateLanguageButtons() {
-            if (typeof i18n === 'undefined') return;
-            
-            const currentLang = i18n.getLanguage();
+            const currentLang = localStorage.getItem('zuidplas_language') || 'nl';
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
