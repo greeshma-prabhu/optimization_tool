@@ -176,8 +176,14 @@
                 </button>
             </form>
             
-            <div style="text-align: center; margin-top: 20px; color: var(--text-secondary); font-size: 0.9rem;">
-                <span data-i18n="login.demoMode">Of gebruik demo modus zonder inloggen</span>
+            <div style="text-align: center; margin-top: 20px;">
+                <button 
+                    onclick="skipLogin()" 
+                    style="background: transparent; border: none; color: var(--primary); font-size: 0.9rem; cursor: pointer; text-decoration: underline; padding: 5px;"
+                    data-i18n="login.skipLogin"
+                >
+                    Of gebruik demo modus zonder inloggen
+                </button>
             </div>
         </div>
     </div>
@@ -259,6 +265,11 @@
                 if (response.ok) {
                     const data = await response.json();
                     
+                    // Check if we got a token
+                    if (!data.token) {
+                        throw new Error('No token received from server');
+                    }
+                    
                     // Store credentials (in production, use secure storage)
                     localStorage.setItem('florinet_username', username);
                     localStorage.setItem('florinet_password', password);
@@ -269,13 +280,34 @@
                     // Redirect to dashboard
                     window.location.href = 'index.html';
                 } else {
-                    throw new Error('Authentication failed');
+                    // Get error details
+                    let errorText = 'Authentication failed';
+                    try {
+                        const errorData = await response.json();
+                        errorText = errorData.error || errorData.message || errorText;
+                    } catch (e) {
+                        errorText = `Server returned status ${response.status}`;
+                    }
+                    throw new Error(errorText);
                 }
             } catch (error) {
-                // Show error
-                errorMessage.textContent = currentLanguage === 'nl' 
-                    ? 'Inloggen mislukt. Controleer uw gegevens of start de proxy server.'
-                    : 'Login failed. Please check your credentials or start the proxy server.';
+                // Show error with more details
+                let errorMsg = '';
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMsg = currentLanguage === 'nl' 
+                        ? 'Kan geen verbinding maken met de server. Controleer of de proxy server draait (poort 3001).'
+                        : 'Cannot connect to server. Please check if proxy server is running (port 3001).';
+                } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                    errorMsg = currentLanguage === 'nl' 
+                        ? 'Ongeldige gebruikersnaam of wachtwoord. Controleer uw gegevens.'
+                        : 'Invalid username or password. Please check your credentials.';
+                } else {
+                    errorMsg = currentLanguage === 'nl' 
+                        ? `Inloggen mislukt: ${error.message}. Probeer demo modus te gebruiken.`
+                        : `Login failed: ${error.message}. Try using demo mode instead.`;
+                }
+                
+                errorMessage.textContent = errorMsg;
                 errorMessage.classList.add('show');
                 
                 // Enable button
