@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Orders - Zuidplas Logistics</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">📊 Dashboard</a></li>
+                <li><a href="orders.html" class="nav-link active">📋 Orders</a></li>
+                <li><a href="optimization.html" class="nav-link">⚡ Optimization</a></li>
+                <li><a href="trucks.html" class="nav-link">🚚 Trucks</a></li>
+                <li><a href="costs.html" class="nav-link">💰 Costs</a></li>
+            </ul>
+            <div class="nav-user">
+                <div id="auth-status"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Daily Orders</h1>
+            <p class="subtitle" id="orders-date">Loading...</p>
+            <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="syncOrders()">🔄 Sync Now</button>
+                <button class="btn btn-secondary" onclick="exportOrders()">📥 Export CSV</button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card">
+            <h3>Filters</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div class="form-group">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-select" id="search-input" placeholder="Search orders..." oninput="searchOrders()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Route</label>
+                    <select class="form-select" id="route-filter" onchange="applyFilters()">
+                        <option value="">All Routes</option>
+                        <option value="rijnsburg">Rijnsburg</option>
+                        <option value="aalsmeer">Aalsmeer</option>
+                        <option value="naaldwijk">Naaldwijk</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cart Type</label>
+                    <select class="form-select" id="cart-filter" onchange="applyFilters()">
+                        <option value="">All Types</option>
+                        <option value="standard">Standard</option>
+                        <option value="danish">Danish</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="status-filter" onchange="applyFilters()">
+                        <option value="">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="assigned">Assigned</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Summary -->
+        <div class="stats-grid">
+            <div class="stat-card primary">
+                <div class="icon">🛒</div>
+                <div class="label">Standard Carts</div>
+                <div class="value" id="standard-carts-summary">0</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="icon">🌺</div>
+                <div class="label">Danish Carts</div>
+                <div class="value" id="danish-carts-summary">0</div>
+            </div>
+            <div class="stat-card success">
+                <div class="icon">⭐</div>
+                <div class="label">Special Handling</div>
+                <div class="value" id="special-handling-summary">0</div>
+            </div>
+        </div>
+
+        <!-- Orders Table -->
+        <div class="card">
+            <h2>Orders Table</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Delivery Location</th>
+                            <th>Product Type</th>
+                            <th>Quantity</th>
+                            <th>Crate Type</th>
+                            <th>Cart Type</th>
+                            <th>Carts Needed</th>
+                            <th>Assigned Route</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body">
+                        <tr>
+                            <td colspan="10" style="text-align: center; padding: 40px;">
+                                Click "Sync Now" to fetch orders from API
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="error-message" class="info-box danger" style="display: none; margin-top: 20px;"></div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/carts.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/navigation.js"></script>
+    <script>
+        // Set date
+        document.getElementById('orders-date').textContent = 
+            `Orders for ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+
+        // Sync orders
+        async function syncOrders() {
+            try {
+                const orders = await orderManager.fetchOrders();
+                orderManager.assignCarts();
+                updateSummary();
+            } catch (error) {
+                showError('Failed to sync orders: ' + error.message);
+            }
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const filters = {
+                route: document.getElementById('route-filter').value,
+                cartType: document.getElementById('cart-filter').value,
+                status: document.getElementById('status-filter').value
+            };
+            orderManager.filterOrders(filters);
+            updateSummary();
+        }
+
+        // Search orders
+        function searchOrders() {
+            const query = document.getElementById('search-input').value;
+            orderManager.searchOrders(query);
+            updateSummary();
+        }
+
+        // Update summary
+        function updateSummary() {
+            const summary = orderManager.getCartSummary();
+            document.getElementById('standard-carts-summary').textContent = summary.standard;
+            document.getElementById('danish-carts-summary').textContent = summary.danish;
+            document.getElementById('special-handling-summary').textContent = summary.specialHandling;
+        }
+
+        // Export orders
+        function exportOrders() {
+            orderManager.exportToCSV();
+        }
+
+        // Show error
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Auto-load on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            setTimeout(async () => {
+                try {
+                    await syncOrders();
+                } catch (error) {
+                    console.error('Auto-load error:', error);
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
+

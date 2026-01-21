@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cost Analysis - Zuidplas Logistics</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">📊 Dashboard</a></li>
+                <li><a href="orders.html" class="nav-link">📋 Orders</a></li>
+                <li><a href="optimization.html" class="nav-link">⚡ Optimization</a></li>
+                <li><a href="trucks.html" class="nav-link">🚚 Trucks</a></li>
+                <li><a href="costs.html" class="nav-link active">💰 Costs</a></li>
+            </ul>
+            <div class="nav-user">
+                <div id="auth-status"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Cost Optimization Dashboard</h1>
+            <p class="subtitle">Compare scenarios and optimize costs</p>
+        </div>
+
+        <!-- Cost Breakdown Table -->
+        <div class="card">
+            <h2>Cost Comparison</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Scenario</th>
+                            <th>Route 1</th>
+                            <th>Route 2</th>
+                            <th>Route 3</th>
+                            <th>External</th>
+                            <th>Total</th>
+                            <th>Recommendation</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cost-comparison-table">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px;">
+                                Run optimization to see cost comparison
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Cost Factors -->
+        <div class="card">
+            <h2>Cost Factors</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">Own Truck</div>
+                    <div class="value">€${COSTS.ownTruckPerRoute}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem;">per route</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">External Truck</div>
+                    <div class="value">€${COSTS.externalTruckPerTrip}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem;">per trip</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Neighbor Truck</div>
+                    <div class="value">€${COSTS.neighborTruck}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem;">free partnership</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">External Carrier</div>
+                    <div class="value">€${COSTS.externalCarrierPerCart}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem;">per cart</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost Optimization Tips -->
+        <div class="card">
+            <h2>Cost Optimization Tips</h2>
+            <div id="cost-tips">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/carts.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/optimizer.js"></script>
+    <script src="js/navigation.js"></script>
+    <script>
+        function updateCostComparison() {
+            if (!currentOptimizer) return;
+            
+            const options = currentOptimizer.generateOptions();
+            const tbody = document.getElementById('cost-comparison-table');
+            
+            tbody.innerHTML = '';
+            
+            options.forEach(option => {
+                const row = document.createElement('tr');
+                
+                const route1Cost = option.allocation.route1?.cost || 0;
+                const route2Cost = option.allocation.route2?.cost || 0;
+                const route3Cost = option.allocation.route3?.cost || 0;
+                const externalCost = option.cost - route1Cost - route2Cost - route3Cost;
+                
+                const recommendation = option.recommended 
+                    ? '<span class="badge primary">⭐ Recommended</span>'
+                    : option.cost === Math.min(...options.map(o => o.cost))
+                    ? '<span class="badge success">💰 Best Cost</span>'
+                    : '<span class="badge">Alternative</span>';
+                
+                row.innerHTML = `
+                    <td><strong>Option ${option.id}: ${option.name}</strong></td>
+                    <td>€${route1Cost}</td>
+                    <td>€${route2Cost}</td>
+                    <td>€${route3Cost}</td>
+                    <td>€${externalCost > 0 ? externalCost : '-'}</td>
+                    <td><strong>€${option.cost}</strong></td>
+                    <td>${recommendation}</td>
+                `;
+                
+                if (option.recommended) {
+                    row.style.background = '#f0f9ff';
+                }
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateCostTips() {
+            if (!currentOptimizer) return;
+            
+            const options = currentOptimizer.generateOptions();
+            const bestOption = options[0];
+            const cheapestOption = options.reduce((min, opt) => opt.cost < min.cost ? opt : min, options[0]);
+            
+            const container = document.getElementById('cost-tips');
+            const savings = bestOption.cost - cheapestOption.cost;
+            
+            container.innerHTML = `
+                ${savings > 0 ? `
+                <div class="info-box info" style="margin-bottom: 15px;">
+                    <strong>💡 Cost Savings Opportunity:</strong> Consider ${cheapestOption.name} to save €${savings} per day
+                </div>
+                ` : ''}
+                
+                ${bestOption.allocation.route1?.truck === 'neighbor-truck' ? `
+                <div class="info-box success" style="margin-bottom: 15px;">
+                    <strong>✅ Neighbor's Truck Available:</strong> Using neighbor's truck for Route 1 saves €${COSTS.externalTruckPerTrip} compared to external truck
+                </div>
+                ` : ''}
+                
+                <div class="info-box info">
+                    <strong>📊 Daily Cost Analysis:</strong>
+                    <ul style="margin-top: 10px; line-height: 2;">
+                        <li>Recommended option: <strong>€${bestOption.cost}</strong> per day</li>
+                        <li>Cheapest option: <strong>€${cheapestOption.cost}</strong> per day</li>
+                        <li>Potential monthly savings: <strong>€${savings * 30}</strong> (if using cheapest option)</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentOptimizer) {
+                updateCostComparison();
+                updateCostTips();
+            }
+        });
+    </script>
+</body>
+</html>
+

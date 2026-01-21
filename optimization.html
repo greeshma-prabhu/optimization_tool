@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Optimization - Zuidplas Logistics</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">📊 Dashboard</a></li>
+                <li><a href="orders.html" class="nav-link">📋 Orders</a></li>
+                <li><a href="optimization.html" class="nav-link active">⚡ Optimization</a></li>
+                <li><a href="trucks.html" class="nav-link">🚚 Trucks</a></li>
+                <li><a href="costs.html" class="nav-link">💰 Costs</a></li>
+            </ul>
+            <div class="nav-user">
+                <div id="auth-status"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Route Optimization Engine</h1>
+            <p class="subtitle">Automated route planning and truck allocation</p>
+            <button class="btn btn-primary" onclick="runOptimization()" style="margin-top: 20px;">
+                🔄 Run Optimization
+            </button>
+        </div>
+
+        <!-- Input Summary -->
+        <div class="card">
+            <h2>Input Summary</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">Total Orders</div>
+                    <div class="value" id="input-orders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Total Carts</div>
+                    <div class="value" id="input-carts">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Danish Carts</div>
+                    <div class="value" id="input-danish">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Standard Carts</div>
+                    <div class="value" id="input-standard">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Route Breakdown -->
+        <div class="card">
+            <h2>Route Breakdown</h2>
+            <div id="route-breakdown">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Optimization Options -->
+        <div class="card">
+            <h2>Optimization Options</h2>
+            <div id="optimization-options">
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    Click "Run Optimization" to generate scenarios
+                </div>
+            </div>
+        </div>
+
+        <!-- Optimization Score -->
+        <div class="card">
+            <h2>Optimization Score</h2>
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 4rem; font-weight: 700; color: var(--primary);" id="optimization-score-display">
+                    0%
+                </div>
+                <div style="margin-top: 20px; color: var(--text-secondary);">
+                    Efficiency based on cost, capacity utilization, and feasibility
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/carts.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/optimizer.js"></script>
+    <script src="js/navigation.js"></script>
+    <script>
+        let currentOptimizer = null;
+
+        async function runOptimization() {
+            try {
+                console.log('🔄 Starting optimization...');
+                
+                // Fetch orders if not already loaded
+                if (!orderManager || !orderManager.orders || orderManager.orders.length === 0) {
+                    console.log('📦 No orders found, fetching...');
+                    await orderManager.fetchOrders(null, true); // Use dummy data
+                    orderManager.assignCarts();
+                }
+
+                console.log('📊 Orders loaded:', orderManager.orders.length);
+
+                // Initialize optimizer
+                if (!orderManager.orders || orderManager.orders.length === 0) {
+                    throw new Error('No orders available. Please load orders first.');
+                }
+
+                currentOptimizer = initializeOptimizer(orderManager.orders);
+                
+                if (!currentOptimizer) {
+                    throw new Error('Failed to initialize optimizer');
+                }
+
+                console.log('⚙️ Generating optimization options...');
+                
+                // Generate options
+                const options = currentOptimizer.generateOptions();
+                
+                console.log('✅ Generated options:', options.length);
+                
+                if (!options || options.length === 0) {
+                    throw new Error('No optimization options generated');
+                }
+                
+                // Update display
+                updateInputSummary();
+                updateRouteBreakdown();
+                updateOptimizationOptions(options);
+                updateOptimizationScore(options);
+                
+                console.log('✅ Optimization complete!');
+                
+            } catch (error) {
+                console.error('❌ Optimization error:', error);
+                console.error('Stack:', error.stack);
+                alert('Error running optimization: ' + error.message);
+            }
+        }
+
+        function updateInputSummary() {
+            const summary = orderManager.getCartSummary();
+            document.getElementById('input-orders').textContent = orderManager.orders.length;
+            document.getElementById('input-carts').textContent = summary.standard + summary.danish;
+            document.getElementById('input-danish').textContent = summary.danish;
+            document.getElementById('input-standard').textContent = summary.standard;
+        }
+
+        function updateRouteBreakdown() {
+            if (!currentOptimizer) {
+                console.error('Optimizer not initialized');
+                return;
+            }
+            
+            const routeAnalysis = currentOptimizer.processOrders();
+            const container = document.getElementById('route-breakdown');
+            
+            if (!container) {
+                console.error('Route breakdown container not found');
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            Object.keys(ROUTES).forEach(routeKey => {
+                const route = ROUTES[routeKey];
+                const analysis = routeAnalysis[routeKey];
+                
+                if (!analysis) {
+                    // Show empty route card
+                    const card = document.createElement('div');
+                    card.className = 'route-card';
+                    card.innerHTML = `
+                        <div class="route-header">
+                            <div class="route-title">Route ${route.id}: ${route.name}</div>
+                            <div class="route-time">${route.departureTime}</div>
+                        </div>
+                        <div class="info-box" style="margin-top: 15px;">No orders for this route</div>
+                    `;
+                    container.appendChild(card);
+                    return;
+                }
+                
+                const capacity = analysis.capacity;
+                const statusIcon = capacity.fits ? '✓' : capacity.status === 'tight' ? '⚠️' : '❌';
+                const statusClass = capacity.fits ? 'success' : capacity.status === 'tight' ? 'warning' : 'danger';
+                
+                const card = document.createElement('div');
+                card.className = 'route-card';
+                card.innerHTML = `
+                    <div class="route-header">
+                        <div class="route-title">Route ${route.id}: ${route.name}</div>
+                        <div class="route-time">${route.departureTime}</div>
+                    </div>
+                    <div class="route-info">
+                        <div class="route-info-item">
+                            <div class="route-info-label">Orders</div>
+                            <div class="route-info-value">${(analysis.orders && analysis.orders.length) || 0}</div>
+                        </div>
+                        <div class="route-info-item">
+                            <div class="route-info-label">Carts Needed</div>
+                            <div class="route-info-value">${capacity.equivalentStandard || 0} / ${capacity.maxCapacity || 17}</div>
+                        </div>
+                        <div class="route-info-item">
+                            <div class="route-info-label">Cart Types</div>
+                            <div class="route-info-value">${analysis.danish || 0} Danish, ${analysis.standard || 0} Standard</div>
+                        </div>
+                        <div class="route-info-item">
+                            <div class="route-info-label">Status</div>
+                            <div class="route-info-value">
+                                <span class="badge ${statusClass}">${statusIcon} ${capacity.status.toUpperCase()}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${capacity.warning ? `<div class="info-box warning" style="margin-top: 15px;">${capacity.warning}</div>` : ''}
+                    ${!capacity.fits ? `
+                    <div class="info-box danger" style="margin-top: 15px;">
+                        <strong>Overflow:</strong> Needs ${capacity.overflow} additional carts → Suggest external carrier
+                    </div>
+                    ` : ''}
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function updateOptimizationOptions(options) {
+            const container = document.getElementById('optimization-options');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            // Safety check
+            if (!options || !Array.isArray(options) || options.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No optimization options available. Please load orders first.</div>';
+                return;
+            }
+            
+            options.forEach((option, index) => {
+                // Safety checks for each option
+                if (!option) return;
+                const isRecommended = index === 0;
+                const card = document.createElement('div');
+                card.className = 'route-card';
+                card.style.border = isRecommended ? '3px solid var(--primary)' : '1px solid var(--border)';
+                card.style.background = isRecommended ? '#f0f9ff' : 'white';
+                
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div>
+                            <h3 style="margin: 0;">Option ${option.id}: ${option.name}</h3>
+                            ${isRecommended ? '<span class="badge primary" style="margin-left: 10px;">⭐ Recommended</span>' : ''}
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">€${option.cost}</div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Score: ${option.score}%</div>
+                        </div>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">${option.description}</p>
+                    
+                    <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <strong>Allocation:</strong>
+                        ${option.allocation ? Object.entries(option.allocation).map(([key, value]) => {
+                            const routeName = key.replace('route', '').replace(/\d+/, '');
+                            const routeLabel = key === 'route1' ? 'Rijnsburg (09:00)' : 
+                                              key === 'route2' ? 'Aalsmeer (10:00)' : 
+                                              key === 'route3' ? 'Naaldwijk (11:00)' : key;
+                            const truckName = typeof value === 'object' && value.truck ? 
+                                (value.truck === 'own-truck-1' ? 'Own Truck #1' :
+                                 value.truck === 'own-truck-2' ? 'Own Truck #2' :
+                                 value.truck === 'neighbor-truck' ? "Neighbor's Truck" :
+                                 value.truck === 'external-truck' ? 'External Truck' : value.truck) : 
+                                (typeof value === 'object' ? JSON.stringify(value) : value);
+                            return `<div style="margin-top: 5px;"><strong>${routeLabel}:</strong> ${truckName}${typeof value === 'object' && value.cost !== undefined ? ` (€${value.cost})` : ''}</div>`;
+                        }).join('') : '<div>No allocation data</div>'}
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <strong>Pros:</strong>
+                            <ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9rem;">
+                                ${(option.pros && Array.isArray(option.pros)) ? option.pros.map(p => `<li>${p}</li>`).join('') : '<li>No pros listed</li>'}
+                            </ul>
+                        </div>
+                        <div>
+                            <strong>Cons:</strong>
+                            <ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9rem;">
+                                ${(option.cons && Array.isArray(option.cons)) ? option.cons.map(c => `<li>${c}</li>`).join('') : '<li>No cons listed</li>'}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <span class="badge ${(option.feasibility && option.feasibility.fits) ? 'success' : 'danger'}">
+                            ${(option.feasibility && option.feasibility.fits) ? '✓ All fits' : '⚠️ ' + (option.feasibility ? option.feasibility.message || 'Check feasibility' : 'Unknown')}
+                        </span>
+                        ${option.requiresAction ? `<span class="badge warning" style="margin-left: 10px;">${option.requiresAction}</span>` : ''}
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function updateOptimizationScore(options) {
+            if (options.length > 0) {
+                const bestScore = options[0].score;
+                document.getElementById('optimization-score-display').textContent = bestScore + '%';
+            }
+        }
+
+        // Auto-run on load if orders available
+        document.addEventListener('DOMContentLoaded', () => {
+            if (orderManager.orders.length > 0) {
+                runOptimization();
+            }
+        });
+    </script>
+</body>
+</html>
+

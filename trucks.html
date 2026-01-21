@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truck Allocation - Zuidplas Logistics</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">📊 Dashboard</a></li>
+                <li><a href="orders.html" class="nav-link">📋 Orders</a></li>
+                <li><a href="optimization.html" class="nav-link">⚡ Optimization</a></li>
+                <li><a href="trucks.html" class="nav-link active">🚚 Trucks</a></li>
+                <li><a href="costs.html" class="nav-link">💰 Costs</a></li>
+            </ul>
+            <div class="nav-user">
+                <div id="auth-status"></div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Truck Fleet Management</h1>
+            <p class="subtitle">Monitor truck status and cart loading</p>
+        </div>
+
+        <!-- Truck Status Board -->
+        <div id="truck-status-board">
+            <!-- Populated by JavaScript -->
+        </div>
+
+        <!-- Cart Loading Visualization -->
+        <div class="card">
+            <h2>Cart Loading Visualization</h2>
+            <div id="cart-loading-viz">
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    Run optimization to see cart loading visualization
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/carts.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/optimizer.js"></script>
+    <script src="js/navigation.js"></script>
+    <script>
+        function loadTruckStatus() {
+            const container = document.getElementById('truck-status-board');
+            container.innerHTML = '';
+
+            // Own Trucks
+            TRUCKS.own.forEach(truck => {
+                const card = createTruckCard(truck, 'own');
+                container.appendChild(card);
+            });
+
+            // Neighbor's Truck
+            TRUCKS.neighbor.forEach(truck => {
+                const card = createTruckCard(truck, 'neighbor');
+                container.appendChild(card);
+            });
+
+            // External Trucks
+            TRUCKS.external.forEach(truck => {
+                const card = createTruckCard(truck, 'external');
+                container.appendChild(card);
+            });
+        }
+
+        function createTruckCard(truck, type) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const statusColor = truck.available ? 'var(--success)' : 'var(--warning)';
+            const statusText = truck.available ? 'Available' : 'In Use';
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="margin: 0;">${truck.name}</h2>
+                        <div style="margin-top: 10px;">
+                            <span class="badge" style="background: ${statusColor};">${statusText}</span>
+                            <span class="badge info" style="margin-left: 10px;">Capacity: ${truck.capacity} carts</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.2rem; font-weight: 600;">€${truck.costPerRoute}</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">per route</div>
+                    </div>
+                </div>
+                
+                ${type === 'neighbor' ? `
+                <div class="info-box warning" style="margin-bottom: 20px;">
+                    ${truck.requiresAction || '📞 Call neighbor to confirm availability'}
+                </div>
+                ` : ''}
+                
+                <div style="background: #f9fafb; padding: 20px; border-radius: 8px;">
+                    <h3 style="margin-bottom: 15px;">Today's Allocation</h3>
+                    <div id="truck-${truck.id}-allocation">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                            No allocation yet
+                        </div>
+                    </div>
+                </div>
+                
+                ${type === 'neighbor' ? `
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="callNeighbor()">📞 Call Neighbor</button>
+                </div>
+                ` : ''}
+            `;
+            
+            return card;
+        }
+
+        function updateTruckAllocations() {
+            if (!currentOptimizer) return;
+            
+            const options = currentOptimizer.generateOptions();
+            const bestOption = options[0];
+            
+            // Update each truck's allocation
+            Object.entries(bestOption.allocation).forEach(([routeKey, allocation]) => {
+                if (typeof allocation === 'object' && allocation.truck) {
+                    const truckId = allocation.truck;
+                    const container = document.getElementById(`truck-${truckId}-allocation`);
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 10px;">
+                                <div style="font-weight: 600; margin-bottom: 5px;">${allocation.route || routeKey}</div>
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                    Departure: ${allocation.departure || 'TBD'}
+                                </div>
+                                ${allocation.returnTime ? `
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                    Return: ${allocation.returnTime}
+                                </div>
+                                ` : ''}
+                                <div style="margin-top: 10px;">
+                                    <span class="badge success">Scheduled</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            });
+        }
+
+        function callNeighbor() {
+            alert('📞 Call neighbor to confirm truck availability for Route 1 (Rijnsburg - 9:00 AM)');
+        }
+
+        function updateCartLoadingViz() {
+            if (!currentOptimizer || orderManager.orders.length === 0) return;
+            
+            const routeAnalysis = currentOptimizer.processOrders();
+            const container = document.getElementById('cart-loading-viz');
+            
+            container.innerHTML = '<h3 style="margin-bottom: 20px;">Truck Loading by Route</h3>';
+            
+            Object.keys(ROUTES).forEach(routeKey => {
+                const route = ROUTES[routeKey];
+                const analysis = routeAnalysis[routeKey];
+                
+                if (!analysis) return;
+                
+                const capacity = analysis.capacity;
+                const maxSlots = capacity.maxCapacity;
+                
+                const routeCard = document.createElement('div');
+                routeCard.className = 'card';
+                routeCard.style.marginBottom = '20px';
+                
+                routeCard.innerHTML = `
+                    <h4>Route ${route.id}: ${route.name} (${route.departureTime})</h4>
+                    <div style="display: grid; grid-template-columns: repeat(${Math.min(maxSlots, 17)}, 1fr); gap: 8px; margin-top: 15px;">
+                        ${Array.from({ length: maxSlots }, (_, i) => {
+                            if (i < capacity.standard) {
+                                return '<div class="cart-slot filled" title="Standard Cart">S</div>';
+                            } else if (i < capacity.equivalentStandard) {
+                                return '<div class="cart-slot danish" title="Danish Cart">D</div>';
+                            } else {
+                                return '<div class="cart-slot" title="Empty">' + (i + 1) + '</div>';
+                            }
+                        }).join('')}
+                    </div>
+                    <div style="margin-top: 15px; font-size: 0.9rem; color: var(--text-secondary);">
+                        ${capacity.standard} Standard + ${capacity.danish} Danish = ${capacity.equivalentStandard} equivalent / ${maxSlots} max
+                    </div>
+                `;
+                
+                container.appendChild(routeCard);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTruckStatus();
+            if (currentOptimizer) {
+                updateTruckAllocations();
+                updateCartLoadingViz();
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Optimization - Zuidplas Logistics</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link active">📊 Dashboard</a></li>
+                <li><a href="orders.html" class="nav-link">📋 Orders</a></li>
+                <li><a href="optimization.html" class="nav-link">⚡ Optimization</a></li>
+                <li><a href="cart-loading.html" class="nav-link">🛒 Cart Loading</a></li>
+                <li><a href="trucks.html" class="nav-link">🚚 Trucks</a></li>
+                <li><a href="costs.html" class="nav-link">💰 Costs</a></li>
+            </ul>
+            <div class="nav-user">
+                <div id="auth-status" class="auth-status"></div>
+                <span id="last-sync-time" style="font-size: 0.8rem; color: var(--text-secondary);">Never</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Route Optimization System</h1>
+            <p class="subtitle">Optimize truck allocation across 3 routes - Fit all carts efficiently</p>
+            <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="syncOrders(false)" id="sync-btn">
+                        🔄 Sync Orders from API
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadDemoData()" id="demo-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        📦 Load Demo Data
+                    </button>
+                </div>
+                <div class="date-time" id="currentDateTime"></div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card primary">
+                <div class="icon">📋</div>
+                <div class="label">Today's Orders</div>
+                <div class="value" id="total-orders-count">0</div>
+            </div>
+            <div class="stat-card success">
+                <div class="icon">🛒</div>
+                <div class="label">Total Carts Needed</div>
+                <div class="value" id="total-carts-needed">0</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="icon">🚚</div>
+                <div class="label">Routes Status</div>
+                <div class="value" id="routes-status">0/3</div>
+                <div class="label" style="margin-top: 10px; font-size: 0.85rem;">planned</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="icon">📊</div>
+                <div class="label">Optimization Score</div>
+                <div class="value" id="optimization-score">0%</div>
+            </div>
+        </div>
+
+        <!-- Route Overview Cards -->
+        <div class="card">
+            <h2>Route Overview</h2>
+            <div class="route-grid" id="route-overview">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Optimization Suggestions -->
+        <div class="card">
+            <h2>Optimization Suggestions</h2>
+            <div id="optimization-suggestions">
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    Click "Sync Orders from API" to fetch real orders, or "Load Demo Data" to test with sample orders
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="info-box danger" style="display: none; margin-top: 20px;"></div>
+        
+        <!-- Info Message -->
+        <div id="info-message" class="info-box info" style="display: none; margin-top: 20px;"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/data.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/carts.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/optimizer.js"></script>
+    <script src="js/navigation.js"></script>
+    <script>
+        // Update date and time
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            const dateTimeEl = document.getElementById('currentDateTime');
+            if (dateTimeEl) {
+                dateTimeEl.textContent = now.toLocaleDateString('en-US', options);
+            }
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 60000);
+
+        // Use dummy data flag
+        let useDummyData = false;
+
+        // Sync orders from API or use dummy data
+        async function syncOrders(useDummy = false) {
+            const syncBtn = document.getElementById('sync-btn');
+            const originalText = syncBtn.innerHTML;
+            useDummyData = useDummy;
+            
+            try {
+                syncBtn.disabled = true;
+                syncBtn.innerHTML = useDummy ? '📦 Loading Demo Data...' : '⏳ Syncing...';
+                
+                // Fetch orders (will auto-fallback to dummy if API fails)
+                const orders = await orderManager.fetchOrders(null, useDummy);
+                
+                // Assign carts
+                orderManager.assignCarts();
+                
+                // Initialize optimizer
+                const optimizer = initializeOptimizer(orders);
+                
+                // Generate options
+                const options = optimizer.generateOptions();
+                
+                // Update dashboard
+                updateDashboard(orders, options);
+                
+                syncBtn.innerHTML = useDummy ? '✅ Demo Data Loaded' : '✅ Synced';
+                setTimeout(() => {
+                    syncBtn.innerHTML = originalText;
+                    syncBtn.disabled = false;
+                }, 2000);
+                
+            } catch (error) {
+                syncBtn.innerHTML = '❌ Error';
+                setTimeout(() => {
+                    syncBtn.innerHTML = originalText;
+                    syncBtn.disabled = false;
+                }, 2000);
+                console.error('Sync error:', error);
+            }
+        }
+
+        // Load demo data button
+        function loadDemoData() {
+            syncOrders(true);
+        }
+
+        // Update dashboard display
+        function updateDashboard(orders, options) {
+            // Update stats
+            document.getElementById('total-orders-count').textContent = orders.length;
+            
+            const cartSummary = orderManager.getCartSummary();
+            document.getElementById('total-carts-needed').textContent = 
+                cartSummary.standard + cartSummary.danish;
+            
+            // Update routes
+            updateRouteOverview(orders, options);
+            
+            // Update optimization suggestions
+            updateOptimizationSuggestions(options);
+            
+            // Update optimization score
+            if (options.length > 0) {
+                const bestOption = options[0];
+                document.getElementById('optimization-score').textContent = bestOption.score + '%';
+            }
+        }
+
+        // Update route overview
+        function updateRouteOverview(orders, options) {
+            const container = document.getElementById('route-overview');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            const routeAnalysis = initializeOptimizer(orders).processOrders();
+            
+            Object.keys(ROUTES).forEach(routeKey => {
+                const route = ROUTES[routeKey];
+                const analysis = routeAnalysis[routeKey];
+                
+                if (!analysis) return;
+                
+                const capacity = analysis.capacity;
+                const statusClass = capacity.fits ? 'success' : capacity.status === 'tight' ? 'warning' : 'danger';
+                const statusText = capacity.fits ? 'Ready' : capacity.status === 'tight' ? 'Tight' : 'Overflow';
+                
+                const progress = Math.min(100, parseFloat(capacity.utilization));
+                
+                const card = document.createElement('div');
+                card.className = 'route-card';
+                card.innerHTML = `
+                    <div class="route-header">
+                        <div class="route-title">Route ${route.id}: ${route.name}</div>
+                        <div class="route-time">${route.departureTime}</div>
+                    </div>
+                    <div class="route-info">
+                        <div class="route-info-item">
+                            <div class="route-info-label">Orders</div>
+                            <div class="route-info-value">${analysis.orders.length}</div>
+                        </div>
+                        <div class="route-info-item">
+                            <div class="route-info-label">Carts Needed</div>
+                            <div class="route-info-value">${capacity.equivalentStandard} / ${capacity.maxCapacity}</div>
+                        </div>
+                        <div class="route-info-item">
+                            <div class="route-info-label">Status</div>
+                            <div class="route-info-value"><span class="badge ${statusClass}">${statusText}</span></div>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%; background: ${progress >= 100 ? 'var(--danger)' : progress >= 80 ? 'var(--warning)' : 'var(--success)'}"></div>
+                    </div>
+                    ${capacity.warning ? `<div class="info-box warning" style="margin-top: 15px;">${capacity.warning}</div>` : ''}
+                    <div class="route-actions">
+                        <a href="optimization.html" class="btn btn-primary">Optimize</a>
+                        <a href="orders.html" class="btn btn-secondary">View Details</a>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Update optimization suggestions
+        function updateOptimizationSuggestions(options) {
+            const container = document.getElementById('optimization-suggestions');
+            if (!container || options.length === 0) return;
+            
+            const bestOption = options[0];
+            
+            container.innerHTML = `
+                <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">⭐ Recommended: ${bestOption.name}</h3>
+                    <p style="margin-bottom: 15px;">${bestOption.description}</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div><strong>Total Cost:</strong> €${bestOption.cost}</div>
+                        <div><strong>Feasibility:</strong> <span class="badge ${bestOption.feasibility.fits ? 'success' : 'danger'}">${bestOption.feasibility.fits ? 'All fits' : 'Overflow detected'}</span></div>
+                        <div><strong>Score:</strong> ${bestOption.score}%</div>
+                    </div>
+                    ${bestOption.requiresAction ? `<div class="info-box warning">${bestOption.requiresAction}</div>` : ''}
+                    <div style="margin-top: 15px;">
+                        <a href="optimization.html" class="btn btn-primary">View All Options</a>
+                    </div>
+                </div>
+                
+                ${options.length > 1 ? `
+                <div style="margin-top: 20px;">
+                    <h4>Alternative Options:</h4>
+                    <div style="display: grid; gap: 15px; margin-top: 15px;">
+                        ${options.slice(1, 4).map(option => `
+                            <div style="padding: 15px; background: white; border-radius: 8px; border: 1px solid var(--border);">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong>${option.name}</strong>
+                                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                                            Cost: €${option.cost} | Score: ${option.score}%
+                                        </div>
+                                    </div>
+                                    <a href="optimization.html" class="btn btn-secondary" style="padding: 8px 16px;">View</a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        // Auto-sync on load (optional)
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Wait a bit for auth to complete
+            setTimeout(async () => {
+                try {
+                    // Check authentication status
+                    const token = await authManager.getValidToken();
+                    if (token) {
+                        console.log('✅ Authentication ready');
+                        // Optionally auto-fetch orders
+                        // await syncOrders();
+                    }
+                } catch (error) {
+                    console.error('Initial load error:', error);
+                }
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
