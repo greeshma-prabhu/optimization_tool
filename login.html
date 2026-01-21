@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Zuidplas Logistics</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            color: var(--primary);
+            margin: 0 0 10px 0;
+            font-size: 2rem;
+        }
+        
+        .login-header p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .language-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .language-selector button {
+            flex: 1;
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .language-selector button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .login-button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .login-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .login-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>🌺 Zuidplas Logistics</h1>
+                <p id="login-subtitle">Log in om te beginnen</p>
+            </div>
+            
+            <!-- Language Selector -->
+            <div class="language-selector">
+                <button onclick="setLanguage('nl')" id="lang-nl" class="active">🇳🇱 Nederlands</button>
+                <button onclick="setLanguage('en')" id="lang-en">🇬🇧 English</button>
+            </div>
+            
+            <!-- Error Message -->
+            <div class="error-message" id="error-message"></div>
+            
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="login.username">Gebruikersnaam</label>
+                    <input 
+                        type="text" 
+                        class="form-input" 
+                        id="username" 
+                        name="username" 
+                        value="JeroenMainfact"
+                        required
+                        data-i18n-placeholder="login.usernamePlaceholder"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" data-i18n="login.password">Wachtwoord</label>
+                    <input 
+                        type="password" 
+                        class="form-input" 
+                        id="password" 
+                        name="password" 
+                        value="&WWpxaM@#"
+                        required
+                        data-i18n-placeholder="login.passwordPlaceholder"
+                    >
+                </div>
+                
+                <button type="submit" class="login-button" id="login-button">
+                    <span data-i18n="common.login">Inloggen</span>
+                </button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 20px; color: var(--text-secondary); font-size: 0.9rem;">
+                <span data-i18n="login.demoMode">Of gebruik demo modus zonder inloggen</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/i18n.js"></script>
+    <script>
+        // Set default language to Dutch
+        let currentLanguage = localStorage.getItem('zuidplas_language') || 'nl';
+        i18n.setLanguage(currentLanguage);
+        
+        // Update language buttons
+        function updateLanguageButtons() {
+            document.getElementById('lang-nl').classList.toggle('active', currentLanguage === 'nl');
+            document.getElementById('lang-en').classList.toggle('active', currentLanguage === 'en');
+        }
+        
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            i18n.setLanguage(lang);
+            updateLanguageButtons();
+        }
+        
+        // Add login translations
+        translations.nl.login = {
+            username: 'Gebruikersnaam',
+            password: 'Wachtwoord',
+            usernamePlaceholder: 'Voer gebruikersnaam in',
+            passwordPlaceholder: 'Voer wachtwoord in',
+            demoMode: 'Of gebruik demo modus zonder inloggen',
+            skipLogin: 'Overslaan - Demo Modus',
+            loggingIn: 'Inloggen...',
+            loginSuccess: 'Succesvol ingelogd!',
+            loginError: 'Inloggen mislukt. Controleer uw gegevens.'
+        };
+        
+        translations.en.login = {
+            username: 'Username',
+            password: 'Password',
+            usernamePlaceholder: 'Enter username',
+            passwordPlaceholder: 'Enter password',
+            demoMode: 'Or use demo mode without logging in',
+            skipLogin: 'Skip - Demo Mode',
+            loggingIn: 'Logging in...',
+            loginSuccess: 'Login successful!',
+            loginError: 'Login failed. Please check your credentials.'
+        };
+        
+        function skipLogin() {
+            localStorage.setItem('zuidplas_demo_mode', 'true');
+            sessionStorage.setItem('skip_login', 'true');
+            window.location.href = 'index.html';
+        }
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginButton = document.getElementById('login-button');
+            const errorMessage = document.getElementById('error-message');
+            
+            // Hide error
+            errorMessage.classList.remove('show');
+            
+            // Disable button
+            loginButton.disabled = true;
+            loginButton.innerHTML = currentLanguage === 'nl' ? 'Inloggen...' : 'Logging in...';
+            
+            try {
+                // Try to authenticate
+                const response = await fetch('http://localhost:3001/api/authenticate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Store credentials (in production, use secure storage)
+                    localStorage.setItem('florinet_username', username);
+                    localStorage.setItem('florinet_password', password);
+                    localStorage.setItem('florinet_token', data.token);
+                    localStorage.setItem('florinet_token_expiry', (Date.now() + 3600000).toString());
+                    localStorage.setItem('zuidplas_logged_in', 'true');
+                    
+                    // Redirect to dashboard
+                    window.location.href = 'index.html';
+                } else {
+                    throw new Error('Authentication failed');
+                }
+            } catch (error) {
+                // Show error
+                errorMessage.textContent = currentLanguage === 'nl' 
+                    ? 'Inloggen mislukt. Controleer uw gegevens of start de proxy server.'
+                    : 'Login failed. Please check your credentials or start the proxy server.';
+                errorMessage.classList.add('show');
+                
+                // Enable button
+                loginButton.disabled = false;
+                loginButton.innerHTML = currentLanguage === 'nl' ? 'Inloggen' : 'Login';
+            }
+        }
+        
+        // Check if already logged in
+        if (localStorage.getItem('zuidplas_logged_in') === 'true') {
+            // Optionally redirect to dashboard
+            // window.location.href = 'index.html';
+        }
+        
+        // Update page on language change
+        document.addEventListener('languageChanged', () => {
+            currentLanguage = i18n.getLanguage();
+            updateLanguageButtons();
+        });
+        
+        // Initial update
+        updateLanguageButtons();
+        i18n.updatePage();
+    </script>
+</body>
+</html>
+

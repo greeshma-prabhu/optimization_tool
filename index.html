@@ -13,16 +13,23 @@
             <a href="index.html" class="nav-logo">🌺 Zuidplas Route Optimization</a>
             <button class="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
             <ul class="nav-links">
-                <li><a href="index.html" class="nav-link active">📊 Dashboard</a></li>
-                <li><a href="orders.html" class="nav-link">📋 Orders</a></li>
-                <li><a href="optimization.html" class="nav-link">⚡ Optimization</a></li>
-                <li><a href="cart-loading.html" class="nav-link">🛒 Cart Loading</a></li>
-                <li><a href="trucks.html" class="nav-link">🚚 Trucks</a></li>
-                <li><a href="costs.html" class="nav-link">💰 Costs</a></li>
+                <li><a href="index.html" class="nav-link active" data-i18n="nav.dashboard">📊 Dashboard</a></li>
+                <li><a href="orders.html" class="nav-link" data-i18n="nav.orders">📋 Orders</a></li>
+                <li><a href="optimization.html" class="nav-link" data-i18n="nav.optimization">⚡ Optimization</a></li>
+                <li><a href="cart-loading.html" class="nav-link" data-i18n="nav.cartLoading">🛒 Cart Loading</a></li>
+                <li><a href="trucks.html" class="nav-link" data-i18n="nav.trucks">🚚 Trucks</a></li>
+                <li><a href="costs.html" class="nav-link" data-i18n="nav.costs">💰 Costs</a></li>
             </ul>
             <div class="nav-user">
-                <div id="auth-status" class="auth-status"></div>
-                <span id="last-sync-time" style="font-size: 0.8rem; color: var(--text-secondary);">Never</span>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <!-- Language Switcher -->
+                    <div style="display: flex; gap: 5px; background: #f3f4f6; padding: 4px; border-radius: 8px;">
+                        <button onclick="setLanguage('nl')" id="lang-btn-nl" style="padding: 6px 12px; border: none; background: var(--primary); color: white; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" class="lang-btn active">🇳🇱 NL</button>
+                        <button onclick="setLanguage('en')" id="lang-btn-en" style="padding: 6px 12px; border: none; background: transparent; color: var(--text-primary); border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" class="lang-btn">🇬🇧 EN</button>
+                    </div>
+                    <div id="auth-status" class="auth-status"></div>
+                    <span id="last-sync-time" style="font-size: 0.8rem; color: var(--text-secondary);">Never</span>
+                </div>
             </div>
         </div>
     </nav>
@@ -31,18 +38,18 @@
     <div class="container">
         <!-- Page Header -->
         <div class="page-header">
-            <h1>Route Optimization System</h1>
-            <p class="subtitle">Optimize truck allocation across 3 routes - Fit all carts efficiently</p>
+            <h1 data-i18n="dashboard.title">Route Optimization System</h1>
+            <p class="subtitle" data-i18n="dashboard.subtitle">Optimize truck allocation across 3 routes - Fit all carts efficiently</p>
             <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; align-items: center;">
                 <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center;">
                     <div style="display: flex; flex-direction: column; gap: 5px;">
-                        <label style="font-size: 0.85rem; color: var(--text-secondary);">Select Date:</label>
-                        <input type="date" id="order-date-picker" style="padding: 8px 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 0.9rem;" value="">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary);" data-i18n="dashboard.selectDate">Select Date:</label>
+                    <input type="date" id="order-date-picker" style="padding: 8px 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 0.9rem;" value="">
                     </div>
-                    <button class="btn btn-primary" onclick="syncOrders(false)" id="sync-btn">
+                    <button class="btn btn-primary" onclick="syncOrders(false)" id="sync-btn" data-i18n="dashboard.syncOrders">
                         🔄 Sync Orders from API
                     </button>
-                    <button class="btn btn-secondary" onclick="loadDemoData()" id="demo-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <button class="btn btn-secondary" onclick="loadDemoData()" id="demo-btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; font-weight: 600;" data-i18n="dashboard.loadDemo">
                         📦 Load Demo Data
                     </button>
                 </div>
@@ -55,23 +62,23 @@
         <div class="stats-grid">
             <div class="stat-card primary">
                 <div class="icon">📋</div>
-                <div class="label">Today's Orders</div>
+                <div class="label" data-i18n="dashboard.todayOrders">Today's Orders</div>
                 <div class="value" id="total-orders-count">0</div>
             </div>
             <div class="stat-card success">
                 <div class="icon">🛒</div>
-                <div class="label">Total Carts Needed</div>
+                <div class="label" data-i18n="dashboard.totalCarts">Total Carts Needed</div>
                 <div class="value" id="total-carts-needed">0</div>
             </div>
             <div class="stat-card warning">
                 <div class="icon">🚚</div>
-                <div class="label">Routes Status</div>
+                <div class="label" data-i18n="dashboard.routesStatus">Routes Status</div>
                 <div class="value" id="routes-status">0/3</div>
                 <div class="label" style="margin-top: 10px; font-size: 0.85rem;">planned</div>
             </div>
             <div class="stat-card danger">
                 <div class="icon">📊</div>
-                <div class="label">Optimization Score</div>
+                <div class="label" data-i18n="dashboard.optimizationScore">Optimization Score</div>
                 <div class="value" id="optimization-score">0%</div>
             </div>
         </div>
@@ -102,6 +109,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/i18n.js"></script>
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
@@ -339,8 +347,68 @@
             `;
         }
 
+        // Language switcher - Make it global
+        window.setLanguage = function(lang) {
+            if (typeof i18n !== 'undefined') {
+                i18n.setLanguage(lang);
+                updateLanguageButtons();
+            } else {
+                console.error('i18n not loaded');
+            }
+        };
+        
+        function updateLanguageButtons() {
+            if (typeof i18n === 'undefined') return;
+            
+            const currentLang = i18n.getLanguage();
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--text-primary)';
+            });
+            
+            const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.style.background = 'var(--primary)';
+                activeBtn.style.color = 'white';
+            }
+        }
+        
+        // Check if user needs to login (first time)
+        function checkLogin() {
+            const loggedIn = localStorage.getItem('zuidplas_logged_in');
+            const currentPage = window.location.pathname;
+            
+            // Don't redirect if already on login page
+            if (currentPage.includes('login.html')) {
+                return;
+            }
+            
+            // If not logged in and not in demo mode, redirect to login
+            if (!loggedIn && !localStorage.getItem('zuidplas_demo_mode')) {
+                // Check if user wants to skip login (demo mode)
+                const skipLogin = sessionStorage.getItem('skip_login');
+                if (!skipLogin) {
+                    window.location.href = 'login.html';
+                }
+            }
+        }
+        
         // Auto-sync on load (optional)
         document.addEventListener('DOMContentLoaded', async () => {
+            // Check login status
+            checkLogin();
+            
+            // Initialize language switcher
+            setTimeout(() => {
+                if (typeof i18n !== 'undefined') {
+                    const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
+                    i18n.setLanguage(savedLang);
+                    updateLanguageButtons();
+                }
+            }, 100);
+            
             // Wait a bit for auth to complete
             setTimeout(async () => {
                 try {
