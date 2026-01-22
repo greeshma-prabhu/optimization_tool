@@ -474,29 +474,5 @@
         window.handleLogout = handleLogout;
 
     </script>
-    <script>
-        // Load language on page load - FROM USER SESSION (SET AT LOGIN)
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedLang = localStorage.getItem('zuidplas_user_language') || 
-                              localStorage.getItem('zuidplas_language') || 
-                              'nl';
-            
-            // Try immediately
-            if (typeof i18n !== 'undefined') {
-                i18n.currentLang = savedLang;
-                i18n.setLanguage(savedLang);
-                i18n.updatePage();
-            } else {
-                // Wait for i18n to load
-                setTimeout(() => {
-                    if (typeof i18n !== 'undefined') {
-                        i18n.currentLang = savedLang;
-                        i18n.setLanguage(savedLang);
-                        i18n.updatePage();
-                    }
-                }, 200);
-            }
-            
-    </script>
 </body>
 </html>

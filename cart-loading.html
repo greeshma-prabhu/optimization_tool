@@ -756,7 +756,12 @@
                              style="width: ${capacity.utilization}%"></div>
                     </div>
                     <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                        ${capacity.standard} ${typeof i18n !== 'undefined' ? i18n.t('data.standard', 'Standard') : 'Standard'} + ${capacity.danish} ${typeof i18n !== 'undefined' ? i18n.t('data.danish', 'Danish') : 'Danish'}
+                        ${capacity.standard} ${capacity.standard === 1 
+                            ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart')
+                            : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCarts', 'Standard Carts') : 'Standard Carts')} + 
+                        ${capacity.danish} ${capacity.danish === 1 
+                            ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart')
+                            : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCarts', 'Danish Carts') : 'Danish Carts')}
                     </div>
                 </div>
 
