@@ -70,8 +70,8 @@ const translations = {
         },
         // Cart Loading
         cartLoading: {
-            title: 'Cart Loading Optimizer',
-            subtitle: 'Fit all carts on 2 trucks - Cover all 3 routes efficiently',
+            title: 'Cart Optimization',
+            subtitle: 'Place all carts on 2 trucks - Cover all 3 routes efficiently',
             optimize: 'Optimize Cart Loading',
             totalCarts: 'Total Carts',
             cartsAssigned: 'Carts Assigned',
@@ -336,7 +336,7 @@ const translations = {
         // Cart Loading
         cartLoading: {
             title: 'Wagen Optimalisatie',
-            subtitle: 'Plaats alle wagens op 2 vrachtwagens - Bedek alle 3 routes efficiënt',
+            subtitle: 'Plaats alle karren op 2 vrachtwagens - Bedek alle 3 routes efficiënt',
             optimize: 'Optimaliseer Wagen Laden',
             totalCarts: 'Totaal Wagens',
             cartsAssigned: 'Wagens Toegewezen',
