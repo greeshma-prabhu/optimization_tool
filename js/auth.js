@@ -163,12 +163,27 @@ class AuthManager {
         if (statusElement) {
             if (authenticated) {
                 const authType = localStorage.getItem('florinet_auth_type') || 'JWT';
-                statusElement.innerHTML = `<span class="status-badge success">Authenticated (${authType})</span>`;
+                // Use i18n if available
+                if (typeof i18n !== 'undefined') {
+                    const authText = i18n.t('dashboard.authenticated', 'Authenticated (JWT)');
+                    statusElement.innerHTML = `<span class="status-badge success">${authText}</span>`;
+                } else {
+                    statusElement.innerHTML = `<span class="status-badge success">Authenticated (${authType})</span>`;
+                }
                 statusElement.className = 'auth-status success';
             } else {
-                statusElement.innerHTML = error 
-                    ? `<span class="status-badge danger">Auth Failed: ${error}</span>`
-                    : '<span class="status-badge warning">Not Authenticated</span>';
+                // Use i18n if available
+                if (typeof i18n !== 'undefined') {
+                    const failedText = i18n.t('dashboard.authFailed', 'Auth Failed');
+                    const notAuthText = i18n.t('common.notAuthenticated', 'Not Authenticated');
+                    statusElement.innerHTML = error 
+                        ? `<span class="status-badge danger">${failedText}: ${error}</span>`
+                        : `<span class="status-badge warning">${notAuthText}</span>`;
+                } else {
+                    statusElement.innerHTML = error 
+                        ? `<span class="status-badge danger">Auth Failed: ${error}</span>`
+                        : '<span class="status-badge warning">Not Authenticated</span>';
+                }
                 statusElement.className = 'auth-status error';
             }
         }

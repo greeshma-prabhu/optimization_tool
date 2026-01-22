@@ -26,7 +26,7 @@
         </div>
 
         <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -41,21 +41,21 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                Dashboard
+                <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
             
             <a href="orders.html" class="nav-link active">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 </svg>
-                Orders
+                <span data-i18n="nav.orders">Orders</span>
             </a>
             
             <a href="optimization.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
                 </svg>
-                Optimization
+                <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
             <a href="trucks.html" class="nav-link">
@@ -65,7 +65,18 @@
                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
                     <circle cx="18.5" cy="18.5" r="2.5"></circle>
                 </svg>
-                Trucks
+                <span data-i18n="nav.trucks">Trucks</span>
+            </a>
+            
+            <a href="cart-loading.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                    <line x1="12" y1="12" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="8" y2="16"></line>
+                    <line x1="16" y1="12" x2="16" y2="16"></line>
+                </svg>
+                <span data-i18n="nav.cartOptimization">Cart Optimization</span>
             </a>
             
             <a href="costs.html" class="nav-link">
@@ -73,9 +84,14 @@
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
-                Costs
+                <span data-i18n="nav.costs">Costs</span>
             </a>
         </nav>
+        
+        <div class="sidebar-footer">
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-bottom: 12px;"></div>
+            <button onclick="handleLogout()" class="logout-btn" data-i18n="common.logout">🚪 Uitloggen</button>
+        </div>
     </aside>
 
     <!-- Mobile Menu Button -->
@@ -90,45 +106,45 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="page-header">
-            <h1 class="page-title">Daily Orders</h1>
+            <h1 class="page-title" data-i18n="orders.title">Daily Orders</h1>
             <p class="page-subtitle" id="orders-date">Loading...</p>
             <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="syncOrders()">🔄 Sync Now</button>
-                <button class="btn btn-secondary" onclick="exportOrders()">📥 Export CSV</button>
+                <button class="btn btn-primary" onclick="syncOrders()" data-i18n="orders.syncNow">🔄 Sync Now</button>
+                <button class="btn btn-secondary" onclick="exportOrders()" data-i18n="orders.exportCSV">📥 Export CSV</button>
             </div>
         </div>
 
         <!-- Filters -->
         <div class="card">
-            <h3>Filters</h3>
+            <h3 data-i18n="orders.filters">Filters</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                 <div class="form-group">
-                    <label class="form-label">Search</label>
-                    <input type="text" class="form-select" id="search-input" placeholder="Search orders..." oninput="searchOrders()">
+                    <label class="form-label" data-i18n="orders.search">Search</label>
+                    <input type="text" class="form-select" id="search-input" data-i18n-placeholder="orders.search" placeholder="Search orders..." oninput="searchOrders()">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Route</label>
+                    <label class="form-label" data-i18n="orders.route">Route</label>
                     <select class="form-select" id="route-filter" onchange="applyFilters()">
-                        <option value="">All Routes</option>
+                        <option value="" data-i18n="orders.allRoutes">All Routes</option>
                         <option value="rijnsburg">Rijnsburg</option>
                         <option value="aalsmeer">Aalsmeer</option>
                         <option value="naaldwijk">Naaldwijk</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Cart Type</label>
+                    <label class="form-label" data-i18n="orders.cartType">Cart Type</label>
                     <select class="form-select" id="cart-filter" onchange="applyFilters()">
-                        <option value="">All Types</option>
-                        <option value="standard">Standard</option>
-                        <option value="danish">Danish</option>
+                        <option value="" data-i18n="orders.allTypes">All Types</option>
+                        <option value="standard" data-i18n="cartLoading.standard">Standard</option>
+                        <option value="danish" data-i18n="cartLoading.danish">Danish</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Status</label>
+                    <label class="form-label" data-i18n="orders.status">Status</label>
                     <select class="form-select" id="status-filter" onchange="applyFilters()">
-                        <option value="">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="assigned">Assigned</option>
+                        <option value="" data-i18n="orders.allStatus">All Status</option>
+                        <option value="pending" data-i18n="orders.pending">Pending</option>
+                        <option value="assigned" data-i18n="orders.assigned">Assigned</option>
                     </select>
                 </div>
             </div>
@@ -138,43 +154,43 @@
         <div class="stats-grid">
             <div class="stat-card primary">
                 <div class="icon">🛒</div>
-                <div class="label">Standard Carts</div>
+                <div class="label" data-i18n="orders.standardCarts">Standard Carts</div>
                 <div class="value" id="standard-carts-summary">0</div>
             </div>
             <div class="stat-card warning">
                 <div class="icon">🌺</div>
-                <div class="label">Danish Carts</div>
+                <div class="label" data-i18n="orders.danishCarts">Danish Carts</div>
                 <div class="value" id="danish-carts-summary">0</div>
             </div>
             <div class="stat-card success">
                 <div class="icon">⭐</div>
-                <div class="label">Special Handling</div>
+                <div class="label" data-i18n="orders.specialHandling">Special Handling</div>
                 <div class="value" id="special-handling-summary">0</div>
             </div>
         </div>
 
         <!-- Orders Table -->
         <div class="card">
-            <h2>Orders Table</h2>
+            <h2 data-i18n="orders.ordersTable">Orders Table</h2>
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Order ID</th>
-                            <th>Customer</th>
-                            <th>Delivery Location</th>
-                            <th>Product Type</th>
-                            <th>Quantity</th>
-                            <th>Crate Type</th>
-                            <th>Cart Type</th>
-                            <th>Carts Needed</th>
-                            <th>Assigned Route</th>
-                            <th>Status</th>
+                            <th data-i18n="orders.orderId">Order ID</th>
+                            <th data-i18n="orders.customer">Customer</th>
+                            <th data-i18n="orders.deliveryLocation">Delivery Location</th>
+                            <th data-i18n="orders.productType">Product Type</th>
+                            <th data-i18n="orders.quantity">Quantity</th>
+                            <th data-i18n="orders.crateType">Crate Type</th>
+                            <th data-i18n="orders.cartType">Cart Type</th>
+                            <th data-i18n="orders.cartsNeeded">Carts Needed</th>
+                            <th data-i18n="orders.assignedRoute">Assigned Route</th>
+                            <th data-i18n="orders.status">Status</th>
                         </tr>
                     </thead>
                     <tbody id="orders-table-body">
                         <tr>
-                            <td colspan="10" style="text-align: center; padding: 40px;">
+                            <td colspan="10" style="text-align: center; padding: 40px;" data-i18n="orders.clickToSync">
                                 Click "Sync Now" to fetch orders from API
                             </td>
                         </tr>
@@ -186,6 +202,11 @@
         <div id="error-message" class="info-box danger" style="display: none; margin-top: 20px;"></div>
     </div>
 
+    <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
+    <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
+    
+    <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
@@ -193,9 +214,25 @@
     <script src="js/orders.js"></script>
     <script src="js/navigation.js"></script>
     <script>
-        // Set date
-        document.getElementById('orders-date').textContent = 
-            `Orders for ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+        // Set date - USE SELECTED LANGUAGE
+        function updateOrdersDate() {
+            const dateEl = document.getElementById('orders-date');
+            if (!dateEl) return;
+            
+            const savedLang = localStorage.getItem('zuidplas_user_language') || localStorage.getItem('zuidplas_language') || 'nl';
+            const locale = savedLang === 'nl' ? 'nl-NL' : 'en-US';
+            const date = new Date();
+            const dateStr = date.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            if (typeof i18n !== 'undefined') {
+                dateEl.textContent = i18n.t('orders.ordersFor', 'Orders for') + ' ' + dateStr;
+            } else {
+                dateEl.textContent = 'Orders for ' + dateStr;
+            }
+        }
+        
+        // Update date on load
+        updateOrdersDate();
 
         // Sync orders
         async function syncOrders() {
@@ -309,30 +346,79 @@
         };
         
         function updateLanguageButtons() {
-            const currentLang = localStorage.getItem('zuidplas_language') || 'nl';
+            const currentLang = localStorage.getItem('zuidplas_user_language') || localStorage.getItem('zuidplas_language') || 'nl';
             document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
             if (activeBtn) activeBtn.classList.add('active');
         }
         
-        // Load language on page load - FROM LOCALSTORAGE (set by dashboard)
+        // Load language on page load - FROM LOCALSTORAGE (GLOBAL PERSISTENCE)
         document.addEventListener('DOMContentLoaded', () => {
-            const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
-            setTimeout(() => {
-                if (typeof i18n !== 'undefined') {
-                    i18n.setLanguage(savedLang);
+            const savedLang = localStorage.getItem('zuidplas_user_language') || localStorage.getItem('zuidplas_language') || 'nl';
+            
+            // Try immediately
+            if (typeof i18n !== 'undefined') {
+                i18n.currentLang = savedLang;
+                i18n.setLanguage(savedLang);
+                i18n.updatePage();
+            } else {
+                // Wait for i18n to load
+                setTimeout(() => {
+                    if (typeof i18n !== 'undefined') {
+                        i18n.currentLang = savedLang;
+                        i18n.setLanguage(savedLang);
+                        i18n.updatePage();
+                    }
+                }, 200);
+            }
+            
+            // Listen for language changes from other pages
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'zuidplas_language' && typeof i18n !== 'undefined') {
+                    const newLang = e.newValue || 'nl';
+                    i18n.setLanguage(newLang);
                     i18n.updatePage();
-                } else {
-                    setTimeout(() => {
-                        if (typeof i18n !== 'undefined') {
-                            i18n.setLanguage(savedLang);
-                            i18n.updatePage();
-                        }
-                    }, 300);
+                    updateOrdersDate(); // Update date format
+                    // Re-display orders with new language
+                    if (orderManager && orderManager.filteredOrders) {
+                        orderManager.displayOrders();
+                    }
                 }
-            }, 100);
+            });
+            
+            // Listen for custom language change events
+            window.addEventListener('languageChanged', (e) => {
+                if (typeof i18n !== 'undefined' && e.detail && e.detail.language) {
+                    i18n.setLanguage(e.detail.language);
+                    i18n.updatePage();
+                    updateOrdersDate(); // Update date format
+                    // Re-display orders with new language
+                    if (orderManager && orderManager.filteredOrders) {
+                        orderManager.displayOrders();
+                    }
+                }
+            });
         });
+    
+        // Logout function - clears session and redirects to login
+        function handleLogout() {
+            if (confirm(typeof i18n !== 'undefined' ? i18n.t('common.confirmLogout', 'Are you sure you want to logout?') : 'Are you sure you want to logout?')) {
+                // Clear all session data
+                localStorage.removeItem('zuidplas_logged_in');
+                localStorage.removeItem('florinet_token');
+                localStorage.removeItem('florinet_token_expiry');
+                localStorage.removeItem('florinet_username');
+                localStorage.removeItem('florinet_password');
+                localStorage.removeItem('zuidplas_demo_mode');
+                sessionStorage.clear();
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Make logout function global
+        window.handleLogout = handleLogout;
+
     </script>
 </body>
-</html>
-

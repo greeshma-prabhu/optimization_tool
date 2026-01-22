@@ -37,7 +37,7 @@ body {
     flex-direction: column;
     z-index: 1000;
     transition: transform 0.3s ease, width 0.3s ease;
-    overflow: hidden; /* No scrolling - everything fits */
+    overflow: visible; /* Allow footer to be visible */
     padding-right: 0; /* No padding - toggle button is outside */
 }
 
@@ -80,19 +80,19 @@ body {
 }
 
 .sidebar-toggle {
-    position: fixed;
-    left: 232px; /* 260px sidebar - 28px (half button) = fully visible */
+    position: absolute;
+    right: 12px; /* Inside sidebar, 12px from right edge */
     top: 20px;
-    width: 56px;
-    height: 56px;
+    width: 36px;
+    height: 36px;
     background: #f97316;
-    border: 3px solid #f97316;
-    border-radius: 12px;
+    border: 2px solid #f97316;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.5);
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
     z-index: 1001;
     transition: all 0.3s ease;
     overflow: visible;
@@ -106,8 +106,8 @@ body {
 }
 
 .sidebar-toggle svg {
-    width: 32px;
-    height: 32px;
+    width: 20px;
+    height: 20px;
     color: white;
     transition: color 0.2s;
     display: block;
@@ -116,13 +116,13 @@ body {
 }
 
 .sidebar-toggle svg line {
-    stroke-width: 3.5;
+    stroke-width: 2;
     stroke-linecap: round;
     stroke: white;
 }
 
 .sidebar.collapsed .sidebar-toggle {
-    left: 42px; /* 70px - 28px (half of button width) = fully visible */
+    right: 17px; /* Centered when collapsed (70px - 36px button) / 2 ≈ 17px */
 }
 
 .sidebar.collapsed .sidebar-toggle svg {
@@ -156,7 +156,8 @@ body {
 .sidebar-nav {
     flex: 1;
     padding: 8px 0;
-    overflow: hidden; /* No scrolling */
+    overflow-y: auto; /* Allow scrolling if needed */
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
 }
@@ -208,10 +209,50 @@ body {
     padding: 12px 20px;
     border-top: 1px solid #e5e7eb;
     flex-shrink: 0;
+    position: relative;
+    z-index: 1000;
+    background: #ffffff;
+    min-height: 80px; /* Ensure enough space */
 }
 
 .sidebar.collapsed .sidebar-footer {
     padding: 12px 0;
+}
+
+/* === Logout Button === */
+.logout-btn {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    background: #ef4444 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    transition: all 0.2s !important;
+    position: relative !important;
+    z-index: 100 !important;
+    pointer-events: auto !important;
+    display: block !important;
+    text-align: center !important;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2) !important;
+}
+
+.logout-btn:hover {
+    background: #dc2626 !important;
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+.logout-btn:active {
+    background: #b91c1c !important;
+    transform: translateY(0) !important;
+}
+
+.logout-btn:focus {
+    outline: 2px solid #ef4444 !important;
+    outline-offset: 2px !important;
 }
 
 .lang-switcher {

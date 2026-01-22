@@ -3,128 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Zuidplas Logistics</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Login - Zuidplas Logistiek</title>
     <style>
-        .login-container {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #ffffff;
             padding: 20px;
         }
-        
-        .login-card {
-            background: white;
-            border-radius: 16px;
-            padding: 40px;
-            max-width: 450px;
+
+        .login-container {
             width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 440px;
         }
-        
+
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
         }
-        
-        .login-header h1 {
-            color: var(--primary);
-            margin: 0 0 10px 0;
-            font-size: 2rem;
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
         }
-        
-        .login-header p {
-            color: var(--text-secondary);
-            margin: 0;
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: #f97316;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        
+
+        .logo-icon svg {
+            width: 28px;
+            height: 28px;
+            color: white;
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .login-subtitle {
+            color: #6b7280;
+            font-size: 15px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        }
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         .form-label {
             display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
             margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--text-primary);
         }
-        
+
         .form-input {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid var(--border);
+            border: 1px solid #d1d5db;
             border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
+            font-size: 15px;
+            transition: all 0.2s;
         }
-        
+
         .form-input:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
         }
-        
+
         .language-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: #f9fafb;
-            border-radius: 8px;
+            margin-bottom: 24px;
         }
-        
-        .language-selector button {
-            flex: 1;
-            padding: 8px 16px;
-            border: 2px solid var(--border);
+
+        .language-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+
+        .language-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .language-btn {
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
             background: white;
-            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .language-btn:hover {
+            border-color: #f97316;
+            background: #fff7ed;
+        }
+
+        .language-btn.active {
+            border-color: #f97316;
+            background: #fff7ed;
+            color: #f97316;
+        }
+
+        .language-note {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #9ca3af;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
         }
-        
-        .language-selector button.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-        
-        .login-button {
-            width: 100%;
-            padding: 14px;
+
+        .btn-primary {
             background: #f97316;
             color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
+            margin-bottom: 12px;
         }
-        
-        .login-button:hover {
+
+        .btn-primary:hover {
             background: #ea580c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
         }
-        
-        .login-button:hover {
-            background: #ea580c;
+
+        .divider {
+            text-align: center;
+            margin: 24px 0;
+            position: relative;
         }
-        
-        .login-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background: #e5e7eb;
         }
-        
+
+        .divider-text {
+            background: white;
+            padding: 0 16px;
+            color: #9ca3af;
+            font-size: 13px;
+            position: relative;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #6b7280;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        .demo-note {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 13px;
+            color: #9ca3af;
+        }
+
         .error-message {
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
             display: none;
+            padding: 12px;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            color: #991b1b;
+            font-size: 14px;
+            margin-bottom: 20px;
         }
-        
+
         .error-message.show {
             display: block;
         }
@@ -132,117 +233,107 @@
 </head>
 <body>
     <div class="login-container">
+        <div class="login-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="3" width="15" height="13"></rect>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                    </svg>
+                </div>
+                <span class="logo-text">Zuidplas</span>
+            </div>
+            <p class="login-subtitle" id="login-subtitle">Route Optimalisatie Systeem</p>
+        </div>
+
         <div class="login-card">
-            <div class="login-header">
-                <h1>🌺 Zuidplas Logistics</h1>
-                <p id="login-subtitle">Log in om te beginnen</p>
-            </div>
-            
-            <!-- Language Selector -->
-            <div class="language-selector">
-                <button onclick="setLanguage('nl')" id="lang-nl" class="active">🇳🇱 Nederlands</button>
-                <button onclick="setLanguage('en')" id="lang-en">🇬🇧 English</button>
-            </div>
-            
-            <!-- Error Message -->
             <div class="error-message" id="error-message"></div>
             
-            <!-- Login Form -->
-            <form id="login-form" onsubmit="handleLogin(event)">
+            <form id="loginForm" onsubmit="handleLogin(event)">
                 <div class="form-group">
-                    <label class="form-label" data-i18n="login.username">Gebruikersnaam</label>
-                    <input 
-                        type="text" 
-                        class="form-input" 
-                        id="username" 
-                        name="username" 
-                        value="JeroenMainfact"
-                        required
-                        data-i18n-placeholder="login.usernamePlaceholder"
-                    >
+                    <label class="form-label" id="username-label">Gebruikersnaam</label>
+                    <input type="text" class="form-input" id="username" name="username" placeholder="bijv. JeroenMainfact" required>
                 </div>
-                
+
                 <div class="form-group">
-                    <label class="form-label" data-i18n="login.password">Wachtwoord</label>
-                    <input 
-                        type="password" 
-                        class="form-input" 
-                        id="password" 
-                        name="password" 
-                        value="&WWpxaM@#"
-                        required
-                        data-i18n-placeholder="login.passwordPlaceholder"
-                    >
+                    <label class="form-label" id="password-label">Wachtwoord</label>
+                    <input type="password" class="form-input" id="password" name="password" placeholder="Voer uw wachtwoord in" required>
                 </div>
-                
-                <button type="submit" class="login-button" id="login-button">
-                    <span data-i18n="common.login">Inloggen</span>
-                </button>
+
+                <div class="language-selector">
+                    <label class="language-label" id="language-label">Selecteer Taal</label>
+                    <div class="language-buttons">
+                        <button type="button" class="language-btn active" id="lang-nl" onclick="selectLanguage('nl')">
+                            <span>🇳🇱</span>
+                            <span>Nederlands</span>
+                        </button>
+                        <button type="button" class="language-btn" id="lang-en" onclick="selectLanguage('en')">
+                            <span>🇬🇧</span>
+                            <span>Engels</span>
+                        </button>
+                    </div>
+                    <p class="language-note" id="language-note">De interface taal kan later worden gewijzigd in instellingen</p>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="login-button">Inloggen</button>
             </form>
-            
-            <div style="text-align: center; margin-top: 20px;">
-                <button 
-                    onclick="skipLogin()" 
-                    style="background: transparent; border: none; color: var(--primary); font-size: 0.9rem; cursor: pointer; text-decoration: underline; padding: 5px;"
-                    data-i18n="login.skipLogin"
-                >
-                    Of gebruik demo modus zonder inloggen
-                </button>
+
+            <div class="divider">
+                <span class="divider-text" id="divider-text">Of gebruik demo modus</span>
             </div>
+
+            <button type="button" class="btn btn-secondary" onclick="enterDemoMode()" id="demo-button">
+                Demo Modus
+            </button>
+            <p class="demo-note" id="demo-note">Demo modus gebruikt voorbeeldgegevens voor demonstratiedoeleinden</p>
         </div>
     </div>
 
     <script src="js/i18n.js"></script>
     <script>
-        // Set default language to Dutch
-        let currentLanguage = localStorage.getItem('zuidplas_language') || 'nl';
-        i18n.setLanguage(currentLanguage);
-        
-        // Update language buttons
-        function updateLanguageButtons() {
-            document.getElementById('lang-nl').classList.toggle('active', currentLanguage === 'nl');
-            document.getElementById('lang-en').classList.toggle('active', currentLanguage === 'en');
+        let selectedLanguage = localStorage.getItem('zuidplas_user_language') || 
+                               localStorage.getItem('zuidplas_language') || 
+                               'nl';
+
+        // Update UI based on language
+        function updateUI() {
+            if (typeof i18n === 'undefined') return;
+            
+            const lang = selectedLanguage;
+            document.getElementById('login-subtitle').textContent = lang === 'nl' ? 'Route Optimalisatie Systeem' : 'Route Optimization System';
+            document.getElementById('username-label').textContent = lang === 'nl' ? 'Gebruikersnaam' : 'Username';
+            document.getElementById('password-label').textContent = lang === 'nl' ? 'Wachtwoord' : 'Password';
+            document.getElementById('language-label').textContent = lang === 'nl' ? 'Selecteer Taal' : 'Select Language';
+            document.getElementById('language-note').textContent = lang === 'nl' 
+                ? 'De interface taal kan later worden gewijzigd in instellingen'
+                : 'The interface language can be changed later in settings';
+            document.getElementById('login-button').textContent = lang === 'nl' ? 'Inloggen' : 'Login';
+            document.getElementById('divider-text').textContent = lang === 'nl' ? 'Of gebruik demo modus' : 'Or use demo mode';
+            document.getElementById('demo-button').textContent = lang === 'nl' ? 'Demo Modus' : 'Demo Mode';
+            document.getElementById('demo-note').textContent = lang === 'nl'
+                ? 'Demo modus gebruikt voorbeeldgegevens voor demonstratiedoeleinden'
+                : 'Demo mode uses sample data for demonstration purposes';
         }
-        
-        function setLanguage(lang) {
-            currentLanguage = lang;
-            i18n.setLanguage(lang);
-            updateLanguageButtons();
+
+        function selectLanguage(lang) {
+            selectedLanguage = lang;
+            localStorage.setItem('zuidplas_language', lang);
+            localStorage.setItem('zuidplas_user_language', lang);
+            
+            // Update button states
+            document.querySelectorAll('.language-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`lang-${lang}`).classList.add('active');
+            
+            // Update UI
+            updateUI();
         }
-        
-        // Add login translations
-        translations.nl.login = {
-            username: 'Gebruikersnaam',
-            password: 'Wachtwoord',
-            usernamePlaceholder: 'Voer gebruikersnaam in',
-            passwordPlaceholder: 'Voer wachtwoord in',
-            demoMode: 'Of gebruik demo modus zonder inloggen',
-            skipLogin: 'Overslaan - Demo Modus',
-            loggingIn: 'Inloggen...',
-            loginSuccess: 'Succesvol ingelogd!',
-            loginError: 'Inloggen mislukt. Controleer uw gegevens.'
-        };
-        
-        translations.en.login = {
-            username: 'Username',
-            password: 'Password',
-            usernamePlaceholder: 'Enter username',
-            passwordPlaceholder: 'Enter password',
-            demoMode: 'Or use demo mode without logging in',
-            skipLogin: 'Skip - Demo Mode',
-            loggingIn: 'Logging in...',
-            loginSuccess: 'Login successful!',
-            loginError: 'Login failed. Please check your credentials.'
-        };
-        
-        function skipLogin() {
-            localStorage.setItem('zuidplas_demo_mode', 'true');
-            sessionStorage.setItem('skip_login', 'true');
-            window.location.href = 'index.html';
-        }
-        
-        async function handleLogin(event) {
-            event.preventDefault();
+
+        async function handleLogin(e) {
+            e.preventDefault();
             
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -254,7 +345,7 @@
             
             // Disable button
             loginButton.disabled = true;
-            loginButton.innerHTML = currentLanguage === 'nl' ? 'Inloggen...' : 'Logging in...';
+            loginButton.textContent = selectedLanguage === 'nl' ? 'Inloggen...' : 'Logging in...';
             
             try {
                 // Try to authenticate
@@ -269,22 +360,22 @@
                 if (response.ok) {
                     const data = await response.json();
                     
-                    // Check if we got a token
                     if (!data.token) {
                         throw new Error('No token received from server');
                     }
                     
-                    // Store credentials (in production, use secure storage)
+                    // Store credentials and language preference
                     localStorage.setItem('florinet_username', username);
                     localStorage.setItem('florinet_password', password);
                     localStorage.setItem('florinet_token', data.token);
                     localStorage.setItem('florinet_token_expiry', (Date.now() + 3600000).toString());
                     localStorage.setItem('zuidplas_logged_in', 'true');
+                    localStorage.setItem('zuidplas_language', selectedLanguage);
+                    localStorage.setItem('zuidplas_user_language', selectedLanguage);
                     
                     // Redirect to dashboard
                     window.location.href = 'index.html';
                 } else {
-                    // Get error details
                     let errorText = 'Authentication failed';
                     try {
                         const errorData = await response.json();
@@ -295,18 +386,17 @@
                     throw new Error(errorText);
                 }
             } catch (error) {
-                // Show error with more details
                 let errorMsg = '';
                 if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                    errorMsg = currentLanguage === 'nl' 
+                    errorMsg = selectedLanguage === 'nl' 
                         ? 'Kan geen verbinding maken met de server. Controleer of de proxy server draait (poort 3001).'
                         : 'Cannot connect to server. Please check if proxy server is running (port 3001).';
                 } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-                    errorMsg = currentLanguage === 'nl' 
+                    errorMsg = selectedLanguage === 'nl' 
                         ? 'Ongeldige gebruikersnaam of wachtwoord. Controleer uw gegevens.'
                         : 'Invalid username or password. Please check your credentials.';
                 } else {
-                    errorMsg = currentLanguage === 'nl' 
+                    errorMsg = selectedLanguage === 'nl' 
                         ? `Inloggen mislukt: ${error.message}. Probeer demo modus te gebruiken.`
                         : `Login failed: ${error.message}. Try using demo mode instead.`;
                 }
@@ -316,26 +406,27 @@
                 
                 // Enable button
                 loginButton.disabled = false;
-                loginButton.innerHTML = currentLanguage === 'nl' ? 'Inloggen' : 'Login';
+                loginButton.textContent = selectedLanguage === 'nl' ? 'Inloggen' : 'Login';
             }
         }
-        
-        // Check if already logged in
-        if (localStorage.getItem('zuidplas_logged_in') === 'true') {
-            // Optionally redirect to dashboard
-            // window.location.href = 'index.html';
+
+        function enterDemoMode() {
+            // Store language preference for demo mode
+            localStorage.setItem('zuidplas_demo_mode', 'true');
+            localStorage.setItem('zuidplas_language', selectedLanguage);
+            localStorage.setItem('zuidplas_user_language', selectedLanguage);
+            localStorage.setItem('zuidplas_logged_in', 'demo');
+            
+            // Redirect to dashboard
+            window.location.href = 'index.html';
         }
-        
-        // Update page on language change
-        document.addEventListener('languageChanged', () => {
-            currentLanguage = i18n.getLanguage();
-            updateLanguageButtons();
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+            // Set active language button
+            document.getElementById(`lang-${selectedLanguage}`).classList.add('active');
         });
-        
-        // Initial update
-        updateLanguageButtons();
-        i18n.updatePage();
     </script>
 </body>
 </html>
-

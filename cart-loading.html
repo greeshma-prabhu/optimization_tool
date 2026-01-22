@@ -50,15 +50,57 @@
         }
         
         .cart-slot.filled-standard {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
-            border-color: #2563eb;
+            border-width: 2px;
+            font-weight: 600;
         }
         
         .cart-slot.filled-danish {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
             color: white;
-            border-color: #7c3aed;
+            border-width: 3px;
+            font-weight: 600;
+        }
+        
+        .client-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .client-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .client-color-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .cart-visualization {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .cart-visual-item {
+            display: inline-block;
+            margin: 4px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: white;
+            border: 2px solid rgba(0,0,0,0.1);
         }
         
         .cart-slot.empty {
@@ -164,7 +206,7 @@
         </div>
 
         <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -179,21 +221,21 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                <span>Dashboard</span>
+                <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
             
             <a href="orders.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 </svg>
-                <span>Orders</span>
+                <span data-i18n="nav.orders">Orders</span>
             </a>
             
             <a href="optimization.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
                 </svg>
-                <span>Optimization</span>
+                <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
             <a href="trucks.html" class="nav-link">
@@ -203,7 +245,18 @@
                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
                     <circle cx="18.5" cy="18.5" r="2.5"></circle>
                 </svg>
-                <span>Trucks</span>
+                <span data-i18n="nav.trucks">Trucks</span>
+            </a>
+            
+            <a href="cart-loading.html" class="nav-link active">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                    <line x1="12" y1="12" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="8" y2="16"></line>
+                    <line x1="16" y1="12" x2="16" y2="16"></line>
+                </svg>
+                <span data-i18n="nav.cartOptimization">Cart Optimization</span>
             </a>
             
             <a href="costs.html" class="nav-link">
@@ -211,12 +264,13 @@
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
-                <span>Costs</span>
+                <span data-i18n="nav.costs">Costs</span>
             </a>
         </nav>
         
         <div class="sidebar-footer">
-            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280;"></div>
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-bottom: 12px;"></div>
+            <button onclick="handleLogout()" class="logout-btn" data-i18n="common.logout">🚪 Uitloggen</button>
         </div>
     </aside>
 
@@ -232,33 +286,31 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="page-header">
-            <h1 class="page-title">Cart Loading Optimizer</h1>
-            <p class="page-subtitle">Fit all carts on 2 trucks - Cover all 3 routes efficiently</p>
-            <button class="btn btn-primary" onclick="optimizeCartLoading()" style="margin-top: 20px;">
-                🔄 Optimize Cart Loading
-            </button>
+            <h1 class="page-title" data-i18n="cartLoading.title">Cart Loading Optimizer</h1>
+            <p class="page-subtitle" data-i18n="cartLoading.subtitle">Fit all carts on 2 trucks - Cover all 3 routes efficiently</p>
+            <button class="btn btn-primary" onclick="optimizeCartLoading()" style="margin-top: 20px;" data-i18n="cartLoading.optimizeButton">🔄 Optimize Cart Loading</button>
         </div>
 
         <!-- Summary Stats -->
         <div class="stats-grid">
             <div class="stat-card primary">
                 <div class="icon">📦</div>
-                <div class="label">Total Carts</div>
+                <div class="label" data-i18n="cartLoading.totalCarts">Total Carts</div>
                 <div class="value" id="total-carts">0</div>
             </div>
             <div class="stat-card success">
                 <div class="icon">✅</div>
-                <div class="label">Carts Assigned</div>
+                <div class="label" data-i18n="cartLoading.cartsAssigned">Carts Assigned</div>
                 <div class="value" id="carts-assigned">0</div>
             </div>
             <div class="stat-card warning">
                 <div class="icon">⚠️</div>
-                <div class="label">Overflow</div>
+                <div class="label" data-i18n="cartLoading.overflow">Overflow</div>
                 <div class="value" id="overflow-count">0</div>
             </div>
             <div class="stat-card info">
                 <div class="icon">🎯</div>
-                <div class="label">Routes Covered</div>
+                <div class="label" data-i18n="cartLoading.routesCovered">Routes Covered</div>
                 <div class="value" id="routes-covered">0/3</div>
             </div>
         </div>
@@ -270,13 +322,18 @@
 
         <!-- Cart List by Route -->
         <div class="card">
-            <h2>Carts by Route</h2>
+            <h2 data-i18n="cartLoading.cartsByRoute">Carts by Route</h2>
             <div id="cart-list-by-route">
                 <!-- Populated by JavaScript -->
             </div>
         </div>
     </div>
 
+    <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
+    <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
+    
+    <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
@@ -319,27 +376,103 @@
                 Object.keys(ordersByClient).forEach(clientName => {
                     const clientOrders = ordersByClient[clientName];
                     const route = this.cartManager.determineRoute(clientOrders[0]);
-                    const cartType = clientOrders[0].cartType;
                     
-                    // Calculate carts needed for this client
-                    let totalCarts = 0;
-                    clientOrders.forEach(order => {
-                        const calc = this.cartManager.calculateCartsNeeded(order);
-                        totalCarts += calc.carts;
+                    // Assign cart type to all orders from this client
+                    const ordersWithCartType = clientOrders.map(order => 
+                        this.cartManager.assignCartType(order)
+                    );
+                    const cartType = ordersWithCartType[0].cartType;
+                    
+                    // CRITICAL: Distribute orders across carts properly
+                    // Each cart should only contain orders that fit in that cart
+                    let currentCartOrders = [];
+                    let currentCartCapacity = 0;
+                    let cartIndex = 1;
+                    const cartCapacity = cartType === 'danish' 
+                        ? this.cartManager.capacities.danish 
+                        : this.cartManager.capacities.standard[ordersWithCartType[0].crateType || '612'] || 72;
+                    
+                    ordersWithCartType.forEach(order => {
+                        const quantity = order.quantity || order.amount || 0;
+                        
+                        // If this order fits in current cart
+                        if (currentCartCapacity + quantity <= cartCapacity) {
+                            currentCartOrders.push(order);
+                            currentCartCapacity += quantity;
+                        } else {
+                            // Current cart is full, create it and start new cart
+                            if (currentCartOrders.length > 0) {
+                                allCarts.push({
+                                    id: `cart-${clientName}-${cartIndex}`,
+                                    client: clientName,
+                                    route: route,
+                                    type: cartType,
+                                    orders: [...currentCartOrders], // Copy array
+                                    cartNumber: cartIndex,
+                                    totalCarts: 0, // Will be calculated
+                                    capacity: cartCapacity,
+                                    usedCapacity: currentCartCapacity
+                                });
+                                cartIndex++;
+                            }
+                            
+                            // Start new cart with this order
+                            currentCartOrders = [order];
+                            currentCartCapacity = quantity;
+                            
+                            // If single order exceeds cart capacity, split it
+                            if (quantity > cartCapacity) {
+                                const fullCarts = Math.floor(quantity / cartCapacity);
+                                const remainder = quantity % cartCapacity;
+                                
+                                // Create full carts
+                                for (let i = 0; i < fullCarts; i++) {
+                                    allCarts.push({
+                                        id: `cart-${clientName}-${cartIndex}`,
+                                        client: clientName,
+                                        route: route,
+                                        type: cartType,
+                                        orders: [{...order, quantity: cartCapacity}],
+                                        cartNumber: cartIndex,
+                                        totalCarts: 0,
+                                        capacity: cartCapacity,
+                                        usedCapacity: cartCapacity
+                                    });
+                                    cartIndex++;
+                                }
+                                
+                                // Handle remainder
+                                if (remainder > 0) {
+                                    currentCartOrders = [{...order, quantity: remainder}];
+                                    currentCartCapacity = remainder;
+                                } else {
+                                    currentCartOrders = [];
+                                    currentCartCapacity = 0;
+                                }
+                            }
+                        }
                     });
-
-                    // Create cart objects
-                    for (let i = 0; i < totalCarts; i++) {
+                    
+                    // Don't forget the last cart
+                    if (currentCartOrders.length > 0) {
                         allCarts.push({
-                            id: `cart-${clientName}-${i + 1}`,
+                            id: `cart-${clientName}-${cartIndex}`,
                             client: clientName,
                             route: route,
                             type: cartType,
-                            orders: clientOrders,
-                            cartNumber: i + 1,
-                            totalCarts: totalCarts
+                            orders: currentCartOrders,
+                            cartNumber: cartIndex,
+                            totalCarts: 0,
+                            capacity: cartCapacity,
+                            usedCapacity: currentCartCapacity
                         });
                     }
+                    
+                    // Update totalCarts for all carts from this client
+                    const clientCarts = allCarts.filter(c => c.client === clientName);
+                    clientCarts.forEach(cart => {
+                        cart.totalCarts = clientCarts.length;
+                    });
                 });
 
                 return allCarts;
@@ -490,13 +623,25 @@
 
             // Truck 1
             const truck1Capacity = cartLoadingOptimizer.getTruckCapacity('truck1');
-            const truck1Card = createTruckCard('Truck 1', result.truck1, truck1Capacity, ['rijnsburg', 'naaldwijk']);
+            const truck1Name = typeof i18n !== 'undefined' ? `${i18n.t('cartLoading.truck1', 'Truck 1')}` : 'Truck 1';
+            const truck1Card = createTruckCard(truck1Name, result.truck1, truck1Capacity, ['rijnsburg', 'naaldwijk']);
             container.appendChild(truck1Card);
 
             // Truck 2
             const truck2Capacity = cartLoadingOptimizer.getTruckCapacity('truck2');
-            const truck2Card = createTruckCard('Truck 2', result.truck2, truck2Capacity, ['aalsmeer']);
+            const truck2Name = typeof i18n !== 'undefined' ? `${i18n.t('cartLoading.truck2', 'Truck 2')}` : 'Truck 2';
+            const truck2Card = createTruckCard(truck2Name, result.truck2, truck2Capacity, ['aalsmeer']);
             container.appendChild(truck2Card);
+        }
+
+        // Generate unique color for each client
+        function getClientColor(clientName, clientIndex) {
+            const colors = [
+                '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444',
+                '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
+                '#14b8a6', '#a855f7', '#22c55e', '#eab308', '#f43f5e'
+            ];
+            return colors[clientIndex % colors.length];
         }
 
         function createTruckCard(truckName, truckData, capacity, expectedRoutes) {
@@ -507,21 +652,31 @@
             const statusClass = capacity.fits ? 'success' : 'danger';
             const statusIcon = capacity.fits ? '✅' : '❌';
             
-            // Create cart slots
+            // Get all unique clients from carts
+            const clients = [...new Set(truckData.carts.map(cart => cart.client || 'Unknown'))];
+            const clientColorMap = {};
+            clients.forEach((client, index) => {
+                clientColorMap[client] = getClientColor(client, index);
+            });
+            
+            // Create cart slots with client information
             const slots = [];
             let slotIndex = 0;
             
-            // Add standard carts
-            for (let i = 0; i < truckData.standardCount && slotIndex < capacity.max; i++) {
-                slots.push({ type: 'standard', index: slotIndex });
-                slotIndex++;
-            }
-            
-            // Add Danish carts
-            for (let i = 0; i < truckData.danishCount && slotIndex < capacity.max; i++) {
-                slots.push({ type: 'danish', index: slotIndex });
-                slotIndex++;
-            }
+            // Process each cart with client info
+            truckData.carts.forEach(cart => {
+                if (slotIndex < capacity.max) {
+                    const clientColor = clientColorMap[cart.client || 'Unknown'];
+                    slots.push({ 
+                        type: cart.type, 
+                        index: slotIndex,
+                        client: cart.client || 'Unknown',
+                        color: clientColor,
+                        route: cart.route
+                    });
+                    slotIndex++;
+                }
+            });
             
             // Fill remaining slots as empty
             while (slotIndex < capacity.max) {
@@ -542,7 +697,7 @@
                     <div>
                         <h2 style="margin: 0;">${truckName}</h2>
                         <div style="margin-top: 8px;">
-                            <span class="badge ${statusClass}">${statusIcon} ${capacity.fits ? 'Fits' : 'Overflow'}</span>
+                            <span class="badge ${statusClass}">${statusIcon} ${capacity.fits ? (typeof i18n !== 'undefined' ? i18n.t('status.fits', 'Fits') : 'Fits') : (typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow')}</span>
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -550,7 +705,7 @@
                             ${capacity.used} / ${capacity.max}
                         </div>
                         <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                            ${capacity.utilization}% utilized
+                            ${capacity.utilization}% ${typeof i18n !== 'undefined' ? i18n.t('status.utilized', 'utilized') : 'utilized'}
                         </div>
                     </div>
                 </div>
@@ -558,16 +713,42 @@
                 <div class="truck-slots">
                     ${slots.map(slot => {
                         if (slot.type === 'standard') {
-                            return '<div class="cart-slot filled-standard" title="Standard Cart">S</div>';
+                            const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'S';
+                            const standardCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart';
+                            const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
+                            return `<div class="cart-slot filled-standard" 
+                                     style="background: ${slot.color || '#3b82f6'}; border-color: ${slot.color || '#3b82f6'};" 
+                                     title="${standardCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
                         } else if (slot.type === 'danish') {
-                            return '<div class="cart-slot filled-danish" title="Danish Cart">D</div>';
+                            const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'D';
+                            const danishCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart';
+                            const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
+                            return `<div class="cart-slot filled-danish" 
+                                     style="background: ${slot.color || '#8b5cf6'}; border-color: ${slot.color || '#8b5cf6'};" 
+                                     title="${danishCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
                         } else if (slot.type === 'overflow') {
-                            return '<div class="cart-slot overflow" title="Overflow">!</div>';
+                            const overflowText = typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow';
+                            return `<div class="cart-slot overflow" title="${overflowText}">!</div>`;
                         } else {
                             return '<div class="cart-slot empty" title="Empty"></div>';
                         }
                     }).join('')}
                 </div>
+                
+                ${clients.length > 0 ? `
+                <div class="client-legend">
+                    <strong style="width: 100%; margin-bottom: 8px; display: block;">${typeof i18n !== 'undefined' ? i18n.t('cartLoading.clientColors', 'Client Colors') : 'Client Colors'}:</strong>
+                    ${clients.map(client => {
+                        const color = clientColorMap[client];
+                        return `
+                            <div class="client-legend-item">
+                                <div class="client-color-box" style="background: ${color};"></div>
+                                <span>${client}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                ` : ''}
 
                 <div class="capacity-indicator">
                     <div class="capacity-bar">
@@ -575,7 +756,7 @@
                              style="width: ${capacity.utilization}%"></div>
                     </div>
                     <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                        ${capacity.standard} Standard + ${capacity.danish} Danish
+                        ${capacity.standard} ${typeof i18n !== 'undefined' ? i18n.t('data.standard', 'Standard') : 'Standard'} + ${capacity.danish} ${typeof i18n !== 'undefined' ? i18n.t('data.danish', 'Danish') : 'Danish'}
                     </div>
                 </div>
 
@@ -593,7 +774,7 @@
 
                 ${capacity.overflow > 0 ? `
                 <div class="info-box danger" style="margin-top: 15px;">
-                    <strong>Overflow:</strong> ${capacity.overflow} carts don't fit. Consider external carrier or neighbor's truck.
+                    <strong>${typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow'}:</strong> ${capacity.overflow} ${typeof i18n !== 'undefined' ? i18n.t('data.carts', 'carts') : 'carts'} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.dontFit', 'don\'t fit. Consider external carrier or neighbor\'s truck.') : 'don\'t fit. Consider external carrier or neighbor\'s truck.'}
                 </div>
                 ` : ''}
             `;
@@ -629,14 +810,20 @@
                     <h3>Route ${route.id}: ${route.name} (${route.departureTime})</h3>
                     <div class="cart-list">
                         ${carts.length > 0 ? carts.map(cart => {
-                            const truckAssignment = cartLoadingOptimizer.truckAssignments.truck1.carts.includes(cart) ? 'Truck 1' :
-                                                   cartLoadingOptimizer.truckAssignments.truck2.carts.includes(cart) ? 'Truck 2' : 'Not Assigned';
+                            const truck1Text = typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1';
+                            const truck2Text = typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2';
+                            const notAssignedText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.notAssigned', 'Not Assigned') : 'Not Assigned';
+                            const truckAssignment = cartLoadingOptimizer.truckAssignments.truck1.carts.includes(cart) ? truck1Text :
+                                                   cartLoadingOptimizer.truckAssignments.truck2.carts.includes(cart) ? truck2Text : notAssignedText;
+                            const cartTypeText = cart.type === 'danish' 
+                                ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart')
+                                : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart');
                             return `
                                 <div class="cart-item ${cart.type}">
                                     <div>
                                         <strong>${cart.client}</strong>
                                         <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
-                                            ${cart.type === 'danish' ? 'Danish Cart' : 'Standard Cart'} • ${truckAssignment}
+                                            ${cartTypeText} • ${truckAssignment}
                                         </div>
                                     </div>
                                     <div>
@@ -734,26 +921,26 @@
             const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
             if (activeBtn) activeBtn.classList.add('active');
         }
+    
+        // Logout function - clears session and redirects to login
+        function handleLogout() {
+            if (confirm(typeof i18n !== 'undefined' ? i18n.t('common.confirmLogout', 'Are you sure you want to logout?') : 'Are you sure you want to logout?')) {
+                // Clear all session data
+                localStorage.removeItem('zuidplas_logged_in');
+                localStorage.removeItem('florinet_token');
+                localStorage.removeItem('florinet_token_expiry');
+                localStorage.removeItem('florinet_username');
+                localStorage.removeItem('florinet_password');
+                localStorage.removeItem('zuidplas_demo_mode');
+                sessionStorage.clear();
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Make logout function global
+        window.handleLogout = handleLogout;
+
     </script>
-
-        // Load language from localStorage (set by dashboard) - PERSIST ACROSS ALL PAGES
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
-            setTimeout(() => {
-                if (typeof i18n !== 'undefined') {
-                    i18n.setLanguage(savedLang);
-                    i18n.updatePage();
-                } else {
-                    setTimeout(() => {
-                        if (typeof i18n !== 'undefined') {
-                            i18n.setLanguage(savedLang);
-                            i18n.updatePage();
-                        }
-                    }, 300);
-                }
-            }, 100);
-        });
-
-    </body>
-</html>
-
+</body>

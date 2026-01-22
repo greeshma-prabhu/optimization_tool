@@ -135,8 +135,15 @@ class RouteOptimizer {
                 cost: cost,
                 feasibility: feasibility || { fits: true, status: 'fits', message: 'All routes fit' },
                 recommended: true,
-                pros: ['Uses own trucks', 'Lowest cost', 'Efficient truck utilization'],
-                cons: ['Tight timing if Route 1 delayed', 'No buffer for delays'],
+                pros: typeof i18n !== 'undefined' ? [
+                    i18n.t('data.usesOwnTrucks'),
+                    i18n.t('data.lowestCost'),
+                    i18n.t('data.efficientTruckUtilization')
+                ] : ['Uses own trucks', 'Lowest cost', 'Efficient truck utilization'],
+                cons: typeof i18n !== 'undefined' ? [
+                    i18n.t('data.tightTiming'),
+                    i18n.t('data.noBuffer')
+                ] : ['Tight timing if Route 1 delayed', 'No buffer for delays'],
                 score: 0 // Will be calculated later
             };
         } catch (error) {
@@ -159,7 +166,7 @@ class RouteOptimizer {
             return {
                 id: 'B',
                 name: 'External Truck for Route 1',
-                description: 'Use external truck for Route 1, own trucks for Routes 2 & 3',
+                description: typeof i18n !== 'undefined' ? i18n.t('data.useExternalTruckDescription') : 'Use external truck for Route 1, own trucks for Routes 2 & 3',
                 allocation: {
                     route1: {
                         truck: 'external-truck',
@@ -183,8 +190,15 @@ class RouteOptimizer {
                 cost: cost,
                 feasibility: feasibility || { fits: true, status: 'fits', message: 'All routes fit' },
                 recommended: false,
-                pros: ['No timing pressure', 'Safer schedule', 'Truck 1 available for Route 3'],
-                cons: ['Higher cost', 'External dependency'],
+                pros: typeof i18n !== 'undefined' ? [
+                    i18n.t('data.noTimingPressure'),
+                    i18n.t('data.saferSchedule'),
+                    i18n.t('data.truckAvailableForRoute', '1', '3')
+                ] : ['No timing pressure', 'Safer schedule', 'Truck 1 available for Route 3'],
+                cons: typeof i18n !== 'undefined' ? [
+                    i18n.t('data.higherCost'),
+                    i18n.t('data.externalDependency')
+                ] : ['Higher cost', 'External dependency'],
                 score: 0
             };
         } catch (error) {
@@ -233,8 +247,15 @@ class RouteOptimizer {
                 },
                 recommended: true,
                 requiresAction: 'Call Neighbor',
-                pros: ['Free truck', 'Reliable partner', 'Lowest total cost'],
-                cons: ['Depends on availability', 'Requires manual confirmation'],
+                pros: typeof i18n !== 'undefined' ? [
+                    i18n.t('data.freeTruck'),
+                    i18n.t('data.reliablePartner'),
+                    i18n.t('data.lowestTotalCost')
+                ] : ['Free truck', 'Reliable partner', 'Lowest total cost'],
+                cons: typeof i18n !== 'undefined' ? [
+                    i18n.t('data.dependsOnAvailability'),
+                    i18n.t('data.requiresManualConfirmation')
+                ] : ['Depends on availability', 'Requires manual confirmation'],
                 score: 0
             };
         } catch (error) {
@@ -258,8 +279,8 @@ class RouteOptimizer {
 
                 options.push({
                     id: `D_${routeKey}`,
-                    name: `Overflow Handling - ${analysis.routeInfo.name}`,
-                    description: `Route needs ${analysis.capacity.equivalentStandard} carts (overflow: ${overflow})`,
+                    name: typeof i18n !== 'undefined' ? `${i18n.t('data.overflowHandling')} - ${analysis.routeInfo.name}` : `Overflow Handling - ${analysis.routeInfo.name}`,
+                    description: typeof i18n !== 'undefined' ? i18n.t('data.routeNeeds', analysis.capacity.equivalentStandard, overflow) : `Route needs ${analysis.capacity.equivalentStandard} carts (overflow: ${overflow})`,
                     allocation: {
                         [routeKey]: {
                             truck: 'own-truck',

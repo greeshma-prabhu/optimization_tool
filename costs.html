@@ -26,7 +26,7 @@
         </div>
 
         <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -41,21 +41,21 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                <span>Dashboard</span>
+                <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
             
             <a href="orders.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 </svg>
-                <span>Orders</span>
+                <span data-i18n="nav.orders">Orders</span>
             </a>
             
             <a href="optimization.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
                 </svg>
-                <span>Optimization</span>
+                <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
             <a href="trucks.html" class="nav-link">
@@ -65,7 +65,18 @@
                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
                     <circle cx="18.5" cy="18.5" r="2.5"></circle>
                 </svg>
-                <span>Trucks</span>
+                <span data-i18n="nav.trucks">Trucks</span>
+            </a>
+            
+            <a href="cart-loading.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                    <line x1="12" y1="12" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="8" y2="16"></line>
+                    <line x1="16" y1="12" x2="16" y2="16"></line>
+                </svg>
+                <span data-i18n="nav.cartOptimization">Cart Optimization</span>
             </a>
             
             <a href="costs.html" class="nav-link active">
@@ -73,12 +84,13 @@
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
-                <span>Costs</span>
+                <span data-i18n="nav.costs">Costs</span>
             </a>
         </nav>
         
         <div class="sidebar-footer">
-            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280;"></div>
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-bottom: 12px;"></div>
+            <button onclick="handleLogout()" class="logout-btn" data-i18n="common.logout">🚪 Uitloggen</button>
         </div>
     </aside>
 
@@ -94,13 +106,13 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="page-header">
-            <h1 class="page-title">Cost Optimization Dashboard</h1>
-            <p class="page-subtitle">Compare scenarios and optimize costs</p>
+            <h1 class="page-title" data-i18n="costs.title">Kosten Analyse</h1>
+            <p class="page-subtitle" data-i18n="costs.subtitle">Optimaliseer transportkosten</p>
         </div>
 
         <!-- Cost Breakdown Table -->
         <div class="card">
-            <h2>Cost Comparison</h2>
+            <h2 data-i18n="costs.costComparison">Kosten Vergelijking</h2>
             <div class="table-container">
                 <table class="data-table">
                     <thead>
@@ -127,7 +139,7 @@
 
         <!-- Cost Factors -->
         <div class="card">
-            <h2 data-i18n="costs.costFactors">Cost Factors</h2>
+            <h2 data-i18n="costs.costFactors">Kosten Factoren</h2>
             <div class="stats-grid" id="cost-factors-grid">
                 <!-- Populated by JavaScript -->
             </div>
@@ -135,14 +147,18 @@
 
         <!-- Cost Optimization Tips -->
         <div class="card">
-            <h2>Cost Optimization Tips</h2>
+            <h2 data-i18n="costs.costOptimizationTips">Kosten Optimalisatie Tips</h2>
             <div id="cost-tips">
                 <!-- Populated by JavaScript -->
             </div>
         </div>
     </main>
 
+    <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
+    
+    <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
@@ -183,26 +199,27 @@
             const container = document.getElementById('cost-factors-grid');
             if (!container) return;
             
+            const lang = typeof i18n !== 'undefined' ? i18n.getLanguage() : 'nl';
             container.innerHTML = `
-                <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                    <div class="label" style="color: rgba(255,255,255,0.9);">Own Truck</div>
-                    <div class="value" style="font-size: 2rem; margin: 10px 0;">€${COSTS.ownTruckPerRoute}</div>
-                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.8);">per route</div>
+                <div class="stat-card" style="background: white; border: 1px solid #e5e7eb; border-top: 4px solid #f97316; border-radius: 8px; padding: 24px;">
+                    <div class="label" style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">${lang === 'nl' ? 'Eigen Vrachtwagen' : 'Own Truck'}</div>
+                    <div class="value" style="font-size: 2rem; font-weight: 700; color: #1f2937; margin: 10px 0;">€${COSTS.ownTruckPerRoute}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: #6b7280;">${lang === 'nl' ? 'per route' : 'per route'}</div>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
-                    <div class="label" style="color: rgba(255,255,255,0.9);">External Truck</div>
-                    <div class="value" style="font-size: 2rem; margin: 10px 0;">€${COSTS.externalTruckPerTrip}</div>
-                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.8);">per trip</div>
+                <div class="stat-card" style="background: white; border: 1px solid #e5e7eb; border-top: 4px solid #f97316; border-radius: 8px; padding: 24px;">
+                    <div class="label" style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">${lang === 'nl' ? 'Externe Vrachtwagen' : 'External Truck'}</div>
+                    <div class="value" style="font-size: 2rem; font-weight: 700; color: #1f2937; margin: 10px 0;">€${COSTS.externalTruckPerTrip}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: #6b7280;">${lang === 'nl' ? 'per rit' : 'per trip'}</div>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-                    <div class="label" style="color: rgba(255,255,255,0.9);">Neighbor Truck</div>
-                    <div class="value" style="font-size: 2rem; margin: 10px 0;">€${COSTS.neighborTruck}</div>
-                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.8);">free partnership</div>
+                <div class="stat-card" style="background: white; border: 1px solid #e5e7eb; border-top: 4px solid #f97316; border-radius: 8px; padding: 24px;">
+                    <div class="label" style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">${lang === 'nl' ? 'Buur Vrachtwagen' : "Neighbor's Truck"}</div>
+                    <div class="value" style="font-size: 2rem; font-weight: 700; color: #1f2937; margin: 10px 0;">€${COSTS.neighborTruck}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: #6b7280;">${lang === 'nl' ? 'gratis partnerschap' : 'free partnership'}</div>
                 </div>
-                <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
-                    <div class="label" style="color: rgba(255,255,255,0.9);">External Carrier</div>
-                    <div class="value" style="font-size: 2rem; margin: 10px 0;">€${COSTS.externalCarrierPerCart}</div>
-                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.8);">per cart</div>
+                <div class="stat-card" style="background: white; border: 1px solid #e5e7eb; border-top: 4px solid #f97316; border-radius: 8px; padding: 24px;">
+                    <div class="label" style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">${lang === 'nl' ? 'Externe Vervoerder' : 'External Carrier'}</div>
+                    <div class="value" style="font-size: 2rem; font-weight: 700; color: #1f2937; margin: 10px 0;">€${COSTS.externalCarrierPerCart}</div>
+                    <div class="label" style="margin-top: 10px; font-size: 0.85rem; color: #6b7280;">${lang === 'nl' ? 'per kar' : 'per cart'}</div>
                 </div>
             `;
         }
@@ -357,24 +374,23 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialize language
-            setTimeout(() => {
-                if (typeof i18n !== 'undefined') {
-                    const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
-        // Load language from localStorage (set by dashboard)
-        document.addEventListener("DOMContentLoaded", () => {
-            const savedLang = localStorage.getItem("zuidplas_language") || "nl";
-            setTimeout(() => {
-                if (typeof i18n !== "undefined") {
-                    i18n.setLanguage(savedLang);
-                    i18n.updatePage();
-                }
-            }, 100);
-        });
-                    i18n.setLanguage(savedLang);
-                    updateLanguageButtons();
-                }
-            }, 100);
+            // Initialize language - Load from localStorage (GLOBAL PERSISTENCE)
+            const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
+            if (typeof i18n !== 'undefined') {
+                i18n.currentLang = savedLang;
+                i18n.setLanguage(savedLang);
+                i18n.updatePage();
+                updateLanguageButtons();
+            } else {
+                setTimeout(() => {
+                    if (typeof i18n !== 'undefined') {
+                        i18n.currentLang = savedLang;
+                        i18n.setLanguage(savedLang);
+                        i18n.updatePage();
+                        updateLanguageButtons();
+                    }
+                }, 200);
+            }
             
             // Update cost factors
             updateCostFactors();
@@ -436,7 +452,51 @@
             const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
             if (activeBtn) activeBtn.classList.add('active');
         }
+    
+        // Logout function - clears session and redirects to login
+        function handleLogout() {
+            if (confirm(typeof i18n !== 'undefined' ? i18n.t('common.confirmLogout', 'Are you sure you want to logout?') : 'Are you sure you want to logout?')) {
+                // Clear all session data
+                localStorage.removeItem('zuidplas_logged_in');
+                localStorage.removeItem('florinet_token');
+                localStorage.removeItem('florinet_token_expiry');
+                localStorage.removeItem('florinet_username');
+                localStorage.removeItem('florinet_password');
+                localStorage.removeItem('zuidplas_demo_mode');
+                sessionStorage.clear();
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Make logout function global
+        window.handleLogout = handleLogout;
+
+    </script>
+    <script>
+        // Load language on page load - FROM USER SESSION (SET AT LOGIN)
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('zuidplas_user_language') || 
+                              localStorage.getItem('zuidplas_language') || 
+                              'nl';
+            
+            // Try immediately
+            if (typeof i18n !== 'undefined') {
+                i18n.currentLang = savedLang;
+                i18n.setLanguage(savedLang);
+                i18n.updatePage();
+            } else {
+                // Wait for i18n to load
+                setTimeout(() => {
+                    if (typeof i18n !== 'undefined') {
+                        i18n.currentLang = savedLang;
+                        i18n.setLanguage(savedLang);
+                        i18n.updatePage();
+                    }
+                }, 200);
+            }
+            
     </script>
 </body>
 </html>
-

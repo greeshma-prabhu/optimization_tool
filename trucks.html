@@ -26,7 +26,7 @@
         </div>
 
         <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -41,21 +41,21 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                <span>Dashboard</span>
+                <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
             
             <a href="orders.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 </svg>
-                <span>Orders</span>
+                <span data-i18n="nav.orders">Orders</span>
             </a>
             
             <a href="optimization.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
                 </svg>
-                <span>Optimization</span>
+                <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
             <a href="trucks.html" class="nav-link active">
@@ -65,7 +65,18 @@
                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
                     <circle cx="18.5" cy="18.5" r="2.5"></circle>
                 </svg>
-                <span>Trucks</span>
+                <span data-i18n="nav.trucks">Trucks</span>
+            </a>
+            
+            <a href="cart-loading.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                    <line x1="12" y1="12" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="8" y2="16"></line>
+                    <line x1="16" y1="12" x2="16" y2="16"></line>
+                </svg>
+                <span data-i18n="nav.cartOptimization">Cart Optimization</span>
             </a>
             
             <a href="costs.html" class="nav-link">
@@ -73,12 +84,15 @@
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
-                <span>Costs</span>
+                <span data-i18n="nav.costs">Costs</span>
             </a>
         </nav>
         
         <div class="sidebar-footer">
-            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280;"></div>
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-bottom: 12px;"></div>
+            <button onclick="handleLogout()" class="logout-btn" style="width: 100%; padding: 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;" data-i18n="common.logout">
+                🚪 Uitloggen
+            </button>
         </div>
     </aside>
 
@@ -94,8 +108,8 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="page-header">
-            <h1 class="page-title">Truck Fleet Management</h1>
-            <p class="page-subtitle">Monitor truck status and cart loading</p>
+            <h1 class="page-title" data-i18n="trucks.title">Truck Fleet Management</h1>
+            <p class="page-subtitle" data-i18n="trucks.subtitle">Monitor truck status and cart loading</p>
         </div>
 
         <!-- Truck Status Board -->
@@ -105,15 +119,20 @@
 
         <!-- Cart Loading Visualization -->
         <div class="card">
-            <h2>Cart Loading Visualization</h2>
+            <h2 data-i18n="trucks.cartLoadingViz">Cart Loading Visualization</h2>
             <div id="cart-loading-viz">
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);" data-i18n="trucks.runOptimizationToSee">
                     Run optimization to see cart loading visualization
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
+    <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
+    
+    <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
@@ -150,7 +169,9 @@
             card.className = 'card';
             
             const statusColor = truck.available ? 'var(--success)' : 'var(--warning)';
-            const statusText = truck.available ? 'Available' : 'In Use';
+            const statusText = truck.available 
+                ? (typeof i18n !== 'undefined' ? i18n.t('trucks.available', 'Available') : 'Available')
+                : (typeof i18n !== 'undefined' ? i18n.t('trucks.inUse', 'In Use') : 'In Use');
             
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
@@ -158,12 +179,12 @@
                         <h2 style="margin: 0;">${truck.name}</h2>
                         <div style="margin-top: 10px;">
                             <span class="badge" style="background: ${statusColor};">${statusText}</span>
-                            <span class="badge info" style="margin-left: 10px;">Capacity: ${truck.capacity} carts</span>
+                            <span class="badge info" style="margin-left: 10px;">${typeof i18n !== 'undefined' ? i18n.t('trucks.capacity', 'Capacity') : 'Capacity'}: ${truck.capacity} ${typeof i18n !== 'undefined' ? i18n.t('trucks.carts', 'carts') : 'carts'}</span>
                         </div>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 1.2rem; font-weight: 600;">€${truck.costPerRoute}</div>
-                        <div style="font-size: 0.9rem; color: var(--text-secondary);">per route</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">${typeof i18n !== 'undefined' ? i18n.t('trucks.perRoute', 'per route') : 'per route'}</div>
                     </div>
                 </div>
                 
@@ -174,17 +195,17 @@
                 ` : ''}
                 
                 <div style="background: #f9fafb; padding: 20px; border-radius: 8px;">
-                    <h3 style="margin-bottom: 15px;">Today's Allocation</h3>
+                    <h3 style="margin-bottom: 15px;">${typeof i18n !== 'undefined' ? i18n.t('trucks.todayAllocation', "Today's Allocation") : "Today's Allocation"}</h3>
                     <div id="truck-${truck.id}-allocation">
                         <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-                            No allocation yet
+                            ${typeof i18n !== 'undefined' ? i18n.t('trucks.noAllocation', 'No allocation yet') : 'No allocation yet'}
                         </div>
                     </div>
                 </div>
                 
                 ${type === 'neighbor' ? `
                 <div style="margin-top: 20px;">
-                    <button class="btn btn-primary" onclick="callNeighbor()">📞 Call Neighbor</button>
+                    <button class="btn btn-primary" onclick="callNeighbor()">📞 ${typeof i18n !== 'undefined' ? i18n.t('trucks.callNeighbor', 'Call Neighbor') : 'Call Neighbor'}</button>
                 </div>
                 ` : ''}
             `;
@@ -204,19 +225,24 @@
                     const truckId = allocation.truck;
                     const container = document.getElementById(`truck-${truckId}-allocation`);
                     if (container) {
+                        const departureText = typeof i18n !== 'undefined' ? i18n.t('trucks.departure', 'Departure') : 'Departure';
+                        const returnText = typeof i18n !== 'undefined' ? i18n.t('trucks.return', 'Return') : 'Return';
+                        const scheduledText = typeof i18n !== 'undefined' ? i18n.t('trucks.scheduled', 'Scheduled') : 'Scheduled';
+                        const tbdText = typeof i18n !== 'undefined' ? i18n.t('common.tbd', 'TBD') : 'TBD';
+                        
                         container.innerHTML = `
                             <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 10px;">
                                 <div style="font-weight: 600; margin-bottom: 5px;">${allocation.route || routeKey}</div>
                                 <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                                    Departure: ${allocation.departure || 'TBD'}
+                                    ${departureText}: ${allocation.departure || tbdText}
                                 </div>
                                 ${allocation.returnTime ? `
                                 <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                                    Return: ${allocation.returnTime}
+                                    ${returnText}: ${allocation.returnTime}
                                 </div>
                                 ` : ''}
                                 <div style="margin-top: 10px;">
-                                    <span class="badge success">Scheduled</span>
+                                    <span class="badge success">${scheduledText}</span>
                                 </div>
                             </div>
                         `;
@@ -226,7 +252,10 @@
         }
 
         function callNeighbor() {
-            alert('📞 Call neighbor to confirm truck availability for Route 1 (Rijnsburg - 9:00 AM)');
+            const msg = typeof i18n !== 'undefined' 
+                ? i18n.t('trucks.callNeighborMessage', '📞 Call neighbor to confirm truck availability for Route 1 (Rijnsburg - 9:00 AM)')
+                : '📞 Call neighbor to confirm truck availability for Route 1 (Rijnsburg - 9:00 AM)';
+            alert(msg);
         }
 
         function updateCartLoadingViz() {
@@ -235,7 +264,8 @@
             const routeAnalysis = currentOptimizer.processOrders();
             const container = document.getElementById('cart-loading-viz');
             
-            container.innerHTML = '<h3 style="margin-bottom: 20px;">Truck Loading by Route</h3>';
+            const loadingTitle = typeof i18n !== 'undefined' ? i18n.t('trucks.truckLoadingByRoute', 'Truck Loading by Route') : 'Truck Loading by Route';
+            container.innerHTML = `<h3 style="margin-bottom: 20px;">${loadingTitle}</h3>`;
             
             Object.keys(ROUTES).forEach(routeKey => {
                 const route = ROUTES[routeKey];
@@ -330,26 +360,27 @@
             const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
             if (activeBtn) activeBtn.classList.add('active');
         }
+    
+        // Logout function - clears session and redirects to login
+        function handleLogout() {
+            if (confirm(typeof i18n !== 'undefined' ? i18n.t('common.confirmLogout', 'Are you sure you want to logout?') : 'Are you sure you want to logout?')) {
+                // Clear all session data
+                localStorage.removeItem('zuidplas_logged_in');
+                localStorage.removeItem('florinet_token');
+                localStorage.removeItem('florinet_token_expiry');
+                localStorage.removeItem('florinet_username');
+                localStorage.removeItem('florinet_password');
+                localStorage.removeItem('zuidplas_demo_mode');
+                sessionStorage.clear();
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Make logout function global
+        window.handleLogout = handleLogout;
+
     </script>
 
-        // Load language from localStorage (set by dashboard) - PERSIST ACROSS ALL PAGES
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
-            setTimeout(() => {
-                if (typeof i18n !== 'undefined') {
-                    i18n.setLanguage(savedLang);
-                    i18n.updatePage();
-                } else {
-                    setTimeout(() => {
-                        if (typeof i18n !== 'undefined') {
-                            i18n.setLanguage(savedLang);
-                            i18n.updatePage();
-                        }
-                    }, 300);
-                }
-            }, 100);
-        });
-
     </body>
-</html>
-

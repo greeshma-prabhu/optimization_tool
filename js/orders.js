@@ -336,31 +336,53 @@ class OrderManager {
         tbody.innerHTML = '';
 
         if (this.filteredOrders.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No orders found</td></tr>';
+            const noOrdersText = typeof i18n !== 'undefined' ? i18n.t('orders.noOrders', 'No orders found') : 'No orders found';
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 40px;">${noOrdersText}</td></tr>`;
             return;
         }
 
         this.filteredOrders.forEach(order => {
             const row = document.createElement('tr');
             
-            const cartTypeBadge = order.cartType === 'danish' 
-                ? '<span class="badge warning">Danish</span>'
-                : '<span class="badge info">Standard</span>';
+            // Use translations for cart type badges
+            let cartTypeBadge = '';
+            if (typeof i18n !== 'undefined') {
+                const danishText = i18n.t('cartLoading.danish', 'Danish');
+                const standardText = i18n.t('cartLoading.standard', 'Standard');
+                cartTypeBadge = order.cartType === 'danish' 
+                    ? `<span class="badge warning">${danishText}</span>`
+                    : `<span class="badge info">${standardText}</span>`;
+            } else {
+                cartTypeBadge = order.cartType === 'danish' 
+                    ? '<span class="badge warning">Danish</span>'
+                    : '<span class="badge info">Standard</span>';
+            }
             
-            const statusBadge = order.status === 'assigned'
-                ? '<span class="badge success">Assigned</span>'
-                : '<span class="badge">Pending</span>';
-
+            // Use translations for status and unknown values
+            const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
+            const tbdText = typeof i18n !== 'undefined' ? i18n.t('common.tbd', 'TBD') : 'TBD';
+            const pendingText = typeof i18n !== 'undefined' ? i18n.t('orders.pending', 'Pending') : 'Pending';
+            const assignedText = typeof i18n !== 'undefined' ? i18n.t('orders.assigned', 'Assigned') : 'Assigned';
+            
+            const statusText = order.status === 'assigned' ? assignedText : pendingText;
+            const statusClass = order.status === 'assigned' ? 'success' : 'warning';
+            const statusBadge = `<span class="badge ${statusClass}">${statusText}</span>`;
+            
+            // Translate cart type
+            const cartTypeText = order.cartType === 'danish' 
+                ? (typeof i18n !== 'undefined' ? i18n.t('data.danish') : 'Danish')
+                : (typeof i18n !== 'undefined' ? i18n.t('data.standard') : 'Standard');
+            
             row.innerHTML = `
                 <td>${order.orderId || order.id}</td>
-                <td>${order.customer || 'Unknown'}</td>
-                <td>${order.deliveryLocation || 'TBD'}</td>
+                <td>${order.customer || unknownText}</td>
+                <td>${order.deliveryLocation || tbdText}</td>
                 <td>${order.productType || ''}</td>
                 <td>${order.quantity || 0}</td>
                 <td>${order.crateType || '612'}</td>
                 <td>${cartTypeBadge}</td>
                 <td>${order.cartsNeeded || 0}</td>
-                <td>${order.deliveryLocation || 'TBD'}</td>
+                <td>${order.deliveryLocation || tbdText}</td>
                 <td>${statusBadge}</td>
             `;
             
@@ -386,4 +408,14 @@ class OrderManager {
 
 // Global instance
 const orderManager = new OrderManager();
+
+// Reload orders display when language changes
+document.addEventListener('languageChanged', () => {
+    if (orderManager) {
+        orderManager.displayOrders();
+        if (typeof updateSummary === 'function') {
+            updateSummary();
+        }
+    }
+});
 

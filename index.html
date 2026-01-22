@@ -17,7 +17,7 @@
         </button>
 
         <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -41,21 +41,21 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                <span>Dashboard</span>
+                <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
             
             <a href="orders.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 </svg>
-                <span>Orders</span>
+                <span data-i18n="nav.orders">Orders</span>
             </a>
             
             <a href="optimization.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
                 </svg>
-                <span>Optimization</span>
+                <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
             <a href="trucks.html" class="nav-link">
@@ -65,7 +65,18 @@
                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
                     <circle cx="18.5" cy="18.5" r="2.5"></circle>
                 </svg>
-                <span>Trucks</span>
+                <span data-i18n="nav.trucks">Trucks</span>
+            </a>
+            
+            <a href="cart-loading.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                    <line x1="12" y1="12" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="8" y2="16"></line>
+                    <line x1="16" y1="12" x2="16" y2="16"></line>
+                </svg>
+                <span data-i18n="nav.cartOptimization">Cart Optimization</span>
             </a>
             
             <a href="costs.html" class="nav-link">
@@ -73,16 +84,15 @@
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
-                <span>Costs</span>
+                <span data-i18n="nav.costs">Costs</span>
             </a>
         </nav>
         
         <div class="sidebar-footer">
-            <div class="lang-switcher">
-                <button onclick="setLanguage('nl')" id="lang-btn-nl" class="lang-btn active">NL</button>
-                <button onclick="setLanguage('en')" id="lang-btn-en" class="lang-btn">EN</button>
-            </div>
-            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-top: 8px;"></div>
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-bottom: 12px;"></div>
+            <button onclick="handleLogout()" class="logout-btn" style="width: 100%; padding: 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;" data-i18n="common.logout">
+                🚪 Uitloggen
+            </button>
         </div>
     </aside>
 
@@ -182,7 +192,7 @@
 
         <!-- Route Overview Cards -->
         <div class="card">
-            <h2>Route Overview</h2>
+            <h2 data-i18n="dashboard.routeOverview">Route Overview</h2>
             <div class="route-grid" id="route-overview">
                 <!-- Populated by JavaScript -->
             </div>
@@ -190,9 +200,9 @@
 
         <!-- Optimization Suggestions -->
         <div class="card">
-            <h2>Optimization Suggestions</h2>
+            <h2 data-i18n="dashboard.optimizationSuggestions">Optimization Suggestions</h2>
             <div id="optimization-suggestions">
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);" data-i18n="dashboard.clickToSync">
                     Click "Sync Orders from API" to fetch real orders, or "Load Demo Data" to test with sample orders
                 </div>
             </div>
@@ -206,7 +216,11 @@
     </div>
 
     <!-- Scripts -->
+    <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
+    
+    <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
@@ -360,7 +374,12 @@
                 
                 const capacity = analysis.capacity;
                 const statusClass = capacity.fits ? 'success' : capacity.status === 'tight' ? 'warning' : 'danger';
-                const statusText = capacity.fits ? 'Ready' : capacity.status === 'tight' ? 'Tight' : 'Overflow';
+                let statusText = '';
+                if (typeof i18n !== 'undefined') {
+                    statusText = capacity.fits ? i18n.t('common.ready', 'Ready') : capacity.status === 'tight' ? i18n.t('common.tight', 'Tight') : i18n.t('optimization.overflow', 'Overflow');
+                } else {
+                    statusText = capacity.fits ? 'Ready' : capacity.status === 'tight' ? 'Tight' : 'Overflow';
+                }
                 
                 const progress = Math.min(100, parseFloat(capacity.utilization));
                 
@@ -373,15 +392,15 @@
                     </div>
                     <div class="route-info">
                         <div class="route-info-item">
-                            <div class="route-info-label">Orders</div>
+                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.orders', 'Orders') : 'Orders'}</div>
                             <div class="route-info-value">${analysis.orders.length}</div>
                         </div>
                         <div class="route-info-item">
-                            <div class="route-info-label">Carts Needed</div>
+                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartsNeeded', 'Carts Needed') : 'Carts Needed'}</div>
                             <div class="route-info-value">${capacity.equivalentStandard} / ${capacity.maxCapacity}</div>
                         </div>
                         <div class="route-info-item">
-                            <div class="route-info-label">Status</div>
+                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.status', 'Status') : 'Status'}</div>
                             <div class="route-info-value"><span class="badge ${statusClass}">${statusText}</span></div>
                         </div>
                     </div>
@@ -390,8 +409,8 @@
                     </div>
                     ${capacity.warning ? `<div class="info-box warning" style="margin-top: 15px;">${capacity.warning}</div>` : ''}
                     <div class="route-actions">
-                        <a href="optimization.html" class="btn btn-primary">Optimize</a>
-                        <a href="orders.html" class="btn btn-secondary">View Details</a>
+                        <a href="optimization.html" class="btn btn-primary">${typeof i18n !== 'undefined' ? i18n.t('optimization.runOptimization', 'Optimize') : 'Optimize'}</a>
+                        <a href="orders.html" class="btn btn-secondary">${typeof i18n !== 'undefined' ? i18n.t('common.viewDetails', 'View Details') : 'View Details'}</a>
                     </div>
                 `;
                 
@@ -402,28 +421,39 @@
         // Update optimization suggestions
         function updateOptimizationSuggestions(options) {
             const container = document.getElementById('optimization-suggestions');
-            if (!container || options.length === 0) return;
+            if (!container || options.length === 0) {
+                // Show default message with translation
+                const defaultMsg = typeof i18n !== 'undefined' ? i18n.t('dashboard.clickToSync') : 'Click "Sync Orders from API" to fetch real orders, or "Load Demo Data" to test with sample orders';
+                container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-secondary);">${defaultMsg}</div>`;
+                return;
+            }
             
             const bestOption = options[0];
+            const recommendedText = typeof i18n !== 'undefined' ? i18n.t('optimization.recommended', 'Recommended') : 'Recommended';
+            const totalCostText = typeof i18n !== 'undefined' ? i18n.t('costs.total', 'Total Cost') : 'Total Cost';
+            const feasibilityText = typeof i18n !== 'undefined' ? i18n.t('common.feasibility', 'Feasibility') : 'Feasibility';
+            const allFitsText = typeof i18n !== 'undefined' ? i18n.t('optimization.allFits', 'All fits') : 'All fits';
+            const overflowText = typeof i18n !== 'undefined' ? i18n.t('optimization.overflow', 'Overflow detected') : 'Overflow detected';
+            const scoreText = typeof i18n !== 'undefined' ? i18n.t('optimization.optimizationScore', 'Score') : 'Score';
             
             container.innerHTML = `
                 <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); margin-bottom: 20px;">
-                    <h3 style="margin-bottom: 15px;">⭐ Recommended: ${bestOption.name}</h3>
+                    <h3 style="margin-bottom: 15px;">⭐ ${recommendedText}: ${bestOption.name}</h3>
                     <p style="margin-bottom: 15px;">${bestOption.description}</p>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                        <div><strong>Total Cost:</strong> €${bestOption.cost}</div>
-                        <div><strong>Feasibility:</strong> <span class="badge ${bestOption.feasibility.fits ? 'success' : 'danger'}">${bestOption.feasibility.fits ? 'All fits' : 'Overflow detected'}</span></div>
-                        <div><strong>Score:</strong> ${bestOption.score}%</div>
+                        <div><strong>${totalCostText}:</strong> €${bestOption.cost}</div>
+                        <div><strong>${feasibilityText}:</strong> <span class="badge ${bestOption.feasibility.fits ? 'success' : 'danger'}">${bestOption.feasibility.fits ? allFitsText : overflowText}</span></div>
+                        <div><strong>${scoreText}:</strong> ${bestOption.score}%</div>
                     </div>
                     ${bestOption.requiresAction ? `<div class="info-box warning">${bestOption.requiresAction}</div>` : ''}
                     <div style="margin-top: 15px;">
-                        <a href="optimization.html" class="btn btn-primary">View All Options</a>
+                        <a href="optimization.html" class="btn btn-primary">${typeof i18n !== 'undefined' ? i18n.t('optimization.optimizationOptions', 'View All Options') : 'View All Options'}</a>
                     </div>
                 </div>
                 
                 ${options.length > 1 ? `
                 <div style="margin-top: 20px;">
-                    <h4>Alternative Options:</h4>
+                    <h4>${typeof i18n !== 'undefined' ? i18n.t('optimization.alternative', 'Alternative Options') + ':' : 'Alternative Options:'}</h4>
                     <div style="display: grid; gap: 15px; margin-top: 15px;">
                         ${options.slice(1, 4).map(option => `
                             <div style="padding: 15px; background: white; border-radius: 8px; border: 1px solid var(--border);">
@@ -434,7 +464,7 @@
                                             Cost: €${option.cost} | Score: ${option.score}%
                                         </div>
                                     </div>
-                                    <a href="optimization.html" class="btn btn-secondary" style="padding: 8px 16px;">View</a>
+                                    <a href="optimization.html" class="btn btn-secondary" style="padding: 8px 16px;">${typeof i18n !== 'undefined' ? i18n.t('common.view', 'View') : 'View'}</a>
                                 </div>
                             </div>
                         `).join('')}
@@ -480,37 +510,28 @@
             }
         });
         
-        // Language switcher - Make it global and persistent across ALL pages
+        // Language switcher - GLOBAL and PERSISTENT across ALL pages
         window.setLanguage = function(lang) {
-            // Save to localStorage IMMEDIATELY - this is the key!
+            // CRITICAL: Save to localStorage FIRST - this makes it global
             localStorage.setItem('zuidplas_language', lang);
             
+            // Update current page immediately
             if (typeof i18n !== 'undefined') {
+                i18n.currentLang = lang;
                 i18n.setLanguage(lang);
+                i18n.updatePage();
                 updateLanguageButtons();
             }
             
-            // Force reload to apply language to all pages
-            // But first, save the language preference
-            setTimeout(() => {
-                // Update current page
-                if (typeof i18n !== 'undefined') {
-                    i18n.updatePage();
-                }
-            }, 100);
+            // Dispatch storage event so other pages can detect the change
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'zuidplas_language',
+                newValue: lang,
+                oldValue: localStorage.getItem('zuidplas_user_language') || localStorage.getItem('zuidplas_language')
+            }));
         };
         
-        function updateLanguageButtons() {
-            const currentLang = localStorage.getItem('zuidplas_language') || 'nl';
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
-            if (activeBtn) {
-                activeBtn.classList.add('active');
-            }
-        }
+        // Language buttons removed - language set at login only
         
         // Check if user needs to login (first time)
         function checkLogin() {
@@ -537,12 +558,14 @@
             // Check login status
             checkLogin();
             
-            // Initialize language switcher
+            // Load language from user session (set at login)
             setTimeout(() => {
                 if (typeof i18n !== 'undefined') {
-                    const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
-                    i18n.setLanguage(savedLang);
-                    updateLanguageButtons();
+                    const userLang = localStorage.getItem('zuidplas_user_language') || 
+                                     localStorage.getItem('zuidplas_user_language') || localStorage.getItem('zuidplas_language') || 
+                                     'nl';
+                    i18n.setLanguage(userLang);
+                    i18n.updatePage();
                 }
             }, 100);
             
@@ -561,6 +584,31 @@
                 }
             }, 1500);
         });
+    
+        // Logout function - MUST BE GLOBAL
+        function handleLogout() {
+            const confirmMsg = typeof i18n !== 'undefined' 
+                ? i18n.t('common.confirmLogout', 'Are you sure you want to logout?') 
+                : 'Are you sure you want to logout?';
+            
+            if (confirm(confirmMsg)) {
+                // Clear all session data
+                localStorage.removeItem('zuidplas_logged_in');
+                localStorage.removeItem('florinet_token');
+                localStorage.removeItem('florinet_token_expiry');
+                localStorage.removeItem('florinet_username');
+                localStorage.removeItem('florinet_password');
+                localStorage.removeItem('zuidplas_demo_mode');
+                sessionStorage.clear();
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Make logout function global - CRITICAL!
+        window.handleLogout = handleLogout;
+
     </script>
 </body>
 </html>

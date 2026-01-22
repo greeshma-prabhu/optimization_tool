@@ -26,7 +26,7 @@
         </div>
 
         <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -41,21 +41,21 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                <span>Dashboard</span>
+                <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
             
             <a href="orders.html" class="nav-link">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 </svg>
-                <span>Orders</span>
+                <span data-i18n="nav.orders">Orders</span>
             </a>
             
             <a href="optimization.html" class="nav-link active">
                 <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
                 </svg>
-                <span>Optimization</span>
+                <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
             <a href="trucks.html" class="nav-link">
@@ -65,7 +65,18 @@
                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
                     <circle cx="18.5" cy="18.5" r="2.5"></circle>
                 </svg>
-                <span>Trucks</span>
+                <span data-i18n="nav.trucks">Trucks</span>
+            </a>
+            
+            <a href="cart-loading.html" class="nav-link">
+                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                    <line x1="12" y1="12" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="8" y2="16"></line>
+                    <line x1="16" y1="12" x2="16" y2="16"></line>
+                </svg>
+                <span data-i18n="nav.cartOptimization">Cart Optimization</span>
             </a>
             
             <a href="costs.html" class="nav-link">
@@ -73,12 +84,13 @@
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
-                <span>Costs</span>
+                <span data-i18n="nav.costs">Costs</span>
             </a>
         </nav>
         
         <div class="sidebar-footer">
-            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280;"></div>
+            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-bottom: 12px;"></div>
+            <button onclick="handleLogout()" class="logout-btn" data-i18n="common.logout">🚪 Uitloggen</button>
         </div>
     </aside>
 
@@ -94,31 +106,31 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="page-header">
-            <h1 class="page-title">Route Optimization Engine</h1>
-            <p class="page-subtitle">Automated route planning and truck allocation</p>
-            <button class="btn btn-primary" onclick="runOptimization()" style="margin-top: 20px;">
+            <h1 class="page-title" data-i18n="optimization.title">Route Optimization Engine</h1>
+            <p class="page-subtitle" data-i18n="optimization.subtitle">Automated route planning and truck allocation</p>
+            <button class="btn btn-primary" onclick="runOptimization()" style="margin-top: 20px;" data-i18n="optimization.runOptimization">
                 🔄 Run Optimization
             </button>
         </div>
 
         <!-- Input Summary -->
         <div class="card">
-            <h2>Input Summary</h2>
+            <h2 data-i18n="optimization.inputSummary">Input Summary</h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="label">Total Orders</div>
+                    <div class="label" data-i18n="optimization.totalOrders">Total Orders</div>
                     <div class="value" id="input-orders">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="label">Total Carts</div>
+                    <div class="label" data-i18n="optimization.totalCarts">Total Carts</div>
                     <div class="value" id="input-carts">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="label">Danish Carts</div>
+                    <div class="label" data-i18n="optimization.danishCarts">Danish Carts</div>
                     <div class="value" id="input-danish">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="label">Standard Carts</div>
+                    <div class="label" data-i18n="optimization.standardCarts">Standard Carts</div>
                     <div class="value" id="input-standard">0</div>
                 </div>
             </div>
@@ -126,7 +138,7 @@
 
         <!-- Route Breakdown -->
         <div class="card">
-            <h2>Route Breakdown</h2>
+            <h2 data-i18n="optimization.routeBreakdown">Route Breakdown</h2>
             <div id="route-breakdown">
                 <!-- Populated by JavaScript -->
             </div>
@@ -134,9 +146,9 @@
 
         <!-- Optimization Options -->
         <div class="card">
-            <h2>Optimization Options</h2>
+            <h2 data-i18n="optimization.optimizationOptions">Optimization Options</h2>
             <div id="optimization-options">
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);" data-i18n="optimization.clickToGenerate">
                     Click "Run Optimization" to generate scenarios
                 </div>
             </div>
@@ -144,18 +156,23 @@
 
         <!-- Optimization Score -->
         <div class="card">
-            <h2>Optimization Score</h2>
+            <h2 data-i18n="optimization.optimizationScore">Optimization Score</h2>
             <div style="text-align: center; padding: 40px;">
                 <div style="font-size: 4rem; font-weight: 700; color: var(--primary);" id="optimization-score-display">
                     0%
                 </div>
-                <div style="margin-top: 20px; color: var(--text-secondary);">
+                <div style="margin-top: 20px; color: var(--text-secondary);" data-i18n="optimization.efficiency">
                     Efficiency based on cost, capacity utilization, and feasibility
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
+    <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
+    
+    <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
@@ -253,7 +270,7 @@
                             <div class="route-title">Route ${route.id}: ${route.name}</div>
                             <div class="route-time">${route.departureTime}</div>
                         </div>
-                        <div class="info-box" style="margin-top: 15px;">No orders for this route</div>
+                        <div class="info-box" style="margin-top: 15px;">${typeof i18n !== 'undefined' ? i18n.t('optimization.noOrdersForRoute', 'No orders for this route') : 'No orders for this route'}</div>
                     `;
                     container.appendChild(card);
                     return;
@@ -272,28 +289,28 @@
                     </div>
                     <div class="route-info">
                         <div class="route-info-item">
-                            <div class="route-info-label">Orders</div>
+                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.orders', 'Orders') : 'Orders'}</div>
                             <div class="route-info-value">${(analysis.orders && analysis.orders.length) || 0}</div>
                         </div>
                         <div class="route-info-item">
-                            <div class="route-info-label">Carts Needed</div>
+                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartsNeeded', 'Carts Needed') : 'Carts Needed'}</div>
                             <div class="route-info-value">${capacity.equivalentStandard || 0} / ${capacity.maxCapacity || 17}</div>
                         </div>
                         <div class="route-info-item">
-                            <div class="route-info-label">Cart Types</div>
-                            <div class="route-info-value">${analysis.danish || 0} Danish, ${analysis.standard || 0} Standard</div>
+                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartTypes', 'Cart Types') : 'Cart Types'}</div>
+                            <div class="route-info-value">${analysis.danish || 0} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.danish', 'Danish') : 'Danish'}, ${analysis.standard || 0} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.standard', 'Standard') : 'Standard'}</div>
                         </div>
                         <div class="route-info-item">
-                            <div class="route-info-label">Status</div>
+                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.status', 'Status') : 'Status'}</div>
                             <div class="route-info-value">
-                                <span class="badge ${statusClass}">${statusIcon} ${capacity.status.toUpperCase()}</span>
+                                <span class="badge ${statusClass}">${statusIcon} ${typeof i18n !== 'undefined' ? (capacity.fits ? i18n.t('optimization.fits', 'FITS') : capacity.status === 'tight' ? i18n.t('common.tight', 'TIGHT') : i18n.t('optimization.overflow', 'OVERFLOW')) : capacity.status.toUpperCase()}</span>
                             </div>
                         </div>
                     </div>
                     ${capacity.warning ? `<div class="info-box warning" style="margin-top: 15px;">${capacity.warning}</div>` : ''}
                     ${!capacity.fits ? `
                     <div class="info-box danger" style="margin-top: 15px;">
-                        <strong>Overflow:</strong> Needs ${capacity.overflow} additional carts → Suggest external carrier
+                        <strong>${typeof i18n !== 'undefined' ? i18n.t('optimization.overflow', 'Overflow') : 'Overflow'}:</strong> ${typeof i18n !== 'undefined' ? i18n.t('optimization.needsAdditionalCarts', 'Needs') : 'Needs'} ${capacity.overflow} ${typeof i18n !== 'undefined' ? i18n.t('optimization.additionalCarts', 'additional carts') : 'additional carts'} → ${typeof i18n !== 'undefined' ? i18n.t('optimization.suggestExternal', 'Suggest external carrier') : 'Suggest external carrier'}
                     </div>
                     ` : ''}
                 `;
@@ -310,7 +327,8 @@
             
             // Safety check
             if (!options || !Array.isArray(options) || options.length === 0) {
-                container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No optimization options available. Please load orders first.</div>';
+                const noOptionsText = typeof i18n !== 'undefined' ? i18n.t('optimization.noOptionsAvailable', 'No optimization options available. Please load orders first.') : 'No optimization options available. Please load orders first.';
+                container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-secondary);">${noOptionsText}</div>`;
                 return;
             }
             
@@ -326,18 +344,18 @@
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <div>
-                            <h3 style="margin: 0;">Option ${option.id}: ${option.name}</h3>
-                            ${isRecommended ? '<span class="badge primary" style="margin-left: 10px;">⭐ Recommended</span>' : ''}
+                            <h3 style="margin: 0;">${typeof i18n !== 'undefined' ? i18n.t('optimization.option', 'Option') : 'Option'} ${option.id}: ${option.name}</h3>
+                            ${isRecommended ? `<span class="badge primary" style="margin-left: 10px;">⭐ ${typeof i18n !== 'undefined' ? i18n.t('optimization.recommended', 'Recommended') : 'Recommended'}</span>` : ''}
                         </div>
                         <div style="text-align: right;">
                             <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">€${option.cost}</div>
-                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Score: ${option.score}%</div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">${typeof i18n !== 'undefined' ? i18n.t('data.score', 'Score') : 'Score'}: ${option.score}%</div>
                         </div>
                     </div>
                     <p style="color: var(--text-secondary); margin-bottom: 15px;">${option.description}</p>
                     
                     <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                        <strong>Allocation:</strong>
+                        <strong>${typeof i18n !== 'undefined' ? i18n.t('data.allocation', 'Allocation') : 'Allocation'}:</strong>
                         ${option.allocation ? Object.entries(option.allocation).map(([key, value]) => {
                             const routeName = key.replace('route', '').replace(/\d+/, '');
                             const routeLabel = key === 'route1' ? 'Rijnsburg (09:00)' : 
@@ -355,22 +373,28 @@
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                         <div>
-                            <strong>Pros:</strong>
+                            <strong>${typeof i18n !== 'undefined' ? i18n.t('optimization.pros', 'Pros') : 'Pros'}:</strong>
                             <ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9rem;">
-                                ${(option.pros && Array.isArray(option.pros)) ? option.pros.map(p => `<li>${p}</li>`).join('') : '<li>No pros listed</li>'}
+                                ${(option.pros && Array.isArray(option.pros)) ? option.pros.map(p => {
+                                    // Pros are already translated in optimizer.js
+                                    return `<li>${p}</li>`;
+                                }).join('') : `<li>${typeof i18n !== 'undefined' ? i18n.t('data.noProsListed', 'No pros listed') : 'No pros listed'}</li>`}
                             </ul>
                         </div>
                         <div>
-                            <strong>Cons:</strong>
+                            <strong>${typeof i18n !== 'undefined' ? i18n.t('data.cons', 'Cons') : 'Cons'}:</strong>
                             <ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9rem;">
-                                ${(option.cons && Array.isArray(option.cons)) ? option.cons.map(c => `<li>${c}</li>`).join('') : '<li>No cons listed</li>'}
+                                ${(option.cons && Array.isArray(option.cons)) ? option.cons.map(c => {
+                                    // Cons are already translated in optimizer.js
+                                    return `<li>${c}</li>`;
+                                }).join('') : `<li>${typeof i18n !== 'undefined' ? i18n.t('data.noConsListed', 'No cons listed') : 'No cons listed'}</li>`}
                             </ul>
                         </div>
                     </div>
                     
                     <div style="margin-top: 15px;">
                         <span class="badge ${(option.feasibility && option.feasibility.fits) ? 'success' : 'danger'}">
-                            ${(option.feasibility && option.feasibility.fits) ? '✓ All fits' : '⚠️ ' + (option.feasibility ? option.feasibility.message || 'Check feasibility' : 'Unknown')}
+                            ${(option.feasibility && option.feasibility.fits) ? `✓ ${typeof i18n !== 'undefined' ? i18n.t('optimization.allFits', 'All fits') : 'All fits'}` : `⚠️ ${option.feasibility ? (option.feasibility.message || (typeof i18n !== 'undefined' ? i18n.t('optimization.checkFeasibility', 'Check feasibility') : 'Check feasibility')) : (typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown')}`}
                         </span>
                         ${option.requiresAction ? `<span class="badge warning" style="margin-left: 10px;">${option.requiresAction}</span>` : ''}
                     </div>
@@ -391,6 +415,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (orderManager.orders.length > 0) {
                 runOptimization();
+            }
+        });
+        
+        // Reload optimization options when language changes
+        document.addEventListener('languageChanged', () => {
+            if (currentOptimizer) {
+                const options = currentOptimizer.generateOptions();
+                if (options && options.length > 0) {
+                    updateOptimizationOptions(options);
+                }
             }
         });
         
@@ -444,26 +478,26 @@
             const activeBtn = document.getElementById(`lang-btn-${currentLang}`);
             if (activeBtn) activeBtn.classList.add('active');
         }
+    
+        // Logout function - clears session and redirects to login
+        function handleLogout() {
+            if (confirm(typeof i18n !== 'undefined' ? i18n.t('common.confirmLogout', 'Are you sure you want to logout?') : 'Are you sure you want to logout?')) {
+                // Clear all session data
+                localStorage.removeItem('zuidplas_logged_in');
+                localStorage.removeItem('florinet_token');
+                localStorage.removeItem('florinet_token_expiry');
+                localStorage.removeItem('florinet_username');
+                localStorage.removeItem('florinet_password');
+                localStorage.removeItem('zuidplas_demo_mode');
+                sessionStorage.clear();
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Make logout function global
+        window.handleLogout = handleLogout;
+
     </script>
-
-        // Load language from localStorage (set by dashboard) - PERSIST ACROSS ALL PAGES
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedLang = localStorage.getItem('zuidplas_language') || 'nl';
-            setTimeout(() => {
-                if (typeof i18n !== 'undefined') {
-                    i18n.setLanguage(savedLang);
-                    i18n.updatePage();
-                } else {
-                    setTimeout(() => {
-                        if (typeof i18n !== 'undefined') {
-                            i18n.setLanguage(savedLang);
-                            i18n.updatePage();
-                        }
-                    }, 300);
-                }
-            }, 100);
-        });
-
-    </body>
-</html>
-
+</body>
