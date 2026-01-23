@@ -9,9 +9,51 @@
     <style>
         .truck-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 30px;
             margin: 30px 0;
+        }
+        
+        @media (max-width: 1200px) {
+            .truck-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .route-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .truck-selector {
+            margin: 15px 0;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .truck-selector label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        
+        .truck-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .truck-selector select:focus {
+            outline: none;
+            border-color: var(--primary);
         }
         
         .truck-card {
@@ -34,6 +76,7 @@
             display: grid;
             grid-template-columns: repeat(17, 1fr);
             gap: 8px;
+            align-items: start;
             margin: 20px 0;
         }
         
@@ -185,6 +228,244 @@
         .capacity-fill.danger {
             background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
         }
+        
+        /* Route Timeline Visualization */
+        .route-timeline {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .timeline-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            margin-top: 30px;
+        }
+        
+        .timeline-connector {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6 0%, #10b981 50%, #f59e0b 100%);
+            z-index: 0;
+        }
+        
+        .timeline-point {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .timeline-time {
+            background: white;
+            border: 3px solid;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin: 0 auto 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .timeline-time.route1 { border-color: #3b82f6; color: #3b82f6; }
+        .timeline-time.route2 { border-color: #10b981; color: #10b981; }
+        .timeline-time.route3 { border-color: #f59e0b; color: #f59e0b; }
+        
+        .timeline-route-info {
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .timeline-truck {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+        
+        /* Color-Coded Route Sections */
+        .route-section {
+            margin: 15px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        
+        .route-section.rijnsburg {
+            background: #eff6ff;
+            border-left-color: #3b82f6;
+        }
+        
+        .route-section.aalsmeer {
+            background: #f0fdf4;
+            border-left-color: #10b981;
+        }
+        
+        .route-section.naaldwijk {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+        
+        .route-section-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Cost Impact Display */
+        .cost-impact {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .cost-impact.positive {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .cost-impact.negative {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        /* Alternative Assignments */
+        .alternatives-toggle {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .alternatives-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .alternative-card {
+            background: #f9fafb;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .alternative-card.recommended {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+        
+        /* Loading Sequence */
+        .loading-sequence {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .loading-sequence-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .loading-sequence-help {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        
+        .loading-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .loading-step {
+            background: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: default;
+        }
+        
+        .loading-step-number {
+            background: var(--primary);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .loading-more-btn {
+            background: var(--primary);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .loading-more-btn:hover {
+            background: #ea580c;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+        }
+        
+        .loading-full-list {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .loading-full-item {
+            padding: 6px 8px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .loading-full-item:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -248,16 +529,6 @@
                 <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
-            <a href="trucks.html" class="nav-item " data-page="trucks">
-                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="1" y="3" width="15" height="13"></rect>
-                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                </svg>
-                <span data-i18n="nav.trucks">Trucks</span>
-            </a>
-            
             <a href="cart-loading.html" class="nav-item active" data-page="cart-loading">
                 <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="7" width="20" height="14" rx="2"></rect>
@@ -267,6 +538,16 @@
                     <line x1="16" y1="12" x2="16" y2="16"></line>
                 </svg>
                 <span data-i18n="nav.cartOptimization">Cart Optimization</span>
+            </a>
+            
+            <a href="trucks.html" class="nav-item " data-page="trucks">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="3" width="15" height="13"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <span data-i18n="nav.trucks">Trucks</span>
             </a>
             
             <a href="costs.html" class="nav-item " data-page="costs">
@@ -307,6 +588,23 @@
                 <div class="icon">🎯</div>
                 <div class="label" data-i18n="cartLoading.routesCovered">Routes Covered</div>
                 <div class="value" id="routes-covered">0/3</div>
+            </div>
+        </div>
+
+        <!-- Route Timeline Visualization -->
+        <div class="route-timeline" id="route-timeline" style="display: none;">
+            <h2 data-i18n="cartLoading.routeTimeline">Route Timeline</h2>
+            <div class="timeline-container">
+                <div class="timeline-connector"></div>
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Alternative Assignments Toggle -->
+        <div class="alternatives-toggle" id="alternatives-toggle" style="display: none;">
+            <button class="btn btn-secondary" onclick="toggleAlternatives()" data-i18n="cartLoading.showAlternatives">🔄 Show Alternative Assignments</button>
+            <div class="alternatives-container" id="alternatives-container" style="display: none;">
+                <!-- Populated by JavaScript -->
             </div>
         </div>
 
@@ -534,10 +832,10 @@
                     this.assignCartToTruck(cart, 'truck2', 'aalsmeer');
                 });
 
-                // Route 3: Naaldwijk → Truck 1 (check if fits with Route 1)
+                // Route 3: Naaldwijk → Truck 1 (SEPARATE TRIP - don't combine with Route 1)
                 const route3Carts = cartsByRoute.naaldwijk;
-                // Check if Route 3 fits in Truck 1 considering Route 1 is already there
-                const route3Analysis = this.analyzeRouteCapacity(route3Carts, 'truck1', true);
+                // Route 3 is a SEPARATE trip - check independently (not combined with Route 1)
+                const route3Analysis = this.analyzeRouteCapacity(route3Carts, 'truck1', false);
                 route3Carts.forEach(cart => {
                     if (route3Analysis.fits) {
                         this.assignCartToTruck(cart, 'truck1', 'naaldwijk');
@@ -562,14 +860,13 @@
             
             /**
              * Analyze if a route's carts fit in a truck
+             * IMPORTANT: Each route is a SEPARATE TRIP - don't combine routes!
              * @param {Array} routeCarts - Carts for this route
              * @param {String} truckId - Which truck to check
-             * @param {Boolean} considerExisting - If true, consider carts already in truck
+             * @param {Boolean} considerExisting - NOT USED - each route is independent
              */
             analyzeRouteCapacity(routeCarts, truckId, considerExisting = false) {
-                const truck = this.truckAssignments[truckId];
-                
-                // Count carts for this route
+                // Count carts for THIS ROUTE ONLY (each route is a separate trip)
                 let routeDanish = 0;
                 let routeStandard = 0;
                 routeCarts.forEach(cart => {
@@ -580,22 +877,33 @@
                     }
                 });
                 
-                // If considering existing carts, add them
-                let totalDanish = considerExisting ? truck.danishCount + routeDanish : routeDanish;
-                let totalStandard = considerExisting ? truck.standardCount + routeStandard : routeStandard;
-                
-                // Calculate capacity
-                const maxCapacity = totalDanish > BUSINESS_RULES.danishThreshold 
+                // Calculate truck capacity for THIS ROUTE (based on Danish carts in THIS route only)
+                const maxCapacity = routeDanish > BUSINESS_RULES.danishThreshold 
                     ? BUSINESS_RULES.maxCartsWithDanish 
                     : BUSINESS_RULES.maxStandardCarts;
                 
-                const equivalentStandard = totalStandard + Math.ceil(totalDanish / BUSINESS_RULES.danishToStandardRatio);
+                // Check if THIS ROUTE fits using ACTUAL cart count (not equivalent)
+                const actualCartCount = routeCarts.length;
+                const fits = actualCartCount <= maxCapacity;
+                const overflow = Math.max(0, actualCartCount - maxCapacity);
+                
+                // Calculate equivalent for display purposes only
+                const routeEquivalentStandard = routeStandard + Math.ceil(routeDanish / BUSINESS_RULES.danishToStandardRatio);
                 
                 return {
-                    fits: equivalentStandard <= maxCapacity,
-                    used: equivalentStandard,
+                    // Route-specific info
+                    routeCarts: routeCarts.length,
+                    routeDanish: routeDanish,
+                    routeStandard: routeStandard,
+                    routeEquivalent: routeEquivalentStandard,
+                    
+                    // Capacity check for THIS ROUTE ONLY
+                    fits: fits,
+                    used: routeCarts.length, // Show ACTUAL cart count, not equivalent
                     max: maxCapacity,
-                    overflow: Math.max(0, equivalentStandard - maxCapacity),
+                    overflow: overflow,
+                    
+                    // For backward compatibility
                     danishCount: routeDanish,
                     standardCount: routeStandard,
                     totalCarts: routeCarts.length
@@ -640,20 +948,38 @@
 
             getTruckCapacity(truckId) {
                 const truck = this.truckAssignments[truckId];
-                const maxCapacity = truck.danishCount > BUSINESS_RULES.danishThreshold 
-                    ? BUSINESS_RULES.maxCartsWithDanish 
-                    : BUSINESS_RULES.maxStandardCarts;
                 
-                const equivalentStandard = truck.standardCount + Math.ceil(truck.danishCount / BUSINESS_RULES.danishToStandardRatio);
+                // Get the route(s) on this truck to determine capacity
+                const routes = Array.from(truck.routes);
+                let maxCapacity = BUSINESS_RULES.maxStandardCarts;
+                let totalDanish = 0;
+                
+                // Check each route to determine max capacity (if any route has >6 Danish, capacity is 16)
+                routes.forEach(routeName => {
+                    const routeBreakdown = truck.routeBreakdown[routeName];
+                    if (routeBreakdown) {
+                        totalDanish += routeBreakdown.danishCount || 0;
+                    }
+                });
+                
+                // If total Danish carts > threshold, capacity is reduced
+                if (totalDanish > BUSINESS_RULES.danishThreshold) {
+                    maxCapacity = BUSINESS_RULES.maxCartsWithDanish;
+                }
+                
+                // Use ACTUAL cart count, not equivalent
+                const actualCartCount = truck.carts.length;
+                const fits = actualCartCount <= maxCapacity;
+                const overflow = Math.max(0, actualCartCount - maxCapacity);
                 
                 return {
                     max: maxCapacity,
-                    used: equivalentStandard,
+                    used: actualCartCount, // ACTUAL cart count
                     standard: truck.standardCount,
                     danish: truck.danishCount,
-                    fits: equivalentStandard <= maxCapacity,
-                    overflow: Math.max(0, equivalentStandard - maxCapacity),
-                    utilization: ((equivalentStandard / maxCapacity) * 100).toFixed(1)
+                    fits: fits,
+                    overflow: overflow,
+                    utilization: maxCapacity > 0 ? ((actualCartCount / maxCapacity) * 100).toFixed(1) : '0.0'
                 };
             }
         }
@@ -682,12 +1008,59 @@
             // Only proceed if we have fresh orders
             console.log('✅ Running cart optimization with', orderManager.orders.length, 'orders');
             
+            // CRITICAL: Use the SAME optimizer as dashboard to get consistent cart counts
+            const optimizer = new RouteOptimizer(orderManager.orders);
+            const routeAnalysis = optimizer.processOrders();
+            
             cartLoadingOptimizer = new CartLoadingOptimizer(orderManager.orders);
             const result = cartLoadingOptimizer.optimizeAssignment();
+            
+            // Override route analysis with dashboard's route analysis for consistency
+            // This ensures cart counts match dashboard exactly
+            // Use ACTUAL cart count (totalCarts), not equivalent standard - NO HARDCODING!
+            if (routeAnalysis) {
+                result.routeAnalysis = {
+                    rijnsburg: {
+                        fits: routeAnalysis.rijnsburg?.fits !== undefined ? routeAnalysis.rijnsburg.fits : true,
+                        used: routeAnalysis.rijnsburg?.totalCarts || 0, // ACTUAL cart count from dashboard
+                        max: routeAnalysis.rijnsburg?.maxCapacity || 17,
+                        overflow: routeAnalysis.rijnsburg?.overflow || 0,
+                        totalCarts: routeAnalysis.rijnsburg?.totalCarts || 0,
+                        danishCount: routeAnalysis.rijnsburg?.danishCarts || 0,
+                        standardCount: routeAnalysis.rijnsburg?.standardCarts || 0
+                    },
+                    aalsmeer: {
+                        // CRITICAL: Use dashboard's calculation - if 37 carts > 16 capacity = overflow!
+                        fits: routeAnalysis.aalsmeer?.fits !== undefined ? routeAnalysis.aalsmeer.fits : ((routeAnalysis.aalsmeer?.totalCarts || 0) <= (routeAnalysis.aalsmeer?.maxCapacity || 17)),
+                        used: routeAnalysis.aalsmeer?.totalCarts || 0, // ACTUAL cart count from dashboard
+                        max: routeAnalysis.aalsmeer?.maxCapacity || 17,
+                        overflow: routeAnalysis.aalsmeer?.overflow || 0,
+                        totalCarts: routeAnalysis.aalsmeer?.totalCarts || 0,
+                        danishCount: routeAnalysis.aalsmeer?.danishCarts || 0,
+                        standardCount: routeAnalysis.aalsmeer?.standardCarts || 0
+                    },
+                    naaldwijk: {
+                        fits: routeAnalysis.naaldwijk?.fits !== undefined ? routeAnalysis.naaldwijk.fits : true,
+                        used: routeAnalysis.naaldwijk?.totalCarts || 0, // ACTUAL cart count from dashboard
+                        max: routeAnalysis.naaldwijk?.maxCapacity || 17,
+                        overflow: routeAnalysis.naaldwijk?.overflow || 0,
+                        totalCarts: routeAnalysis.naaldwijk?.totalCarts || 0,
+                        danishCount: routeAnalysis.naaldwijk?.danishCarts || 0,
+                        standardCount: routeAnalysis.naaldwijk?.standardCarts || 0
+                    }
+                };
+            }
             
             updateTruckVisualization(result);
             updateCartList(result.allCarts);
             updateSummaryStats(result);
+            updateRouteTimeline(result);
+            generateAlternatives(result);
+            
+            // Save route analysis to localStorage for Truck Management page
+            if (result.routeAnalysis) {
+                localStorage.setItem('zuidplas_route_analysis', JSON.stringify(result.routeAnalysis));
+            }
         }
         
         function clearCartOptimizationDisplay() {
@@ -724,25 +1097,723 @@
             }
         }
 
+        // Store current truck assignments for each route (can be single truck or combination like "truck1+truck2")
+        // DO NOT load from localStorage - assignments are cleared when new data is loaded
+        // User must select trucks fresh each time
+        let routeTruckAssignments = {
+            rijnsburg: null,  // No default - user must select
+            aalsmeer: null,   // No default - user must select
+            naaldwijk: null   // No default - user must select
+        };
+        
+        // DO NOT load saved assignments - they are cleared when new orders are loaded
+        // This ensures user selects trucks fresh each time
+        
+        // Parse truck assignment string to get array of truck IDs
+        function parseTruckAssignment(assignment) {
+            if (!assignment) return ['truck1'];
+            if (assignment.includes('+')) {
+                return assignment.split('+').map(t => t.trim());
+            }
+            return [assignment];
+        }
+        
+        // Get combined capacity for multiple trucks
+        function getCombinedCapacity(truckIds, routeCarts) {
+            let totalCapacity = 0;
+            let totalDanish = 0;
+            
+            routeCarts.forEach(cart => {
+                if (cart.type === 'danish') totalDanish++;
+            });
+            
+            // Each truck has capacity based on Danish carts
+            const maxCapacityPerTruck = totalDanish > BUSINESS_RULES.danishThreshold 
+                ? BUSINESS_RULES.maxCartsWithDanish 
+                : BUSINESS_RULES.maxStandardCarts;
+            
+            // Combined capacity = sum of all trucks
+            totalCapacity = truckIds.length * maxCapacityPerTruck;
+            
+            return {
+                max: totalCapacity,
+                perTruck: maxCapacityPerTruck,
+                truckCount: truckIds.length
+            };
+        }
+        
+        // Split carts between multiple trucks
+        // CRITICAL: Only use as many trucks as needed - don't split if all carts fit in one truck
+        function splitCartsBetweenTrucks(routeCarts, truckIds, combinedCapacity) {
+            const perTruckCapacity = combinedCapacity.perTruck;
+            const totalCarts = routeCarts.length;
+            
+            const assignments = {};
+            truckIds.forEach(truckId => {
+                assignments[truckId] = [];
+            });
+            
+            // If all carts fit in one truck, put ALL carts in first truck only
+            // Other trucks stay completely empty
+            if (totalCarts <= perTruckCapacity) {
+                assignments[truckIds[0]] = [...routeCarts];
+                // All other trucks remain empty (already initialized as empty arrays)
+                return assignments;
+            }
+            
+            // Otherwise, distribute across trucks as needed (overflow scenario)
+            let currentTruckIndex = 0;
+            routeCarts.forEach((cart) => {
+                const truckId = truckIds[currentTruckIndex];
+                assignments[truckId].push(cart);
+                
+                // Move to next truck if current truck is full
+                if (assignments[truckId].length >= perTruckCapacity && currentTruckIndex < truckIds.length - 1) {
+                    currentTruckIndex++;
+                }
+            });
+            
+            return assignments;
+        }
+        
+        // Route times for conflict detection
+        const routeTimes = {
+            rijnsburg: { time: '09:00', hour: 9 },
+            aalsmeer: { time: '10:00', hour: 10 },
+            naaldwijk: { time: '11:00', hour: 11 }
+        };
+        
+        // Check if two routes have time conflict
+        function hasTimeConflict(route1Key, route2Key) {
+            const route1 = routeTimes[route1Key];
+            const route2 = routeTimes[route2Key];
+            if (!route1 || !route2) return false;
+            
+            // Routes conflict if they're within 2 hours of each other (truck needs time to return)
+            const timeDiff = Math.abs(route1.hour - route2.hour);
+            return timeDiff < 2;
+        }
+        
+        // Get available truck combinations for a route
+        function getAvailableTruckOptions(currentRouteKey) {
+            const singleTrucks = [
+                { id: 'truck1', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1' },
+                { id: 'truck2', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2' },
+                { id: 'neighbor', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck' },
+                { id: 'external', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck' }
+            ];
+            
+            // Multi-truck combinations
+            const combinations = [
+                { id: 'truck1+truck2', name: 'Truck 1 + Truck 2' },
+                { id: 'neighbor+neighbor', name: '2 Neighbor\'s Trucks' },
+                { id: 'external+truck1', name: 'External Truck + Truck 1' },
+                { id: 'external+truck2', name: 'External Truck + Truck 2' },
+                { id: 'neighbor+truck1', name: 'Neighbor\'s Truck + Truck 1' },
+                { id: 'neighbor+truck2', name: 'Neighbor\'s Truck + Truck 2' }
+            ];
+            
+            const allOptions = [...singleTrucks, ...combinations];
+            const available = [];
+            
+            allOptions.forEach(option => {
+                const truckIds = parseTruckAssignment(option.id);
+                let hasConflict = false;
+                let conflictRoute = null;
+                
+                // Check each truck in the combination for conflicts
+                truckIds.forEach(truckId => {
+                    // Neighbor and External trucks are always available
+                    if (truckId === 'neighbor' || truckId === 'external') return;
+                    
+                    Object.keys(routeTruckAssignments).forEach(routeKey => {
+                        if (routeKey === currentRouteKey) return;
+                        
+                        // CRITICAL: Only check routes that actually have a truck assigned (not null)
+                        const assignedTrucksStr = routeTruckAssignments[routeKey];
+                        if (!assignedTrucksStr || assignedTrucksStr === null) return; // Skip routes with no assignment
+                        
+                        const assignedTrucks = parseTruckAssignment(assignedTrucksStr);
+                        if (assignedTrucks.includes(truckId) && hasTimeConflict(currentRouteKey, routeKey)) {
+                            hasConflict = true;
+                            conflictRoute = routeKey;
+                        }
+                    });
+                });
+                
+                if (!hasConflict) {
+                    available.push({ ...option, available: true, reason: '' });
+                } else {
+                    const routeName = conflictRoute === 'rijnsburg' ? 'Rijnsburg' : 
+                                     conflictRoute === 'aalsmeer' ? 'Aalsmeer' : 'Naaldwijk';
+                    available.push({ 
+                        ...option, 
+                        available: false, 
+                        reason: `Truck conflict with ${routeName}`
+                    });
+                }
+            });
+            
+            return available;
+        }
+
         function updateTruckVisualization(result) {
             const container = document.getElementById('truck-container');
             container.innerHTML = '';
 
             // Get route analysis if available
             const routeAnalysis = result.routeAnalysis || {};
+            
+            // Get route definitions
+            const routes = [
+                { key: 'rijnsburg', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', time: '09:00', color: '#3b82f6', bgColor: '#eff6ff' },
+                { key: 'aalsmeer', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', time: '10:00', color: '#10b981', bgColor: '#f0fdf4' },
+                { key: 'naaldwijk', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', time: '11:00', color: '#f59e0b', bgColor: '#fffbeb' }
+            ];
 
-            // Truck 1 - shows Route 1 (Rijnsburg) and Route 3 (Naaldwijk)
-            const truck1Capacity = cartLoadingOptimizer.getTruckCapacity('truck1');
-            const truck1Name = typeof i18n !== 'undefined' ? `${i18n.t('cartLoading.truck1', 'Truck 1')}` : 'Truck 1';
-            const truck1Card = createTruckCard(truck1Name, result.truck1, truck1Capacity, ['rijnsburg', 'naaldwijk'], routeAnalysis);
-            container.appendChild(truck1Card);
+            // Create separate card for EACH route
+            routes.forEach(route => {
+                const routeInfo = routeAnalysis[route.key];
+                if (!routeInfo) return;
 
-            // Truck 2 - shows Route 2 (Aalsmeer)
-            const truck2Capacity = cartLoadingOptimizer.getTruckCapacity('truck2');
-            const truck2Name = typeof i18n !== 'undefined' ? `${i18n.t('cartLoading.truck2', 'Truck 2')}` : 'Truck 2';
-            const truck2Card = createTruckCard(truck2Name, result.truck2, truck2Capacity, ['aalsmeer'], routeAnalysis);
-            container.appendChild(truck2Card);
+                // Get carts for this route only
+                const routeCarts = result.allCarts.filter(cart => cart.route === route.key);
+                
+                // Get assigned trucks (can be single or multiple)
+                // CRITICAL: No default - if null, show "Select Truck" message
+                const assignedTrucksStr = routeTruckAssignments[route.key] || null;
+                
+                // If no truck selected, show message to select truck first WITH cart information
+                if (!assignedTrucksStr) {
+                    const selectTruckMsg = typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruckFirst', 'Please select a truck for this route') : 'Please select a truck for this route';
+                    
+                    // Calculate cart statistics for display
+                    const totalCarts = routeCarts.length;
+                    const standardCarts = routeCarts.filter(c => c.type !== 'danish').length;
+                    const danishCarts = routeCarts.filter(c => c.type === 'danish').length;
+                    const maxCapacity = routeInfo.maxCapacity || 17;
+                    
+                    const routeCard = document.createElement('div');
+                    routeCard.className = 'route-card';
+                    routeCard.style.borderLeft = `4px solid ${route.color}`;
+                    routeCard.innerHTML = `
+                        <div style="padding: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                                <div>
+                                    <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 5px;">
+                                        ${route.name} (${route.time})
+                                    </div>
+                                    <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                                        ${selectTruckMsg}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.3rem; font-weight: 700; color: ${route.color};">
+                                        ${totalCarts}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                        ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts'} ${totalCarts > maxCapacity ? `(${typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow'})` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${totalCarts > 0 ? `
+                            <div style="background: ${route.bgColor}; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem;">
+                                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                    <div>
+                                        <strong>${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'Total Carts') : 'Total Carts'}:</strong> ${totalCarts}
+                                    </div>
+                                    ${standardCarts > 0 ? `
+                                    <div>
+                                        <strong>${typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard') : 'Standard'}:</strong> ${standardCarts}
+                                    </div>
+                                    ` : ''}
+                                    ${danishCarts > 0 ? `
+                                    <div>
+                                        <strong>${typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish') : 'Danish'}:</strong> ${danishCarts}
+                                    </div>
+                                    ` : ''}
+                                    <div>
+                                        <strong>${typeof i18n !== 'undefined' ? i18n.t('status.capacity', 'Capacity') : 'Capacity'}:</strong> ${maxCapacity} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.perTruck', 'per truck') : 'per truck'}
+                                    </div>
+                                </div>
+                                ${totalCarts > maxCapacity ? `
+                                <div style="margin-top: 8px; padding: 8px; background: #fee2e2; border-radius: 6px; color: #991b1b; font-weight: 600;">
+                                    ⚠️ ${totalCarts - maxCapacity} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.cartsOverflow', 'carts overflow - consider multiple trucks') : 'carts overflow - consider multiple trucks'}
+                                </div>
+                                ` : totalCarts <= maxCapacity ? `
+                                <div style="margin-top: 8px; padding: 8px; background: #d1fae5; border-radius: 6px; color: #065f46; font-weight: 600;">
+                                    ✓ ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.fitsInOneTruck', 'Fits in one truck') : 'Fits in one truck'}
+                                </div>
+                                ` : ''}
+                            </div>
+                            ` : ''}
+                            
+                            <div class="truck-selector">
+                                <label for="truck-select-${route.key}">
+                                    ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruck', 'Select Truck:') : 'Select Truck:'}
+                                </label>
+                                <select id="truck-select-${route.key}" onchange="updateRouteTruck('${route.key}', this.value)">
+                                    ${(() => {
+                                        const selectTruckText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruckOption', '-- Select Truck --') : '-- Select Truck --';
+                                        let options = [`<option value="" selected disabled>${selectTruckText}</option>`];
+                                        const availableOptions = getAvailableTruckOptions(route.key);
+                                        availableOptions.forEach(option => {
+                                            const disabled = !option.available ? 'disabled' : '';
+                                            const title = option.reason ? ` title="${option.reason}"` : '';
+                                            options.push(`<option value="${option.id}" ${disabled}${title}>
+                                                ${option.name}${!option.available ? ' (Unavailable)' : ''}
+                                            </option>`);
+                                        });
+                                        return options.join('');
+                                    })()}
+                                </select>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(routeCard);
+                    return; // Skip showing carts/visualization until truck is selected
+                }
+                
+                const assignedTruckIds = parseTruckAssignment(assignedTrucksStr);
+                
+                // Calculate combined capacity for multiple trucks
+                const combinedCapacity = getCombinedCapacity(assignedTruckIds, routeCarts);
+                const totalCarts = routeCarts.length;
+                const fits = totalCarts <= combinedCapacity.max;
+                const overflow = Math.max(0, totalCarts - combinedCapacity.max);
+                
+                // Create route capacity object
+                const routeCapacity = {
+                    max: combinedCapacity.max,
+                    used: totalCarts,
+                    overflow: overflow,
+                    fits: fits,
+                    truckCount: assignedTruckIds.length,
+                    perTruck: combinedCapacity.perTruck
+                };
+                
+                // Update routeInfo to reflect combined capacity
+                const updatedRouteInfo = {
+                    ...routeInfo,
+                    fits: fits,
+                    maxCapacity: combinedCapacity.max,
+                    overflow: overflow,
+                    totalCarts: totalCarts
+                };
+                
+                // Get display name for assigned trucks
+                const truckNames = {
+                    truck1: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1',
+                    truck2: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2',
+                    neighbor: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck',
+                    external: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck'
+                };
+                const assignedTruckName = assignedTruckIds.map(id => truckNames[id] || id).join(' + ');
+                
+                // Create route card
+                const routeCard = createRouteCard(route, updatedRouteInfo, routeCarts, routeCapacity, assignedTrucksStr, assignedTruckName, assignedTruckIds);
+                container.appendChild(routeCard);
+            });
         }
+        
+        function createRouteCard(route, routeInfo, routeCarts, routeCapacity, assignedTrucksStr, assignedTruckName, assignedTruckIds) {
+            const card = document.createElement('div');
+            card.className = 'route-card';
+            card.style.borderLeft = `4px solid ${route.color}`;
+            
+            // Use routeCapacity.fits (based on combined capacity) instead of routeInfo.fits
+            const statusClass = routeCapacity.fits ? 'success' : 'danger';
+            const statusIcon = routeCapacity.fits ? '✅' : '⚠️';
+            const statusText = routeCapacity.fits 
+                ? (typeof i18n !== 'undefined' ? i18n.t('status.fits', 'Fits') : 'Fits')
+                : (typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow');
+            
+            // Get unique clients for this route
+            const clients = [...new Set(routeCarts.map(cart => cart.client || 'Unknown'))];
+            const clientColorMap = {};
+            clients.forEach((client, index) => {
+                clientColorMap[client] = getClientColor(client, index);
+            });
+            
+            // Split carts between trucks if multiple trucks selected
+            const cartAssignments = splitCartsBetweenTrucks(routeCarts, assignedTruckIds, routeCapacity);
+            
+            // Create visualization slots - show carts split by truck
+            const slots = [];
+            const truckNames = {
+                truck1: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1',
+                truck2: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2',
+                neighbor: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck',
+                external: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck'
+            };
+            
+            // Show ALL selected trucks, even if empty (user wants to see empty trucks too)
+            assignedTruckIds.forEach((truckId, truckIndex) => {
+                const truckCarts = cartAssignments[truckId] || [];
+                
+                // Add truck separator label (except for first truck)
+                if (truckIndex > 0) {
+                    slots.push({
+                        type: 'truck-separator',
+                        truckName: truckNames[truckId] || truckId
+                    });
+                }
+                
+                // Add carts for this truck
+                truckCarts.forEach(cart => {
+                    const clientColor = clientColorMap[cart.client || 'Unknown'];
+                    const cartType = cart.type || (cart.cartType || 'standard');
+                    slots.push({
+                        type: cartType,
+                        client: cart.client || 'Unknown',
+                        color: clientColor,
+                        route: route.key,
+                        truckId: truckId
+                    });
+                });
+                
+                // Fill empty slots for this truck (always fill to capacity, even if truck is empty)
+                const perTruckCapacity = routeCapacity.perTruck;
+                // Count current slots for this truck (excluding separator)
+                let currentTruckSlotCount = slots.filter(s => s.truckId === truckId && s.type !== 'truck-separator').length;
+                // Fill up to capacity
+                while (currentTruckSlotCount < perTruckCapacity) {
+                    slots.push({ type: 'empty', truckId: truckId });
+                    currentTruckSlotCount++; // CRITICAL: Update counter to prevent infinite loop
+                }
+            });
+            
+            // Add overflow slots if any
+            if (routeCapacity.overflow > 0) {
+                for (let i = 0; i < routeCapacity.overflow; i++) {
+                    slots.push({ type: 'overflow' });
+                }
+            }
+            
+            // Truck selector
+            const truckSelectorId = `truck-selector-${route.key}`;
+            
+            card.innerHTML = `
+                <div class="truck-header">
+                    <div>
+                        <h2 style="margin: 0; color: ${route.color};">${route.name} (${route.time})</h2>
+                        <div style="margin-top: 8px;">
+                            <span class="badge ${statusClass}">${statusIcon} ${statusText}</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.2rem; font-weight: 700; color: ${route.color};">
+                            ${routeInfo.totalCarts} / ${routeCapacity.max}
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                            ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="truck-selector">
+                    <label for="${truckSelectorId}">
+                        ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruck', 'Select Truck:') : 'Select Truck:'}
+                    </label>
+                    <select id="${truckSelectorId}" onchange="updateRouteTruck('${route.key}', this.value)">
+                        ${(() => {
+                            let options = [];
+                            // If no truck selected, show "-- Select Truck --" as first option
+                            if (!assignedTrucksStr) {
+                                const selectTruckText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruckOption', '-- Select Truck --') : '-- Select Truck --';
+                                options.push(`<option value="" selected disabled>${selectTruckText}</option>`);
+                            }
+                            
+                            const availableOptions = getAvailableTruckOptions(route.key);
+                            availableOptions.forEach(option => {
+                                const selected = assignedTrucksStr === option.id ? 'selected' : '';
+                                const disabled = !option.available ? 'disabled' : '';
+                                const title = option.reason ? ` title="${option.reason}"` : '';
+                                options.push(`<option value="${option.id}" ${selected} ${disabled}${title}>
+                                    ${option.name}${!option.available ? ' (Unavailable)' : ''}
+                                </option>`);
+                            });
+                            return options.join('');
+                        })()}
+                    </select>
+                    ${(() => {
+                        const availableOptions = getAvailableTruckOptions(route.key);
+                        const unavailableOptions = availableOptions.filter(t => !t.available);
+                        if (unavailableOptions.length > 0) {
+                            return `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
+                                ${unavailableOptions.map(t => t.reason).join(', ')}
+                            </div>`;
+                        }
+                        return '';
+                    })()}
+                    ${routeCapacity.truckCount > 1 ? `
+                    <div style="font-size: 0.85rem; color: var(--success); margin-top: 8px; font-weight: 600;">
+                        ✓ Using ${routeCapacity.truckCount} trucks (${routeCapacity.perTruck} carts each)
+                    </div>
+                    ` : ''}
+                    
+                    ${!routeCapacity.fits && routeCapacity.overflow > 0 ? `
+                    <div style="margin-top: 15px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                        <div style="font-weight: 600; color: #92400e; margin-bottom: 8px;">
+                            ⚠️ Still ${routeCapacity.overflow} carts overflow
+                        </div>
+                        <div style="font-size: 0.9rem; color: #78350f; margin-bottom: 10px;">
+                            Add more trucks to handle overflow:
+                        </div>
+                        <div id="add-truck-buttons-${route.key}" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${(() => {
+                                const availableOptions = getAvailableTruckOptions(route.key);
+                                const singleTrucks = availableOptions.filter(t => 
+                                    !t.id.includes('+') && t.available && 
+                                    !assignedTruckIds.includes(t.id)
+                                );
+                                
+                                if (singleTrucks.length === 0) {
+                                    return '<div style="font-size: 0.85rem; color: var(--text-secondary);">No additional trucks available</div>';
+                                }
+                                
+                                return singleTrucks.map(truck => {
+                                    return `
+                                        <button 
+                                            type="button"
+                                            class="btn btn-secondary" 
+                                            style="font-size: 0.85rem; padding: 6px 12px;"
+                                            onclick="addTruckToRoute('${route.key}', '${truck.id}')">
+                                            + ${truck.name}
+                                        </button>
+                                    `;
+                                }).join('');
+                            })()}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="truck-body">
+                    <div class="truck-slots">
+                        ${slots.map(slot => {
+                            if (slot.type === 'truck-separator') {
+                                return `<div class="route-separator-label" style="grid-column: 1 / -1; background: #f0f9ff; border: 2px solid ${route.color}; color: ${route.color}; padding: 8px; border-radius: 6px; margin: 8px 0; font-weight: 600; font-size: 0.9rem; text-align: center;">
+                                    ── ${slot.truckName} ──
+                                </div>`;
+                            } else if (slot.type === 'standard') {
+                                const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'S';
+                                const standardCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart';
+                                const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
+                                const color = slot.color || route.color;
+                                const hexToRgb = (hex) => {
+                                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                                    return result ? {
+                                        r: parseInt(result[1], 16),
+                                        g: parseInt(result[2], 16),
+                                        b: parseInt(result[3], 16)
+                                    } : null;
+                                };
+                                const rgb = hexToRgb(color);
+                                const darkerColor = rgb ? `rgb(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)})` : color;
+                                return `<div class="cart-slot filled-standard" 
+                                         style="background: linear-gradient(135deg, ${color} 0%, ${darkerColor} 100%); border: 2px solid ${route.color}; border-left-width: 4px;" 
+                                         title="${standardCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
+                            } else if (slot.type === 'danish') {
+                                const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'D';
+                                const danishCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart';
+                                const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
+                                const color = slot.color || route.color;
+                                const hexToRgb = (hex) => {
+                                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                                    return result ? {
+                                        r: parseInt(result[1], 16),
+                                        g: parseInt(result[2], 16),
+                                        b: parseInt(result[3], 16)
+                                    } : null;
+                                };
+                                const rgb = hexToRgb(color);
+                                const darkerColor = rgb ? `rgb(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)})` : color;
+                                return `<div class="cart-slot filled-danish" 
+                                         style="background: linear-gradient(135deg, ${color} 0%, ${darkerColor} 100%); border: 2px solid ${route.color}; border-left-width: 4px;" 
+                                         title="${danishCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
+                            } else if (slot.type === 'overflow') {
+                                const overflowText = typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow';
+                                return `<div class="cart-slot overflow" style="border-color: ${route.color};" title="${overflowText}">!</div>`;
+                            } else {
+                                return '<div class="cart-slot empty" title="Empty"></div>';
+                            }
+                        }).join('')}
+                    </div>
+                </div>
+                
+                ${clients.length > 0 ? `
+                <div class="client-legend">
+                    <strong style="width: 100%; margin-bottom: 8px; display: block;">${typeof i18n !== 'undefined' ? i18n.t('cartLoading.clientColors', 'Client Colors') : 'Client Colors'}:</strong>
+                    ${clients.map(client => {
+                        const color = clientColorMap[client];
+                        return `
+                            <div class="client-legend-item">
+                                <div class="client-color-box" style="background: ${color};"></div>
+                                <span>${client}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                ` : ''}
+                
+                ${!routeCapacity.fits ? `
+                <div class="info-box danger" style="margin-top: 15px;">
+                    <strong>${typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow'}:</strong> ${routeCapacity.overflow} ${typeof i18n !== 'undefined' ? i18n.t('data.carts', 'carts') : 'carts'} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.dontFit', 'don\'t fit. Consider adding more trucks or external carrier.') : 'don\'t fit. Consider adding more trucks or external carrier.'}
+                </div>
+                ` : ''}
+            `;
+            
+            return card;
+        }
+        
+        // Prevent multiple simultaneous updates
+        let isUpdating = false;
+        
+        function updateRouteTruck(routeKey, truckSelection) {
+            // Prevent multiple simultaneous updates
+            if (isUpdating) {
+                console.log('Update already in progress, skipping...');
+                return;
+            }
+            
+            // Handle empty selection
+            if (!truckSelection || truckSelection === '') {
+                routeTruckAssignments[routeKey] = null;
+                localStorage.setItem('zuidplas_route_truck_assignments', JSON.stringify(routeTruckAssignments));
+                // Re-run optimization to update visualization
+                if (cartLoadingOptimizer && orderManager && orderManager.orders && orderManager.orders.length > 0) {
+                    isUpdating = true;
+                    try {
+                        const result = cartLoadingOptimizer.optimizeAssignment();
+                        if (result.routeAnalysis) {
+                            localStorage.setItem('zuidplas_route_analysis', JSON.stringify(result.routeAnalysis));
+                        }
+                        updateTruckVisualization(result);
+                    } catch (error) {
+                        console.error('Error updating visualization:', error);
+                    } finally {
+                        isUpdating = false;
+                    }
+                }
+                return;
+            }
+            
+            // Check if truck combination is available
+            const availableOptions = getAvailableTruckOptions(routeKey);
+            const selectedOption = availableOptions.find(t => t.id === truckSelection);
+            
+            if (!selectedOption || !selectedOption.available) {
+                alert(typeof i18n !== 'undefined' 
+                    ? i18n.t('cartLoading.truckUnavailable', 'This truck combination is unavailable due to time conflict with another route.')
+                    : 'This truck combination is unavailable due to time conflict with another route.');
+                // Reset to previous selection
+                const selector = document.getElementById(`truck-selector-${routeKey}`);
+                if (selector) {
+                    selector.value = routeTruckAssignments[routeKey] || '';
+                }
+                return;
+            }
+            
+            routeTruckAssignments[routeKey] = truckSelection;
+            
+            // Save to localStorage for Truck Management page
+            localStorage.setItem('zuidplas_route_truck_assignments', JSON.stringify(routeTruckAssignments));
+            
+            // Also save route analysis for Truck Management to show cart counts
+            if (cartLoadingOptimizer && orderManager && orderManager.orders && orderManager.orders.length > 0) {
+                isUpdating = true;
+                try {
+                    const result = cartLoadingOptimizer.optimizeAssignment();
+                    // Save route analysis
+                    if (result.routeAnalysis) {
+                        localStorage.setItem('zuidplas_route_analysis', JSON.stringify(result.routeAnalysis));
+                    }
+                    // Update visualization (will refresh all route cards with updated availability)
+                    updateTruckVisualization(result);
+                } catch (error) {
+                    console.error('Error updating truck visualization:', error);
+                    alert('Error updating visualization. Please refresh the page.');
+                } finally {
+                    isUpdating = false;
+                }
+            }
+        }
+        
+        function addTruckToRoute(routeKey, newTruckId) {
+            // Get current truck assignment
+            const currentAssignment = routeTruckAssignments[routeKey] || 'truck1';
+            const currentTrucks = parseTruckAssignment(currentAssignment);
+            
+            // Check if truck is already assigned
+            if (currentTrucks.includes(newTruckId)) {
+                alert(typeof i18n !== 'undefined' 
+                    ? i18n.t('cartLoading.truckAlreadyAdded', 'This truck is already assigned to this route.')
+                    : 'This truck is already assigned to this route.');
+                return;
+            }
+            
+            // Check if truck is available (not conflicting)
+            const availableOptions = getAvailableTruckOptions(routeKey);
+            const truckOption = availableOptions.find(t => t.id === newTruckId);
+            
+            if (!truckOption || !truckOption.available) {
+                alert(typeof i18n !== 'undefined' 
+                    ? i18n.t('cartLoading.truckUnavailable', 'This truck is unavailable due to time conflict with another route.')
+                    : 'This truck is unavailable due to time conflict with another route.');
+                return;
+            }
+            
+            // Add new truck to assignment
+            const newAssignment = currentTrucks.concat([newTruckId]).join('+');
+            routeTruckAssignments[routeKey] = newAssignment;
+            
+            // Save to localStorage for Truck Management page
+            localStorage.setItem('zuidplas_route_truck_assignments', JSON.stringify(routeTruckAssignments));
+            
+            // Also save route analysis
+            if (cartLoadingOptimizer && orderManager && orderManager.orders && orderManager.orders.length > 0) {
+                const result = cartLoadingOptimizer.optimizeAssignment();
+                if (result.routeAnalysis) {
+                    localStorage.setItem('zuidplas_route_analysis', JSON.stringify(result.routeAnalysis));
+                }
+            }
+            
+            // Update dropdown to show new combination
+            const selector = document.getElementById(`truck-selector-${routeKey}`);
+            if (selector) {
+                // Create custom option if it doesn't exist
+                const optionExists = Array.from(selector.options).some(opt => opt.value === newAssignment);
+                if (!optionExists) {
+                    const option = document.createElement('option');
+                    option.value = newAssignment;
+                    const truckNames = {
+                        truck1: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1',
+                        truck2: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2',
+                        neighbor: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck',
+                        external: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck'
+                    };
+                    const allTruckIds = parseTruckAssignment(newAssignment);
+                    option.textContent = allTruckIds.map(id => truckNames[id] || id).join(' + ');
+                    selector.appendChild(option);
+                }
+                selector.value = newAssignment;
+            }
+            
+            // Re-run optimization with new truck assignment
+            if (cartLoadingOptimizer && orderManager && orderManager.orders && orderManager.orders.length > 0) {
+                const result = cartLoadingOptimizer.optimizeAssignment();
+                // Update visualization (will refresh all route cards with updated availability)
+                updateTruckVisualization(result);
+            }
+        }
+        
+        // Make it global
+        window.addTruckToRoute = addTruckToRoute;
+        
+        // Make it global
+        window.updateRouteTruck = updateRouteTruck;
 
         // Generate unique color for each client
         function getClientColor(clientName, clientIndex) {
@@ -767,7 +1838,9 @@
             expectedRoutes.forEach(routeName => {
                 const routeInfo = routeAnalysis[routeName];
                 if (routeInfo) {
-                    const routeFits = routeInfo.fits;
+                    // CRITICAL: Use route's fits status (from dashboard calculation)
+                    // If route has overflow, truck shows overflow
+                    const routeFits = routeInfo.fits !== undefined ? routeInfo.fits : (routeInfo.totalCarts <= routeInfo.max);
                     if (!routeFits) hasOverflow = true;
                     
                     // Get route display name
@@ -781,8 +1854,9 @@
                         name: routeName,
                         displayName: routeDisplayNames[routeName] || routeName,
                         fits: routeFits,
-                        used: routeInfo.used,
-                        max: routeInfo.max,
+                        routeCarts: routeInfo.totalCarts, // This route's cart count
+                        used: routeInfo.used, // This route's equivalent carts
+                        max: routeInfo.max, // This route's max capacity
                         overflow: routeInfo.overflow,
                         totalCarts: routeInfo.totalCarts,
                         danishCount: routeInfo.danishCount,
@@ -802,63 +1876,158 @@
                 clientColorMap[client] = getClientColor(client, index);
             });
             
-            // Create cart slots with client information
-            const slots = [];
-            let slotIndex = 0;
+            // Group carts by route for clear separation
+            const cartsByRoute = {};
+            expectedRoutes.forEach(routeName => {
+                cartsByRoute[routeName] = truckData.carts.filter(cart => cart.route === routeName);
+            });
             
-            // Process each cart with client info
-            truckData.carts.forEach(cart => {
-                if (slotIndex < capacity.max) {
+            // Create route-separated cart slots
+            const routeSlots = [];
+            
+            expectedRoutes.forEach((routeName, routeIndex) => {
+                const routeCarts = cartsByRoute[routeName] || [];
+                const routeDisplayNames = {
+                    rijnsburg: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg',
+                    aalsmeer: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer',
+                    naaldwijk: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk'
+                };
+                const routeTime = routeName === 'rijnsburg' ? '09:00' : routeName === 'aalsmeer' ? '10:00' : '11:00';
+                const routeLabel = `${routeDisplayNames[routeName]} (${routeTime})`;
+                
+                // Add route separator label (except for first route)
+                if (routeIndex > 0) {
+                    routeSlots.push({
+                        type: 'route-separator',
+                        route: routeName,
+                        label: routeLabel
+                    });
+                }
+                
+                // Process carts for this route
+                routeCarts.forEach(cart => {
                     const clientColor = clientColorMap[cart.client || 'Unknown'];
-                    // Ensure type is set correctly
                     const cartType = cart.type || (cart.cartType || 'standard');
-                    slots.push({ 
+                    routeSlots.push({ 
                         type: cartType, 
-                        index: slotIndex,
                         client: cart.client || 'Unknown',
                         color: clientColor,
                         route: cart.route
                     });
-                    slotIndex++;
+                });
+                
+                // Add empty slots for this route if needed (only for visualization clarity)
+                const routeInfo = routeAnalysis[routeName];
+                const routeMaxCapacity = routeInfo ? routeInfo.max : capacity.max;
+                const routeCartsCount = routeCarts.length;
+                const routeEmptySlots = Math.max(0, routeMaxCapacity - routeCartsCount);
+                
+                // Only add a few empty slots as visual separator, not all
+                if (routeEmptySlots > 0 && routeIndex < expectedRoutes.length - 1) {
+                    // Add 1-2 empty slots as visual gap between routes
+                    for (let i = 0; i < Math.min(2, routeEmptySlots); i++) {
+                        routeSlots.push({ type: 'empty', route: routeName });
+                    }
                 }
             });
-            
-            // Fill remaining slots as empty
-            while (slotIndex < capacity.max) {
-                slots.push({ type: 'empty', index: slotIndex });
-                slotIndex++;
-            }
-            
-            // Add overflow slots if needed
-            if (capacity.overflow > 0) {
-                for (let i = 0; i < capacity.overflow; i++) {
-                    slots.push({ type: 'overflow', index: slotIndex });
-                    slotIndex++;
-                }
-            }
 
-            // Build route breakdown HTML
+            // Build route breakdown HTML with color-coded sections and cost impact
             let routeBreakdownHTML = '';
             if (routeStatuses.length > 0) {
                 routeBreakdownHTML = '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">';
                 routeStatuses.forEach(routeStatus => {
                     const routeStatusClass = routeStatus.fits ? 'success' : 'danger';
                     const routeStatusIcon = routeStatus.fits ? '✅' : '⚠️';
+                    
+                    // Calculate cost impact
+                    const routeCost = calculateRouteCost(routeStatus);
+                    const costImpactHTML = routeCost > 0 
+                        ? `<span class="cost-impact negative">+€${routeCost} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.extraCost', 'extra cost') : 'extra cost'}</span>`
+                        : '';
+                    
+                    // Get route section class for color coding
+                    const routeSectionClass = routeStatus.name;
+                    
                     routeBreakdownHTML += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: #f9fafb; border-radius: 6px;">
-                            <div>
+                        <div class="route-section ${routeSectionClass}">
+                            <div class="route-section-header">
                                 <strong>${routeStatus.displayName}</strong>
                                 <span class="badge ${routeStatusClass}" style="margin-left: 8px;">${routeStatusIcon} ${routeStatus.fits ? (typeof i18n !== 'undefined' ? i18n.t('status.fits', 'Fits') : 'Fits') : (typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow')}</span>
+                                ${costImpactHTML}
                             </div>
-                            <div style="text-align: right; font-size: 0.9rem;">
-                                <div>${routeStatus.totalCarts} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts'}</div>
-                                <div style="color: var(--text-secondary);">${routeStatus.used} / ${routeStatus.max} ${typeof i18n !== 'undefined' ? i18n.t('status.capacity', 'capacity') : 'capacity'}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+                                <div><strong>${routeStatus.totalCarts}</strong> ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts'}</div>
+                                <div style="color: var(--text-secondary);">
+                                    ${routeStatus.totalCarts} / ${routeStatus.max} ${typeof i18n !== 'undefined' ? i18n.t('status.capacity', 'capacity') : 'capacity'}
+                                </div>
                                 ${!routeStatus.fits ? `<div style="color: var(--danger); font-weight: 600;">+${routeStatus.overflow} ${typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'overflow') : 'overflow'}</div>` : ''}
                             </div>
                         </div>
                     `;
                 });
                 routeBreakdownHTML += '</div>';
+            }
+            
+            // Add loading sequence for this truck
+            const loadingSequences = calculateLoadingSequence(truckData, routeAnalysis);
+            let loadingSequenceHTML = '';
+            Object.keys(loadingSequences).forEach(routeName => {
+                const sequence = loadingSequences[routeName];
+                if (sequence.length === 0) return;
+                
+                const routeDisplayNames = {
+                    rijnsburg: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg',
+                    aalsmeer: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer',
+                    naaldwijk: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk'
+                };
+                
+                const sequenceId = `loading-seq-${routeName}-${Date.now()}`;
+                const showMoreId = `show-more-${routeName}-${Date.now()}`;
+                const fullListId = `full-list-${routeName}-${Date.now()}`;
+                
+                loadingSequenceHTML += `
+                    <div class="loading-sequence">
+                        <div class="loading-sequence-title">
+                            📦 ${routeDisplayNames[routeName]} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.loadingSequence', 'Loading Sequence') : 'Loading Sequence'}
+                        </div>
+                        <div class="loading-sequence-help" style="background: #f0f9ff; padding: 12px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #3b82f6;">
+                            <strong style="color: #1e40af;">📋 ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.loadingSequenceHelp', 'How to Load:') : 'How to Load:'}</strong><br>
+                            <span style="font-size: 0.9rem; color: #1e3a8a;">
+                            ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.lastDeliveryFirst', 'Last delivery first (goes on top)') : 'Last delivery first (goes on top)'}, 
+                            ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.firstDeliveryLast', 'first delivery last (goes at bottom)') : 'first delivery last (goes at bottom)'}.<br>
+                            <em>${typeof i18n !== 'undefined' ? i18n.t('cartLoading.loadingSequenceExplanation', 'Why? So when unloading, first delivery is on top and easy to access!') : 'Why? So when unloading, first delivery is on top and easy to access!'}</em>
+                            </span>
+                        </div>
+                        <div class="loading-steps" id="${sequenceId}">
+                            ${sequence.slice(0, 10).map(item => `
+                                <div class="loading-step" title="${item.client} - Step ${item.step}">
+                                    <span class="loading-step-number">${item.step}</span>
+                                    <span>${item.client.charAt(0).toUpperCase()}</span>
+                                </div>
+                            `).join('')}
+                            ${sequence.length > 10 ? `
+                                <button type="button" class="loading-more-btn" onclick="showFullLoadingSequence('${fullListId}', '${showMoreId}', ${sequence.length - 10})">
+                                    +${sequence.length - 10} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.more', 'more') : 'more'}
+                                </button>
+                            ` : ''}
+                        </div>
+                        ${sequence.length > 10 ? `
+                            <div class="loading-full-list" id="${fullListId}" style="display: none;">
+                                ${sequence.map(item => `
+                                    <div class="loading-full-item">
+                                        <span class="loading-step-number">${item.step}</span>
+                                        <span><strong>${item.client}</strong></span>
+                                        <span style="color: var(--text-secondary); font-size: 0.75rem;">(${item.type === 'danish' ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart') : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart')})</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            if (loadingSequenceHTML) {
+                routeBreakdownHTML += loadingSequenceHTML;
             }
             
             card.innerHTML = `
@@ -870,11 +2039,8 @@
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">
-                            ${capacity.used} / ${capacity.max}
-                        </div>
                         <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                            ${capacity.utilization}% ${typeof i18n !== 'undefined' ? i18n.t('status.utilized', 'utilized') : 'utilized'}
+                            ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.routesOnTruck', 'Routes on this truck') : 'Routes on this truck'}: ${routes.length}
                         </div>
                     </div>
                 </div>
@@ -882,7 +2048,7 @@
 
                 <div class="truck-body">
                     <div class="truck-slots">
-                        ${slots.map(slot => {
+                        ${routeSlots.map(slot => {
                             if (slot.type === 'standard') {
                                 const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'S';
                                 const standardCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart';
@@ -998,9 +2164,32 @@
                 }
             });
 
+            // Get truck names mapping
+            const truckNames = {
+                truck1: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1',
+                truck2: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2',
+                neighbor: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck',
+                external: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck'
+            };
+
             Object.keys(ROUTES).forEach(routeKey => {
                 const route = ROUTES[routeKey];
                 const carts = cartsByRoute[routeKey] || [];
+                
+                // Get the actual selected truck assignment for this route
+                const assignedTrucksStr = routeTruckAssignments[routeKey] || null;
+                let truckDisplayName = typeof i18n !== 'undefined' ? i18n.t('cartLoading.notAssigned', 'Not Assigned') : 'Not Assigned';
+                
+                if (assignedTrucksStr) {
+                    const assignedTruckIds = parseTruckAssignment(assignedTrucksStr);
+                    // If only one truck, show its name. If multiple, show "Truck 1 + Truck 2" format
+                    if (assignedTruckIds.length === 1) {
+                        truckDisplayName = truckNames[assignedTruckIds[0]] || assignedTruckIds[0];
+                    } else {
+                        // Multiple trucks - show combined name
+                        truckDisplayName = assignedTruckIds.map(id => truckNames[id] || id).join(' + ');
+                    }
+                }
                 
                 const routeCard = document.createElement('div');
                 routeCard.className = 'card';
@@ -1010,11 +2199,6 @@
                     <h3>Route ${route.id}: ${route.name} (${route.departureTime})</h3>
                     <div class="cart-list">
                         ${carts.length > 0 ? carts.map(cart => {
-                            const truck1Text = typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1';
-                            const truck2Text = typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2';
-                            const notAssignedText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.notAssigned', 'Not Assigned') : 'Not Assigned';
-                            const truckAssignment = cartLoadingOptimizer.truckAssignments.truck1.carts.includes(cart) ? truck1Text :
-                                                   cartLoadingOptimizer.truckAssignments.truck2.carts.includes(cart) ? truck2Text : notAssignedText;
                             const cartTypeText = cart.type === 'danish' 
                                 ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart')
                                 : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart');
@@ -1023,7 +2207,7 @@
                                     <div>
                                         <strong>${cart.client}</strong>
                                         <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
-                                            ${cartTypeText} • ${truckAssignment}
+                                            ${cartTypeText}
                                         </div>
                                     </div>
                                     <div>
@@ -1052,6 +2236,251 @@
             document.getElementById('carts-assigned').textContent = result.truck1.carts.length + result.truck2.carts.length;
             document.getElementById('overflow-count').textContent = totalOverflow;
             document.getElementById('routes-covered').textContent = `${routesCovered}/3`;
+        }
+
+        // Feature 1: Route Timeline Visualization
+        function updateRouteTimeline(result) {
+            const timelineContainer = document.querySelector('#route-timeline .timeline-container');
+            const timelineDiv = document.getElementById('route-timeline');
+            
+            if (!timelineContainer || !result.routeAnalysis) {
+                if (timelineDiv) timelineDiv.style.display = 'none';
+                return;
+            }
+            
+            timelineDiv.style.display = 'block';
+            
+            const routes = [
+                { key: 'rijnsburg', time: '09:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', class: 'route1' },
+                { key: 'aalsmeer', time: '10:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', class: 'route2' },
+                { key: 'naaldwijk', time: '11:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', class: 'route3' }
+            ];
+            
+            // Determine which truck handles which route
+            const truck1Routes = Array.from(result.truck1.routes);
+            const truck2Routes = Array.from(result.truck2.routes);
+            
+            timelineContainer.innerHTML = '<div class="timeline-connector"></div>';
+            
+            routes.forEach(route => {
+                const routeInfo = result.routeAnalysis[route.key];
+                if (!routeInfo) return;
+                
+                const isTruck1 = truck1Routes.includes(route.key);
+                const truckName = isTruck1 
+                    ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1')
+                    : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2');
+                
+                const statusIcon = routeInfo.fits ? '✅' : '⚠️';
+                const statusText = routeInfo.fits 
+                    ? (typeof i18n !== 'undefined' ? i18n.t('status.fits', 'Fits') : 'Fits')
+                    : (typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow');
+                
+                const point = document.createElement('div');
+                point.className = 'timeline-point';
+                point.innerHTML = `
+                    <div class="timeline-time ${route.class}">${route.time}</div>
+                    <div class="timeline-route-info">
+                        <strong>${route.name}</strong>
+                        <div class="timeline-truck">${truckName}</div>
+                        <div style="margin-top: 5px;">
+                            <span>${statusIcon} ${statusText}</span>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
+                                ${routeInfo.totalCarts} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                timelineContainer.appendChild(point);
+            });
+        }
+
+        // Feature 2 & 3: Color-Coded Route Sections & Cost Impact
+        function calculateRouteCost(routeInfo) {
+            if (!routeInfo || routeInfo.fits) return 0;
+            
+            // Cost constants (matching optimizer.js)
+            const OWN_TRUCK_COST = 150;
+            const EXTERNAL_CARRIER_PER_CART = 25;
+            
+            // If overflow, calculate external carrier cost
+            return routeInfo.overflow * EXTERNAL_CARRIER_PER_CART;
+        }
+
+        // Feature 4: Generate Alternative Assignments
+        function generateAlternatives(result) {
+            const alternativesToggle = document.getElementById('alternatives-toggle');
+            const alternativesContainer = document.getElementById('alternatives-container');
+            
+            if (!result.routeAnalysis) {
+                if (alternativesToggle) alternativesToggle.style.display = 'none';
+                return;
+            }
+            
+            alternativesToggle.style.display = 'block';
+            
+            // Generate alternative scenarios
+            const alternatives = [];
+            const route1 = result.routeAnalysis.rijnsburg;
+            const route2 = result.routeAnalysis.aalsmeer;
+            const route3 = result.routeAnalysis.naaldwijk;
+            
+            // Alternative 1: Current (default)
+            alternatives.push({
+                id: 'current',
+                name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.currentAssignment', 'Current Assignment') : 'Current Assignment',
+                description: typeof i18n !== 'undefined' ? i18n.t('cartLoading.currentDesc', 'Truck 1: Route 1 + Route 3, Truck 2: Route 2') : 'Truck 1: Route 1 + Route 3, Truck 2: Route 2',
+                cost: calculateTotalCost(result.routeAnalysis),
+                recommended: true,
+                routes: {
+                    truck1: ['rijnsburg', 'naaldwijk'],
+                    truck2: ['aalsmeer']
+                }
+            });
+            
+            // Alternative 2: Swap Route 3 to Truck 2 (if Route 2 fits)
+            if (route2 && route2.fits && route3 && route3.totalCarts <= 17) {
+                alternatives.push({
+                    id: 'swap-route3',
+                    name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.alternative1', 'Alternative: Route 3 on Truck 2') : 'Alternative: Route 3 on Truck 2',
+                    description: typeof i18n !== 'undefined' ? i18n.t('cartLoading.alt1Desc', 'Truck 1: Route 1 only, Truck 2: Route 2 + Route 3') : 'Truck 1: Route 1 only, Truck 2: Route 2 + Route 3',
+                    cost: calculateTotalCost(result.routeAnalysis, { route3ToTruck2: true }),
+                    recommended: false,
+                    routes: {
+                        truck1: ['rijnsburg'],
+                        truck2: ['aalsmeer', 'naaldwijk']
+                    }
+                });
+            }
+            
+            // Store alternatives for toggle function
+            window.currentAlternatives = alternatives;
+        }
+
+        function calculateTotalCost(routeAnalysis, options = {}) {
+            const OWN_TRUCK_COST = 150;
+            const EXTERNAL_CARRIER_PER_CART = 25;
+            
+            let cost = 0;
+            
+            if (options.route3ToTruck2) {
+                // Alternative: Route 3 on Truck 2
+                cost += OWN_TRUCK_COST; // Truck 1: Route 1
+                cost += OWN_TRUCK_COST; // Truck 2: Route 2 + Route 3
+                
+                // Check overflow
+                const route1Overflow = routeAnalysis.rijnsburg ? (routeAnalysis.rijnsburg.overflow || 0) : 0;
+                const route2Overflow = routeAnalysis.aalsmeer ? (routeAnalysis.aalsmeer.overflow || 0) : 0;
+                const route3Overflow = routeAnalysis.naaldwijk ? (routeAnalysis.naaldwijk.overflow || 0) : 0;
+                cost += (route1Overflow + route2Overflow + route3Overflow) * EXTERNAL_CARRIER_PER_CART;
+            } else {
+                // Default: Route 3 on Truck 1
+                cost += OWN_TRUCK_COST; // Truck 1: Route 1 + Route 3
+                cost += OWN_TRUCK_COST; // Truck 2: Route 2
+                
+                // Check overflow
+                const route1Overflow = routeAnalysis.rijnsburg ? (routeAnalysis.rijnsburg.overflow || 0) : 0;
+                const route2Overflow = routeAnalysis.aalsmeer ? (routeAnalysis.aalsmeer.overflow || 0) : 0;
+                const route3Overflow = routeAnalysis.naaldwijk ? (routeAnalysis.naaldwijk.overflow || 0) : 0;
+                cost += (route1Overflow + route2Overflow + route3Overflow) * EXTERNAL_CARRIER_PER_CART;
+            }
+            
+            return cost;
+        }
+
+        function toggleAlternatives() {
+            const container = document.getElementById('alternatives-container');
+            const button = document.querySelector('#alternatives-toggle button');
+            
+            if (!container || !window.currentAlternatives) return;
+            
+            if (container.style.display === 'none' || !container.style.display) {
+                container.style.display = 'grid';
+                if (button) {
+                    button.textContent = typeof i18n !== 'undefined' 
+                        ? i18n.t('cartLoading.hideAlternatives', 'Hide Alternatives')
+                        : 'Hide Alternatives';
+                }
+                
+                container.innerHTML = '';
+                window.currentAlternatives.forEach(alt => {
+                    const card = document.createElement('div');
+                    card.className = `alternative-card ${alt.recommended ? 'recommended' : ''}`;
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 1rem;">${alt.name}</h3>
+                                ${alt.recommended ? `<span class="badge success" style="margin-top: 5px;">${typeof i18n !== 'undefined' ? i18n.t('cartLoading.recommended', 'Recommended') : 'Recommended'}</span>` : ''}
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary);">€${alt.cost}</div>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 10px 0;">${alt.description}</p>
+                    `;
+                    container.appendChild(card);
+                });
+            } else {
+                container.style.display = 'none';
+                if (button) {
+                    button.textContent = typeof i18n !== 'undefined' 
+                        ? i18n.t('cartLoading.showAlternatives', 'Show Alternative Assignments')
+                        : 'Show Alternative Assignments';
+                }
+            }
+        }
+
+        // Feature 5: Loading Sequence Optimization
+        function calculateLoadingSequence(truckData, routeAnalysis) {
+            const sequences = {};
+            const routes = Array.from(truckData.routes);
+            
+            routes.forEach(routeName => {
+                const routeCarts = truckData.carts.filter(cart => cart.route === routeName);
+                const routeInfo = routeAnalysis[routeName];
+                
+                if (routeCarts.length === 0) return;
+                
+                // Sort carts: Last delivery first (LIFO - Last In First Out)
+                // Group by client, then sort by delivery location/priority
+                const sortedCarts = [...routeCarts].sort((a, b) => {
+                    // Danish carts might need special handling
+                    if (a.type === 'danish' && b.type !== 'danish') return 1;
+                    if (a.type !== 'danish' && b.type === 'danish') return -1;
+                    return 0;
+                });
+                
+                sequences[routeName] = sortedCarts.map((cart, index) => ({
+                    step: index + 1,
+                    client: cart.client || 'Unknown',
+                    type: cart.type || 'standard',
+                    route: routeName
+                }));
+            });
+            
+            return sequences;
+        }
+
+        // Show full loading sequence when "+X more" is clicked
+        function showFullLoadingSequence(fullListId, showMoreId, remainingCount) {
+            const fullList = document.getElementById(fullListId);
+            const showMoreBtn = document.querySelector(`button[onclick*="${fullListId}"]`);
+            
+            if (!fullList) return;
+            
+            if (fullList.style.display === 'none' || !fullList.style.display) {
+                fullList.style.display = 'block';
+                if (showMoreBtn) {
+                    showMoreBtn.textContent = typeof i18n !== 'undefined' 
+                        ? i18n.t('cartLoading.hideFullList', 'Hide Full List')
+                        : 'Hide Full List';
+                }
+            } else {
+                fullList.style.display = 'none';
+                if (showMoreBtn) {
+                    showMoreBtn.textContent = `+${remainingCount} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.more', 'more') : 'more'}`;
+                }
+            }
         }
 
         // Check on page load - but DON'T auto-optimize

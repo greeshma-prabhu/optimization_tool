@@ -469,6 +469,19 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
+    position: relative;
+    z-index: 10;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.btn-demo:focus,
+.btn-demo:active {
+    outline: none;
+    border-color: #ea580c;
+    background: #ea580c;
 }
 
 .btn-refresh:hover,

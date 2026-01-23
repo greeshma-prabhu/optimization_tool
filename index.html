@@ -68,16 +68,6 @@
                 <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
-            <a href="trucks.html" class="nav-item">
-                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="1" y="3" width="15" height="13"></rect>
-                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                </svg>
-                <span data-i18n="nav.trucks">Trucks</span>
-            </a>
-            
             <a href="cart-loading.html" class="nav-item">
                 <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="7" width="20" height="14" rx="2"></rect>
@@ -87,6 +77,16 @@
                     <line x1="16" y1="12" x2="16" y2="16"></line>
                 </svg>
                 <span data-i18n="nav.cartOptimization">Cart Optimization</span>
+            </a>
+            
+            <a href="trucks.html" class="nav-item">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="3" width="15" height="13"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <span data-i18n="nav.trucks">Trucks</span>
             </a>
             
             <a href="costs.html" class="nav-item">
@@ -298,15 +298,22 @@
             const demoBtn = document.getElementById('demo-btn');
             
             if (syncBtn) {
+                // Ensure button type is set
+                syncBtn.setAttribute('type', 'button');
+                
                 // Remove any existing listeners by cloning
                 const newSyncBtn = syncBtn.cloneNode(true);
                 syncBtn.parentNode.replaceChild(newSyncBtn, syncBtn);
                 
-                newSyncBtn.addEventListener('click', function(e) {
+                // Get reference to the new button
+                const finalSyncBtn = document.getElementById('sync-btn');
+                
+                finalSyncBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
                     console.log('Sync button clicked - calling syncOrders');
+                    
                     if (typeof window.syncOrders === 'function') {
                         window.syncOrders(false);
                     } else if (typeof syncOrders === 'function') {
@@ -315,19 +322,26 @@
                         console.error('syncOrders function not found!');
                     }
                     return false;
-                }, true); // Use capture phase for early binding
+                }, false); // Use bubble phase, not capture
             }
             
             if (demoBtn) {
+                // Ensure button type is set
+                demoBtn.setAttribute('type', 'button');
+                
                 // Remove any existing listeners by cloning
                 const newDemoBtn = demoBtn.cloneNode(true);
                 demoBtn.parentNode.replaceChild(newDemoBtn, demoBtn);
                 
-                newDemoBtn.addEventListener('click', function(e) {
+                // Get reference to the new button
+                const finalDemoBtn = document.getElementById('demo-btn');
+                
+                finalDemoBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
                     console.log('Demo button clicked - calling loadDemoData');
+                    
                     if (typeof window.loadDemoData === 'function') {
                         window.loadDemoData();
                     } else if (typeof loadDemoData === 'function') {
@@ -336,10 +350,10 @@
                         console.error('loadDemoData function not found!');
                     }
                     return false;
-                }, true); // Use capture phase for early binding
+                }, false); // Use bubble phase, not capture
             }
             
-            // Prevent date picker from interfering
+            // Prevent date picker from interfering with buttons
             if (datePicker) {
                 datePicker.addEventListener('click', function(e) {
                     e.stopPropagation();

@@ -68,16 +68,6 @@
                 <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
-            <a href="trucks.html" class="nav-item active" data-page="trucks">
-                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="1" y="3" width="15" height="13"></rect>
-                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                </svg>
-                <span data-i18n="nav.trucks">Trucks</span>
-            </a>
-            
             <a href="cart-loading.html" class="nav-item " data-page="cart-loading">
                 <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="7" width="20" height="14" rx="2"></rect>
@@ -87,6 +77,16 @@
                     <line x1="16" y1="12" x2="16" y2="16"></line>
                 </svg>
                 <span data-i18n="nav.cartOptimization">Cart Optimization</span>
+            </a>
+            
+            <a href="trucks.html" class="nav-item active" data-page="trucks">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="3" width="15" height="13"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <span data-i18n="nav.trucks">Trucks</span>
             </a>
             
             <a href="costs.html" class="nav-item " data-page="costs">
@@ -110,15 +110,6 @@
             <!-- Populated by JavaScript -->
         </div>
 
-        <!-- Cart Loading Visualization -->
-        <div class="card">
-            <h2 data-i18n="trucks.cartLoadingViz">Cart Loading Visualization</h2>
-            <div id="cart-loading-viz">
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary);" data-i18n="trucks.runOptimizationToSee">
-                    Run optimization to see cart loading visualization
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
@@ -190,9 +181,131 @@
                 <div style="background: #f9fafb; padding: 20px; border-radius: 8px;">
                     <h3 style="margin-bottom: 15px;">${typeof i18n !== 'undefined' ? i18n.t('trucks.todayAllocation', "Today's Allocation") : "Today's Allocation"}</h3>
                     <div id="truck-${truck.id}-allocation">
-                        <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-                            ${typeof i18n !== 'undefined' ? i18n.t('trucks.noAllocation', 'No allocation yet') : 'No allocation yet'}
-                        </div>
+                        ${(() => {
+                            // Load route truck assignments from Cart Optimization
+                            const savedAssignments = localStorage.getItem('zuidplas_route_truck_assignments');
+                            let routeAssignments = {};
+                            if (savedAssignments) {
+                                try {
+                                    routeAssignments = JSON.parse(savedAssignments);
+                                } catch (e) {
+                                    console.warn('Failed to load route assignments:', e);
+                                }
+                            }
+                            
+                            // Also try to get route analysis for cart counts
+                            let routeAnalysis = {};
+                            try {
+                                const savedRouteAnalysis = localStorage.getItem('zuidplas_route_analysis');
+                                if (savedRouteAnalysis) {
+                                    routeAnalysis = JSON.parse(savedRouteAnalysis);
+                                }
+                            } catch (e) {
+                                console.warn('Failed to load route analysis:', e);
+                            }
+                            
+                            // Map truck ID to route assignments
+                            const truckRouteMap = {
+                                'own-truck-1': 'truck1',
+                                'own-truck-2': 'truck2',
+                                'neighbor-truck': 'neighbor',
+                                'external-truck': 'external'
+                            };
+                            
+                            const currentTruckId = truckRouteMap[truck.id] || truck.id;
+                            const assignedRoutes = [];
+                            
+                            // Check which routes are assigned to this truck
+                            const routeNames = {
+                                rijnsburg: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg',
+                                aalsmeer: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer',
+                                naaldwijk: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk'
+                            };
+                            
+                            const routeTimes = {
+                                rijnsburg: '09:00',
+                                aalsmeer: '10:00',
+                                naaldwijk: '11:00'
+                            };
+                            
+                            Object.keys(routeAssignments).forEach(routeKey => {
+                                const assignment = routeAssignments[routeKey];
+                                // Parse assignment (can be "truck1", "truck1+truck2", etc.)
+                                const assignedTrucks = assignment.includes('+') 
+                                    ? assignment.split('+').map(t => t.trim())
+                                    : [assignment];
+                                
+                                if (assignedTrucks.includes(currentTruckId)) {
+                                    const routeInfo = routeAnalysis[routeKey] || {};
+                                    assignedRoutes.push({
+                                        route: routeKey,
+                                        name: routeNames[routeKey] || routeKey,
+                                        time: routeTimes[routeKey] || '',
+                                        isShared: assignedTrucks.length > 1,
+                                        totalCarts: routeInfo.totalCarts || 0,
+                                        maxCapacity: routeInfo.maxCapacity || 17,
+                                        fits: routeInfo.fits !== undefined ? routeInfo.fits : true,
+                                        overflow: routeInfo.overflow || 0
+                                    });
+                                }
+                            });
+                            
+                            if (assignedRoutes.length === 0) {
+                                return `<div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                                    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; color: var(--text-primary);">
+                                        ${typeof i18n !== 'undefined' ? i18n.t('trucks.noAllocation', 'No allocation yet') : 'No allocation yet'}
+                                    </div>
+                                    <div style="font-size: 0.9rem; margin-top: 15px; margin-bottom: 20px; color: var(--text-secondary); line-height: 1.6;">
+                                        ${typeof i18n !== 'undefined' ? i18n.t('trucks.goToCartOptimization', 'Go to Cart Optimization to assign routes') : 'Go to Cart Optimization to assign routes'}
+                                    </div>
+                                    <a href="cart-loading.html" class="btn btn-primary" style="display: inline-block; padding: 10px 20px; text-decoration: none;">
+                                        ${typeof i18n !== 'undefined' ? i18n.t('trucks.goToCartOptimizationButton', 'Go to Cart Optimization') : 'Go to Cart Optimization'} →
+                                    </a>
+                                </div>`;
+                            }
+                            
+                            return assignedRoutes.map(route => {
+                                const departureText = typeof i18n !== 'undefined' ? i18n.t('trucks.departure', 'Departure') : 'Departure';
+                                const scheduledText = typeof i18n !== 'undefined' ? i18n.t('trucks.scheduled', 'Scheduled') : 'Scheduled';
+                                const sharedText = typeof i18n !== 'undefined' ? i18n.t('trucks.sharedWithOtherTrucks', 'Shared with other trucks') : 'Shared with other trucks';
+                                const cartsText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts';
+                                const capacityText = typeof i18n !== 'undefined' ? i18n.t('status.capacity', 'capacity') : 'capacity';
+                                
+                                return `
+                                <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--primary);">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                        <div>
+                                            <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 5px;">${route.name}</div>
+                                            <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                                ${departureText}: ${route.time}
+                                            </div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">
+                                                ${route.totalCarts} / ${route.maxCapacity}
+                                            </div>
+                                            <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                                ${cartsText} (${capacityText})
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ${route.isShared ? `
+                                    <div style="font-size: 0.85rem; color: var(--warning); margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
+                                        ⚠️ ${sharedText}
+                                    </div>
+                                    ` : ''}
+                                    ${!route.fits && route.overflow > 0 ? `
+                                    <div style="font-size: 0.85rem; color: var(--danger); margin-top: 8px; padding: 8px; background: #fee2e2; border-radius: 6px;">
+                                        ⚠️ ${typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow'}: ${route.overflow} ${cartsText}
+                                    </div>
+                                    ` : ''}
+                                    <div style="margin-top: 10px;">
+                                        <span class="badge ${route.fits ? 'success' : 'danger'}">${scheduledText}</span>
+                                    </div>
+                                </div>
+                            `;
+                            }).join('');
+                        })()}
                     </div>
                 </div>
                 
@@ -250,6 +363,9 @@
                 : '📞 Call neighbor to confirm truck availability for Route 1 (Rijnsburg - 9:00 AM)';
             alert(msg);
         }
+        
+        // Truck selection is now only in Cart Optimization page
+        // This page displays the assignments made there
 
         function updateCartLoadingViz() {
             if (!currentOptimizer || orderManager.orders.length === 0) return;
@@ -295,12 +411,33 @@
             });
         }
 
+        // Track last known assignments to detect changes
+        let lastKnownAssignments = null;
+        
+        function checkForAssignmentUpdates() {
+            const savedAssignments = localStorage.getItem('zuidplas_route_truck_assignments');
+            if (savedAssignments !== lastKnownAssignments) {
+                lastKnownAssignments = savedAssignments;
+                loadTruckStatus(); // Reload to show updated allocations
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
             loadTruckStatus();
             if (currentOptimizer) {
                 updateTruckAllocations();
                 updateCartLoadingViz();
             }
+            
+            // Listen for storage changes (works across tabs)
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'zuidplas_route_truck_assignments') {
+                    loadTruckStatus(); // Reload to show updated allocations
+                }
+            });
+            
+            // Check for changes every second (for same-window updates)
+            setInterval(checkForAssignmentUpdates, 1000);
         });
         
         // Toggle sidebar collapse (desktop)

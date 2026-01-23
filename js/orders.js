@@ -84,6 +84,11 @@ class OrderManager {
                 localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
                 localStorage.setItem('zuidplas_using_demo_data', 'true');
                 localStorage.setItem('zuidplas_orders_loaded', 'true'); // Flag: orders were explicitly loaded
+                
+                // CRITICAL: Clear previous truck assignments when new data is loaded
+                // User must select trucks fresh each time
+                localStorage.removeItem('zuidplas_route_truck_assignments');
+                console.log('🔄 Cleared previous truck assignments - user must select fresh');
             } catch (e) {
                 console.warn('Could not save orders to localStorage:', e);
             }
@@ -112,6 +117,11 @@ class OrderManager {
                 localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
                 localStorage.setItem('zuidplas_using_demo_data', 'false');
                 localStorage.setItem('zuidplas_orders_loaded', 'true'); // Flag: orders were explicitly loaded
+                
+                // CRITICAL: Clear previous truck assignments when new data is loaded
+                // User must select trucks fresh each time
+                localStorage.removeItem('zuidplas_route_truck_assignments');
+                console.log('🔄 Cleared previous truck assignments - user must select fresh');
             } catch (e) {
                 console.warn('Could not save orders to localStorage:', e);
             }

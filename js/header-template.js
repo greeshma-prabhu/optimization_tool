@@ -59,16 +59,6 @@ function getHeaderHTML() {
                 <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
-            <a href="trucks.html" class="nav-item" data-page="trucks">
-                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="1" y="3" width="15" height="13"></rect>
-                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                </svg>
-                <span data-i18n="nav.trucks">Trucks</span>
-            </a>
-            
             <a href="cart-loading.html" class="nav-item" data-page="cart-loading">
                 <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="7" width="20" height="14" rx="2"></rect>
@@ -78,6 +68,16 @@ function getHeaderHTML() {
                     <line x1="16" y1="12" x2="16" y2="16"></line>
                 </svg>
                 <span data-i18n="nav.cartOptimization">Cart Optimization</span>
+            </a>
+            
+            <a href="trucks.html" class="nav-item" data-page="trucks">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="3" width="15" height="13"></rect>
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <span data-i18n="nav.trucks">Trucks</span>
             </a>
             
             <a href="costs.html" class="nav-item" data-page="costs">
@@ -104,4 +104,5 @@ function setActiveNavItem() {
         }
     });
 }
+
 
