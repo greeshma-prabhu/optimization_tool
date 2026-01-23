@@ -474,15 +474,33 @@
             }
 
             /**
-             * Optimize cart assignment to trucks
+             * Optimize cart assignment to trucks - ROUTE-BY-ROUTE
+             * Each route is handled separately, showing breakdown per route
              */
             optimizeAssignment() {
                 const allCarts = this.getAllCarts();
                 
-                // Reset assignments
+                // Reset assignments - track routes separately
                 this.truckAssignments = {
-                    truck1: { carts: [], routes: new Set(), danishCount: 0, standardCount: 0 },
-                    truck2: { carts: [], routes: new Set(), danishCount: 0, standardCount: 0 }
+                    truck1: { 
+                        carts: [], 
+                        routes: new Set(), 
+                        danishCount: 0, 
+                        standardCount: 0,
+                        routeBreakdown: {
+                            rijnsburg: { carts: [], danishCount: 0, standardCount: 0 },
+                            naaldwijk: { carts: [], danishCount: 0, standardCount: 0 }
+                        }
+                    },
+                    truck2: { 
+                        carts: [], 
+                        routes: new Set(), 
+                        danishCount: 0, 
+                        standardCount: 0,
+                        routeBreakdown: {
+                            aalsmeer: { carts: [], danishCount: 0, standardCount: 0 }
+                        }
+                    }
                 };
 
                 // Group carts by route
@@ -498,41 +516,93 @@
                     }
                 });
 
-                // Strategy: 
+                // Strategy: Each route handled separately
                 // Truck 1: Route 1 (Rijnsburg) + Route 3 (Naaldwijk)
                 // Truck 2: Route 2 (Aalsmeer)
 
-                // Assign Route 1 carts to Truck 1
-                cartsByRoute.rijnsburg.forEach(cart => {
-                    this.assignCartToTruck(cart, 'truck1');
+                // Route 1: Rijnsburg → Truck 1
+                const route1Carts = cartsByRoute.rijnsburg;
+                const route1Analysis = this.analyzeRouteCapacity(route1Carts, 'truck1');
+                route1Carts.forEach(cart => {
+                    this.assignCartToTruck(cart, 'truck1', 'rijnsburg');
                 });
 
-                // Assign Route 2 carts to Truck 2
-                cartsByRoute.aalsmeer.forEach(cart => {
-                    this.assignCartToTruck(cart, 'truck2');
+                // Route 2: Aalsmeer → Truck 2
+                const route2Carts = cartsByRoute.aalsmeer;
+                const route2Analysis = this.analyzeRouteCapacity(route2Carts, 'truck2');
+                route2Carts.forEach(cart => {
+                    this.assignCartToTruck(cart, 'truck2', 'aalsmeer');
                 });
 
-                // Assign Route 3 carts to Truck 1 (if fits, otherwise Truck 2)
-                cartsByRoute.naaldwijk.forEach(cart => {
-                    if (this.canFitInTruck(cart, 'truck1')) {
-                        this.assignCartToTruck(cart, 'truck1');
-                    } else if (this.canFitInTruck(cart, 'truck2')) {
-                        this.assignCartToTruck(cart, 'truck2');
+                // Route 3: Naaldwijk → Truck 1 (check if fits with Route 1)
+                const route3Carts = cartsByRoute.naaldwijk;
+                // Check if Route 3 fits in Truck 1 considering Route 1 is already there
+                const route3Analysis = this.analyzeRouteCapacity(route3Carts, 'truck1', true);
+                route3Carts.forEach(cart => {
+                    if (route3Analysis.fits) {
+                        this.assignCartToTruck(cart, 'truck1', 'naaldwijk');
                     } else {
-                        // Overflow - mark it
+                        // Overflow - mark it but still assign for visualization
                         cart.overflow = true;
-                        this.assignCartToTruck(cart, 'truck1'); // Assign anyway for visualization
+                        this.assignCartToTruck(cart, 'truck1', 'naaldwijk');
                     }
                 });
 
                 return {
                     truck1: this.truckAssignments.truck1,
                     truck2: this.truckAssignments.truck2,
-                    allCarts: allCarts
+                    allCarts: allCarts,
+                    routeAnalysis: {
+                        rijnsburg: route1Analysis,
+                        aalsmeer: route2Analysis,
+                        naaldwijk: route3Analysis
+                    }
+                };
+            }
+            
+            /**
+             * Analyze if a route's carts fit in a truck
+             * @param {Array} routeCarts - Carts for this route
+             * @param {String} truckId - Which truck to check
+             * @param {Boolean} considerExisting - If true, consider carts already in truck
+             */
+            analyzeRouteCapacity(routeCarts, truckId, considerExisting = false) {
+                const truck = this.truckAssignments[truckId];
+                
+                // Count carts for this route
+                let routeDanish = 0;
+                let routeStandard = 0;
+                routeCarts.forEach(cart => {
+                    if (cart.type === 'danish') {
+                        routeDanish++;
+                    } else {
+                        routeStandard++;
+                    }
+                });
+                
+                // If considering existing carts, add them
+                let totalDanish = considerExisting ? truck.danishCount + routeDanish : routeDanish;
+                let totalStandard = considerExisting ? truck.standardCount + routeStandard : routeStandard;
+                
+                // Calculate capacity
+                const maxCapacity = totalDanish > BUSINESS_RULES.danishThreshold 
+                    ? BUSINESS_RULES.maxCartsWithDanish 
+                    : BUSINESS_RULES.maxStandardCarts;
+                
+                const equivalentStandard = totalStandard + Math.ceil(totalDanish / BUSINESS_RULES.danishToStandardRatio);
+                
+                return {
+                    fits: equivalentStandard <= maxCapacity,
+                    used: equivalentStandard,
+                    max: maxCapacity,
+                    overflow: Math.max(0, equivalentStandard - maxCapacity),
+                    danishCount: routeDanish,
+                    standardCount: routeStandard,
+                    totalCarts: routeCarts.length
                 };
             }
 
-            assignCartToTruck(cart, truckId) {
+            assignCartToTruck(cart, truckId, routeName = null) {
                 const truck = this.truckAssignments[truckId];
                 truck.carts.push(cart);
                 truck.routes.add(cart.route);
@@ -541,6 +611,16 @@
                     truck.danishCount++;
                 } else {
                     truck.standardCount++;
+                }
+                
+                // Track route breakdown
+                if (routeName && truck.routeBreakdown[routeName]) {
+                    truck.routeBreakdown[routeName].carts.push(cart);
+                    if (cart.type === 'danish') {
+                        truck.routeBreakdown[routeName].danishCount++;
+                    } else {
+                        truck.routeBreakdown[routeName].standardCount++;
+                    }
                 }
             }
 
@@ -579,31 +659,29 @@
         }
 
         function optimizeCartLoading() {
-            // Try to load orders from storage if not in memory
-            if (!orderManager || !orderManager.orders || orderManager.orders.length === 0) {
-                // Try loading from localStorage
-                const loaded = orderManager.loadOrdersFromStorage();
+            // CRITICAL: Only run optimization if orders were explicitly loaded
+            // Check if orders exist AND were loaded in current session (not stale cache)
+            const hasFreshOrders = localStorage.getItem('zuidplas_orders_loaded') === 'true';
+            const hasOrders = orderManager && orderManager.orders && orderManager.orders.length > 0;
+            
+            if (!hasOrders || !hasFreshOrders) {
+                // Show clear message - orders must be loaded first
+                // Use i18n for proper language support
+                const message = typeof i18n !== 'undefined' 
+                    ? i18n.t('cartLoading.noOrdersMessage', 'No orders available. Go to Dashboard and click "Sync Orders from API" or "Load Demo Data" to load orders.')
+                    : 'No orders available. Go to Dashboard and click "Sync Orders from API" or "Load Demo Data" to load orders.';
                 
-                // If still no orders, try loading demo data automatically
-                if (!loaded || !orderManager.orders || orderManager.orders.length === 0) {
-                    console.log('📦 No orders found, loading demo data automatically...');
-                    orderManager.fetchOrders(null, true).then(() => {
-                        // Retry optimization after loading
-                        if (orderManager.orders && orderManager.orders.length > 0) {
-                            cartLoadingOptimizer = new CartLoadingOptimizer(orderManager.orders);
-                            const result = cartLoadingOptimizer.optimizeAssignment();
-                            updateTruckVisualization(result);
-                            updateCartList(result.allCarts);
-                            updateSummaryStats(result);
-                        }
-                    }).catch(err => {
-                        console.error('Error loading demo data:', err);
-                        alert('Please load orders first from Dashboard, or enable demo data.');
-                    });
-                    return;
-                }
+                alert(message);
+                console.warn('⚠️ Cannot optimize: No orders loaded. Please load orders from Dashboard first.');
+                
+                // Clear any stale visualization
+                clearCartOptimizationDisplay();
+                return;
             }
 
+            // Only proceed if we have fresh orders
+            console.log('✅ Running cart optimization with', orderManager.orders.length, 'orders');
+            
             cartLoadingOptimizer = new CartLoadingOptimizer(orderManager.orders);
             const result = cartLoadingOptimizer.optimizeAssignment();
             
@@ -611,21 +689,58 @@
             updateCartList(result.allCarts);
             updateSummaryStats(result);
         }
+        
+        function clearCartOptimizationDisplay() {
+            // Reset all stats to 0
+            document.getElementById('total-carts').textContent = '0';
+            document.getElementById('carts-assigned').textContent = '0';
+            document.getElementById('overflow-count').textContent = '0';
+            document.getElementById('routes-covered').textContent = '0/3';
+            
+            // Clear truck visualization - use i18n for proper language
+            const truckContainer = document.getElementById('truck-container');
+            if (truckContainer) {
+                const noOrdersMsg = typeof i18n !== 'undefined' 
+                    ? i18n.t('cartLoading.noOrdersMessage', 'No orders loaded. Go to Dashboard to load orders.')
+                    : 'No orders loaded. Go to Dashboard to load orders.';
+                truckContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-secondary);" data-i18n="cartLoading.noOrdersMessage">${noOrdersMsg}</div>`;
+                // Update i18n if available
+                if (typeof i18n !== 'undefined') {
+                    i18n.updatePage();
+                }
+            }
+            
+            // Clear cart list - use i18n for proper language
+            const cartList = document.getElementById('cart-list-by-route');
+            if (cartList) {
+                const loadFirstMsg = typeof i18n !== 'undefined' 
+                    ? i18n.t('cartLoading.loadOrdersFirst', 'Load orders from Dashboard first.')
+                    : 'Load orders from Dashboard first.';
+                cartList.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-secondary);" data-i18n="cartLoading.loadOrdersFirst">${loadFirstMsg}</div>`;
+                // Update i18n if available
+                if (typeof i18n !== 'undefined') {
+                    i18n.updatePage();
+                }
+            }
+        }
 
         function updateTruckVisualization(result) {
             const container = document.getElementById('truck-container');
             container.innerHTML = '';
 
-            // Truck 1
+            // Get route analysis if available
+            const routeAnalysis = result.routeAnalysis || {};
+
+            // Truck 1 - shows Route 1 (Rijnsburg) and Route 3 (Naaldwijk)
             const truck1Capacity = cartLoadingOptimizer.getTruckCapacity('truck1');
             const truck1Name = typeof i18n !== 'undefined' ? `${i18n.t('cartLoading.truck1', 'Truck 1')}` : 'Truck 1';
-            const truck1Card = createTruckCard(truck1Name, result.truck1, truck1Capacity, ['rijnsburg', 'naaldwijk']);
+            const truck1Card = createTruckCard(truck1Name, result.truck1, truck1Capacity, ['rijnsburg', 'naaldwijk'], routeAnalysis);
             container.appendChild(truck1Card);
 
-            // Truck 2
+            // Truck 2 - shows Route 2 (Aalsmeer)
             const truck2Capacity = cartLoadingOptimizer.getTruckCapacity('truck2');
             const truck2Name = typeof i18n !== 'undefined' ? `${i18n.t('cartLoading.truck2', 'Truck 2')}` : 'Truck 2';
-            const truck2Card = createTruckCard(truck2Name, result.truck2, truck2Capacity, ['aalsmeer']);
+            const truck2Card = createTruckCard(truck2Name, result.truck2, truck2Capacity, ['aalsmeer'], routeAnalysis);
             container.appendChild(truck2Card);
         }
 
@@ -639,13 +754,46 @@
             return colors[clientIndex % colors.length];
         }
 
-        function createTruckCard(truckName, truckData, capacity, expectedRoutes) {
+        function createTruckCard(truckName, truckData, capacity, expectedRoutes, routeAnalysis = {}) {
             const card = document.createElement('div');
             card.className = 'truck-card';
             
             const routes = Array.from(truckData.routes);
-            const statusClass = capacity.fits ? 'success' : 'danger';
-            const statusIcon = capacity.fits ? '✅' : '❌';
+            
+            // Calculate route-by-route status
+            let routeStatuses = [];
+            let hasOverflow = false;
+            
+            expectedRoutes.forEach(routeName => {
+                const routeInfo = routeAnalysis[routeName];
+                if (routeInfo) {
+                    const routeFits = routeInfo.fits;
+                    if (!routeFits) hasOverflow = true;
+                    
+                    // Get route display name
+                    const routeDisplayNames = {
+                        rijnsburg: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg',
+                        aalsmeer: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer',
+                        naaldwijk: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk'
+                    };
+                    
+                    routeStatuses.push({
+                        name: routeName,
+                        displayName: routeDisplayNames[routeName] || routeName,
+                        fits: routeFits,
+                        used: routeInfo.used,
+                        max: routeInfo.max,
+                        overflow: routeInfo.overflow,
+                        totalCarts: routeInfo.totalCarts,
+                        danishCount: routeInfo.danishCount,
+                        standardCount: routeInfo.standardCount
+                    });
+                }
+            });
+            
+            const statusClass = hasOverflow ? 'danger' : 'success';
+            const statusIcon = hasOverflow ? '❌' : '✅';
+            const statusText = hasOverflow ? (typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow') : (typeof i18n !== 'undefined' ? i18n.t('status.fits', 'Fits') : 'Fits');
             
             // Get all unique clients from carts
             const clients = [...new Set(truckData.carts.map(cart => cart.client || 'Unknown'))];
@@ -689,12 +837,36 @@
                 }
             }
 
+            // Build route breakdown HTML
+            let routeBreakdownHTML = '';
+            if (routeStatuses.length > 0) {
+                routeBreakdownHTML = '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">';
+                routeStatuses.forEach(routeStatus => {
+                    const routeStatusClass = routeStatus.fits ? 'success' : 'danger';
+                    const routeStatusIcon = routeStatus.fits ? '✅' : '⚠️';
+                    routeBreakdownHTML += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: #f9fafb; border-radius: 6px;">
+                            <div>
+                                <strong>${routeStatus.displayName}</strong>
+                                <span class="badge ${routeStatusClass}" style="margin-left: 8px;">${routeStatusIcon} ${routeStatus.fits ? (typeof i18n !== 'undefined' ? i18n.t('status.fits', 'Fits') : 'Fits') : (typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow')}</span>
+                            </div>
+                            <div style="text-align: right; font-size: 0.9rem;">
+                                <div>${routeStatus.totalCarts} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts'}</div>
+                                <div style="color: var(--text-secondary);">${routeStatus.used} / ${routeStatus.max} ${typeof i18n !== 'undefined' ? i18n.t('status.capacity', 'capacity') : 'capacity'}</div>
+                                ${!routeStatus.fits ? `<div style="color: var(--danger); font-weight: 600;">+${routeStatus.overflow} ${typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'overflow') : 'overflow'}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                routeBreakdownHTML += '</div>';
+            }
+            
             card.innerHTML = `
                 <div class="truck-header">
                     <div>
                         <h2 style="margin: 0;">${truckName}</h2>
                         <div style="margin-top: 8px;">
-                            <span class="badge ${statusClass}">${statusIcon} ${capacity.fits ? (typeof i18n !== 'undefined' ? i18n.t('status.fits', 'Fits') : 'Fits') : (typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow')}</span>
+                            <span class="badge ${statusClass}">${statusIcon} ${statusText}</span>
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -706,6 +878,7 @@
                         </div>
                     </div>
                 </div>
+                ${routeBreakdownHTML}
 
                 <div class="truck-body">
                     <div class="truck-slots">
@@ -881,21 +1054,40 @@
             document.getElementById('routes-covered').textContent = `${routesCovered}/3`;
         }
 
-        // Auto-optimize on load if orders available
+        // Check on page load - but DON'T auto-optimize
+        // Only show message if no fresh orders are available
         document.addEventListener('DOMContentLoaded', () => {
-            // Try loading from storage first
-            if (orderManager) {
-                orderManager.loadOrdersFromStorage();
+            // Wait for i18n to be fully initialized
+            function checkOrdersAndDisplay() {
+                if (typeof i18n === 'undefined') {
+                    setTimeout(checkOrdersAndDisplay, 100);
+                    return;
+                }
                 
-                // If orders found, auto-optimize
-                if (orderManager.orders && orderManager.orders.length > 0) {
-                    console.log('📦 Found orders, auto-optimizing...');
-                    optimizeCartLoading();
+                // Ensure language is set correctly
+                const savedLang = localStorage.getItem('zuidplas_language') || 
+                                  localStorage.getItem('zuidplas_user_language') || 
+                                  'nl';
+                if (i18n.currentLang !== savedLang) {
+                    i18n.setLanguage(savedLang);
+                }
+                
+                // Check if orders were explicitly loaded (not just cached)
+                const hasFreshOrders = localStorage.getItem('zuidplas_orders_loaded') === 'true';
+                const hasOrders = orderManager && orderManager.orders && orderManager.orders.length > 0;
+                
+                if (!hasOrders || !hasFreshOrders) {
+                    // Clear display - no orders loaded (will use correct language)
+                    clearCartOptimizationDisplay();
+                    console.log('💡 No orders loaded. Please load orders from Dashboard first.');
                 } else {
-                    // Show helpful message
-                    console.log('💡 No orders found. Click "Optimize Cart Loading" to load demo data automatically.');
+                    // Orders were loaded - auto-optimize
+                    console.log('📦 Found fresh orders, auto-optimizing...');
+                    optimizeCartLoading();
                 }
             }
+            
+            checkOrdersAndDisplay();
         });
         
         // Toggle sidebar collapse (desktop)

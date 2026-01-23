@@ -21,9 +21,11 @@ class OrderManager {
         try {
             const storedOrders = localStorage.getItem('zuidplas_orders');
             const timestamp = localStorage.getItem('zuidplas_orders_timestamp');
+            const ordersLoaded = localStorage.getItem('zuidplas_orders_loaded') === 'true';
             
-            // Only use stored orders if they're less than 24 hours old
-            if (storedOrders && timestamp) {
+            // Only use stored orders if they were explicitly loaded (not just cached)
+            // AND they're less than 24 hours old
+            if (storedOrders && timestamp && ordersLoaded) {
                 const age = Date.now() - parseInt(timestamp);
                 if (age < 24 * 60 * 60 * 1000) { // 24 hours
                     this.orders = JSON.parse(storedOrders);
@@ -34,7 +36,14 @@ class OrderManager {
                     // Clear old data
                     localStorage.removeItem('zuidplas_orders');
                     localStorage.removeItem('zuidplas_orders_timestamp');
+                    localStorage.removeItem('zuidplas_orders_loaded');
                 }
+            } else if (storedOrders && !ordersLoaded) {
+                // Orders exist but weren't explicitly loaded - clear them
+                console.log('⚠️ Found cached orders but they were not explicitly loaded. Clearing...');
+                localStorage.removeItem('zuidplas_orders');
+                localStorage.removeItem('zuidplas_orders_timestamp');
+                localStorage.removeItem('zuidplas_orders_loaded');
             }
         } catch (e) {
             console.warn('Could not load orders from localStorage:', e);
@@ -74,6 +83,7 @@ class OrderManager {
                 localStorage.setItem('zuidplas_orders', JSON.stringify(this.orders));
                 localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
                 localStorage.setItem('zuidplas_using_demo_data', 'true');
+                localStorage.setItem('zuidplas_orders_loaded', 'true'); // Flag: orders were explicitly loaded
             } catch (e) {
                 console.warn('Could not save orders to localStorage:', e);
             }
@@ -101,6 +111,7 @@ class OrderManager {
                 localStorage.setItem('zuidplas_orders', JSON.stringify(this.orders));
                 localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
                 localStorage.setItem('zuidplas_using_demo_data', 'false');
+                localStorage.setItem('zuidplas_orders_loaded', 'true'); // Flag: orders were explicitly loaded
             } catch (e) {
                 console.warn('Could not save orders to localStorage:', e);
             }
