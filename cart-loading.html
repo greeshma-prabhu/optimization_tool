@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cart Loading Optimizer - Zuidplas Logistics</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/layout.css">
     <style>
         .truck-container {
             display: grid;
@@ -187,35 +188,44 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <button class="sidebar-close" onclick="toggleSidebar()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
-
-        <div class="sidebar-logo">
-            <svg width="32" height="32" viewBox="0 0 32 32">
-                <rect x="4" y="8" width="24" height="16" rx="2" fill="#f97316"/>
-                <rect x="6" y="12" width="8" height="8" fill="#fff"/>
-                <rect x="18" y="12" width="8" height="8" fill="#fff"/>
-            </svg>
-            <span>Zuidplas</span>
+    <!-- Top Header -->
+    <header class="top-header">
+        <div class="header-left">
+            <div class="header-logo">
+                <div class="logo-blocks">
+                    <div class="logo-block d">D</div>
+                    <div class="logo-block flower">
+                        <div class="logo-flower-icon"></div>
+                    </div>
+                    <div class="logo-block z">Z</div>
+                </div>
+                <div class="logo-text-large">
+                    <div class="logo-main-text">DE ZUIDPLAS</div>
+                </div>
+            </div>
         </div>
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-avatar">A</div>
+                <span style="font-size: 14px; color: #374151;">Admin User</span>
+                <div class="user-badge">Admin</div>
+            </div>
+            <button class="logout-btn-header" onclick="handleLogout()" data-i18n="common.logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Uitloggen</span>
+            </button>
+        </div>
+    </header>
 
-        <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-        </button>
-
-        <nav class="sidebar-nav">
-            <a href="index.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+        <div class="nav-items">
+            <a href="index.html" class="nav-item" data-page="index">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7"></rect>
                     <rect x="14" y="3" width="7" height="7"></rect>
                     <rect x="14" y="14" width="7" height="7"></rect>
@@ -224,22 +234,22 @@
                 <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
             
-            <a href="orders.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="orders.html" class="nav-item " data-page="orders">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 </svg>
                 <span data-i18n="nav.orders">Orders</span>
             </a>
             
-            <a href="optimization.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="optimization.html" class="nav-item " data-page="optimization">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
                 </svg>
                 <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
-            <a href="trucks.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="trucks.html" class="nav-item " data-page="trucks">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="1" y="3" width="15" height="13"></rect>
                     <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
@@ -248,8 +258,8 @@
                 <span data-i18n="nav.trucks">Trucks</span>
             </a>
             
-            <a href="cart-loading.html" class="nav-link active">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="cart-loading.html" class="nav-item active" data-page="cart-loading">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="7" width="20" height="14" rx="2"></rect>
                     <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
                     <line x1="12" y1="12" x2="12" y2="16"></line>
@@ -259,32 +269,17 @@
                 <span data-i18n="nav.cartOptimization">Cart Optimization</span>
             </a>
             
-            <a href="costs.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="costs.html" class="nav-item " data-page="costs">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
                 <span data-i18n="nav.costs">Costs</span>
             </a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-bottom: 12px;"></div>
-            <button onclick="handleLogout()" class="logout-btn" data-i18n="common.logout">🚪 Uitloggen</button>
         </div>
-    </aside>
-
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick="toggleSidebar()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-    </button>
-
-    <!-- Main Content -->
-    <main class="main-content">
+    </nav>
+<!-- Main Content -->
+    <main class="main-content" style="margin-left: 0;">
         <div class="page-header">
             <h1 class="page-title" data-i18n="cartLoading.title">Cart Optimization</h1>
             <p class="page-subtitle" data-i18n="cartLoading.subtitle">Place all carts on 2 trucks - Cover all 3 routes efficiently</p>
@@ -667,8 +662,10 @@
             truckData.carts.forEach(cart => {
                 if (slotIndex < capacity.max) {
                     const clientColor = clientColorMap[cart.client || 'Unknown'];
+                    // Ensure type is set correctly
+                    const cartType = cart.type || (cart.cartType || 'standard');
                     slots.push({ 
-                        type: cart.type, 
+                        type: cartType, 
                         index: slotIndex,
                         client: cart.client || 'Unknown',
                         color: clientColor,
@@ -710,29 +707,54 @@
                     </div>
                 </div>
 
-                <div class="truck-slots">
-                    ${slots.map(slot => {
-                        if (slot.type === 'standard') {
-                            const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'S';
-                            const standardCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart';
-                            const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
-                            return `<div class="cart-slot filled-standard" 
-                                     style="background: ${slot.color || '#3b82f6'}; border-color: ${slot.color || '#3b82f6'};" 
-                                     title="${standardCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
-                        } else if (slot.type === 'danish') {
-                            const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'D';
-                            const danishCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart';
-                            const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
-                            return `<div class="cart-slot filled-danish" 
-                                     style="background: ${slot.color || '#8b5cf6'}; border-color: ${slot.color || '#8b5cf6'};" 
-                                     title="${danishCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
-                        } else if (slot.type === 'overflow') {
-                            const overflowText = typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow';
-                            return `<div class="cart-slot overflow" title="${overflowText}">!</div>`;
-                        } else {
-                            return '<div class="cart-slot empty" title="Empty"></div>';
-                        }
-                    }).join('')}
+                <div class="truck-body">
+                    <div class="truck-slots">
+                        ${slots.map(slot => {
+                            if (slot.type === 'standard') {
+                                const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'S';
+                                const standardCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart';
+                                const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
+                                const color = slot.color || '#3b82f6';
+                                // Calculate darker shade for gradient
+                                const hexToRgb = (hex) => {
+                                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                                    return result ? {
+                                        r: parseInt(result[1], 16),
+                                        g: parseInt(result[2], 16),
+                                        b: parseInt(result[3], 16)
+                                    } : null;
+                                };
+                                const rgb = hexToRgb(color);
+                                const darkerColor = rgb ? `rgb(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)})` : color;
+                                return `<div class="cart-slot filled-standard" 
+                                         style="background: linear-gradient(135deg, ${color} 0%, ${darkerColor} 100%); border-color: ${color};" 
+                                         title="${standardCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
+                            } else if (slot.type === 'danish') {
+                                const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'D';
+                                const danishCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart';
+                                const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
+                                const color = slot.color || '#8b5cf6';
+                                const hexToRgb = (hex) => {
+                                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                                    return result ? {
+                                        r: parseInt(result[1], 16),
+                                        g: parseInt(result[2], 16),
+                                        b: parseInt(result[3], 16)
+                                    } : null;
+                                };
+                                const rgb = hexToRgb(color);
+                                const darkerColor = rgb ? `rgb(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)})` : color;
+                                return `<div class="cart-slot filled-danish" 
+                                         style="background: linear-gradient(135deg, ${color} 0%, ${darkerColor} 100%); border-color: ${color};" 
+                                         title="${danishCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
+                            } else if (slot.type === 'overflow') {
+                                const overflowText = typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow';
+                                return `<div class="cart-slot overflow" title="${overflowText}">!</div>`;
+                            } else {
+                                return '<div class="cart-slot empty" title="Empty"></div>';
+                            }
+                        }).join('')}
+                    </div>
                 </div>
                 
                 ${clients.length > 0 ? `

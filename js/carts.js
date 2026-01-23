@@ -178,7 +178,9 @@ class CartManager {
             status: equivalentStandard <= maxCapacity ? 'fits' : 
                    equivalentStandard <= maxCapacity + 2 ? 'tight' : 'overflow',
             warning: danishCarts > BUSINESS_RULES.danishThreshold 
-                ? `⚠️ More than ${BUSINESS_RULES.danishThreshold} Danish carts - capacity reduced to ${maxCapacity}`
+                ? (typeof i18n !== 'undefined' 
+                    ? i18n.t('carts.danishCapacityWarning', `⚠️ More than ${BUSINESS_RULES.danishThreshold} Danish carts - capacity reduced to ${maxCapacity}`, BUSINESS_RULES.danishThreshold, maxCapacity)
+                    : `⚠️ More than ${BUSINESS_RULES.danishThreshold} Danish carts - capacity reduced to ${maxCapacity}`)
                 : null
         };
     }

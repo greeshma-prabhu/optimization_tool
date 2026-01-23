@@ -1,6 +1,9 @@
 /**
  * Zuidplas Logistics - Route Optimization Engine
- * Generates optimal truck allocation scenarios and cost calculations
+ * CORRECT BUSINESS LOGIC:
+ * 1. Calculate carts needed per route
+ * 2. Try to fit everything in 2 own trucks (default plan)
+ * 3. Only if overflow → suggest neighbor/external truck
  */
 
 class RouteOptimizer {
@@ -9,16 +12,51 @@ class RouteOptimizer {
         this.routes = routes || ROUTES;
         this.trucks = trucks || TRUCKS;
         this.cartManager = cartManager;
+        
+        // Truck capacities
+        this.TRUCK_CAPACITY = 17; // Standard capacity
+        this.TRUCK_CAPACITY_WITH_DANISH = 16; // If >6 Danish carts
+        
+        // Costs
+        this.OWN_TRUCK_COST = (COSTS && COSTS.ownTruckPerRoute) ? COSTS.ownTruckPerRoute : 150;
+        this.EXTERNAL_TRUCK_COST = (COSTS && COSTS.externalTruckPerTrip) ? COSTS.externalTruckPerTrip : 250;
+        this.EXTERNAL_CARRIER_PER_CART = (COSTS && COSTS.externalCarrierPerCart) ? COSTS.externalCarrierPerCart : 25;
+        this.NEIGHBOR_TRUCK_COST = 0; // Free
     }
 
     /**
-     * Process orders and assign to routes
+     * Step 1: Calculate carts needed per route
      */
     processOrders() {
-        // Check if cartManager is available
         if (!this.cartManager) {
-            console.error('CartManager not initialized');
-            return {};
+            console.error('CartManager not initialized - trying to use fallback');
+            // Return empty route structure if cartManager not available
+            const emptyRoutes = {};
+            Object.keys(this.routes).forEach(routeKey => {
+                emptyRoutes[routeKey] = {
+                    orders: [],
+                    clients: {},
+                    standard: 0,
+                    danish: 0,
+                    totalCarts: 0,
+                    danishCarts: 0,
+                    standardCarts: 0,
+                    maxCapacity: this.TRUCK_CAPACITY,
+                    overflow: 0,
+                    fits: true,
+                    utilization: 0,
+                    status: 'fits',
+                    routeInfo: this.routes[routeKey],
+                    capacity: {
+                        fits: true,
+                        status: 'fits',
+                        maxCapacity: this.TRUCK_CAPACITY,
+                        equivalentStandard: 0,
+                        utilization: 0
+                    }
+                };
+            });
+            return emptyRoutes;
         }
 
         // Assign cart types to all orders
@@ -29,20 +67,71 @@ class RouteOptimizer {
         // Calculate carts per route
         const routeCarts = this.cartManager.calculateRouteCarts(ordersWithCarts);
 
-        // Check capacity for each route
+        // Check capacity for each route - ALWAYS return all routes
         const routeAnalysis = {};
+        
+        // Initialize all routes first (even if empty)
+        Object.keys(this.routes).forEach(routeKey => {
+            routeAnalysis[routeKey] = {
+                orders: [],
+                clients: {},
+                standard: 0,
+                danish: 0,
+                totalCarts: 0,
+                danishCarts: 0,
+                standardCarts: 0,
+                maxCapacity: this.TRUCK_CAPACITY,
+                overflow: 0,
+                fits: true,
+                utilization: 0,
+                status: 'fits',
+                routeInfo: this.routes[routeKey],
+                // Keep old structure for compatibility
+                capacity: {
+                    fits: true,
+                    status: 'fits',
+                    maxCapacity: this.TRUCK_CAPACITY,
+                    equivalentStandard: 0,
+                    utilization: 0
+                }
+            };
+        });
+        
+        // Now populate with actual data
         Object.keys(routeCarts).forEach(routeKey => {
             const carts = routeCarts[routeKey];
-            if (carts) {
+            if (carts && routeAnalysis[routeKey]) {
+                const totalCarts = (carts.standard || 0) + (carts.danish || 0);
+                const danishCount = carts.danish || 0;
+                
+                // Determine max capacity (16 if >6 Danish, else 17)
+                const maxCapacity = danishCount > 6 ? this.TRUCK_CAPACITY_WITH_DANISH : this.TRUCK_CAPACITY;
+                const overflow = Math.max(0, totalCarts - maxCapacity);
+                const fits = totalCarts <= maxCapacity;
+                const utilization = maxCapacity > 0 ? Math.round((totalCarts / maxCapacity) * 100) : 0;
+                
                 routeAnalysis[routeKey] = {
                     ...carts,
                     orders: carts.orders || [],
                     clients: carts.clients || {},
-                    capacity: this.cartManager.checkCapacity(
-                        carts.standard || 0,
-                        carts.danish || 0
-                    ),
-                    routeInfo: this.routes[routeKey]
+                    totalCarts: totalCarts,
+                    danishCarts: danishCount,
+                    standardCarts: carts.standard || 0,
+                    maxCapacity: maxCapacity,
+                    overflow: overflow,
+                    fits: fits,
+                    utilization: utilization,
+                    status: fits ? 'fits' : 'overflow',
+                    routeInfo: this.routes[routeKey],
+                    // Keep old structure for compatibility
+                    capacity: {
+                        fits: fits,
+                        status: fits ? 'fits' : (utilization >= 90 ? 'tight' : 'overflow'),
+                        maxCapacity: maxCapacity,
+                        equivalentStandard: totalCarts,
+                        utilization: utilization,
+                        overflow: overflow
+                    }
                 };
             }
         });
@@ -51,44 +140,73 @@ class RouteOptimizer {
     }
 
     /**
-     * Generate optimization options
+     * Step 2: Check if we have overflow
+     */
+    checkOverflow(routeAnalysis) {
+        const overflows = [];
+        if (!routeAnalysis) {
+            console.warn('routeAnalysis is undefined in checkOverflow');
+            return overflows;
+        }
+        
+        Object.keys(routeAnalysis).forEach(routeKey => {
+            const analysis = routeAnalysis[routeKey];
+            if (analysis && analysis.fits === false && analysis.overflow > 0) {
+                overflows.push({
+                    route: routeKey,
+                    routeName: analysis.routeInfo ? analysis.routeInfo.name : routeKey,
+                    overflow: analysis.overflow || 0,
+                    totalCarts: analysis.totalCarts || 0,
+                    maxCapacity: analysis.maxCapacity || this.TRUCK_CAPACITY
+                });
+            }
+        });
+        return overflows;
+    }
+
+    /**
+     * Step 3: Generate solutions based on overflow status
      */
     generateOptions() {
         try {
             const routeAnalysis = this.processOrders();
+            const overflows = this.checkOverflow(routeAnalysis);
             const options = [];
 
-            // Option A: Standard Allocation (Recommended)
-            const optionA = this.generateStandardOption(routeAnalysis);
-            if (optionA) options.push(optionA);
+            // SCENARIO A: Everything fits in 2 own trucks (NORMAL CASE)
+            if (overflows.length === 0) {
+                // Default plan: Truck 1 does Route 1 (9 AM) then Route 3 (11 AM), Truck 2 does Route 2 (10 AM)
+                const defaultOption = this.generateDefaultOption(routeAnalysis);
+                if (defaultOption) options.push(defaultOption);
 
-            // Option B: External Truck for Route 1
-            const optionB = this.generateExternalRoute1Option(routeAnalysis);
-            if (optionB) options.push(optionB);
-
-            // Option C: Neighbor's Truck
-            const optionC = this.generateNeighborOption(routeAnalysis);
-            if (optionC) options.push(optionC);
-
-            // Option D: Overflow Scenarios
-            const overflowOptions = this.generateOverflowOptions(routeAnalysis);
-            if (overflowOptions && Array.isArray(overflowOptions)) {
-                options.push(...overflowOptions);
+                // Optional: Neighbor's truck for Route 1 (if Route 1 fits)
+                if (routeAnalysis.rijnsburg && routeAnalysis.rijnsburg.fits) {
+                    const neighborOption = this.generateNeighborOption(routeAnalysis);
+                    if (neighborOption) options.push(neighborOption);
+                }
+            } else {
+                // SCENARIO B/C: Overflow detected - show solutions
+                const overflowSolutions = this.generateOverflowSolutions(routeAnalysis, overflows);
+                options.push(...overflowSolutions);
             }
 
-            // Calculate optimization score (pass all options to avoid recursion)
+            // Calculate scores
             options.forEach(option => {
                 if (option) {
                     option.score = this.calculateOptimizationScore(option, routeAnalysis, options);
                 }
             });
 
-            // Sort by score (highest first)
+            // Sort by score (highest first), then by cost (lowest first)
             options.sort((a, b) => {
-                const scoreA = (a && a.score) ? a.score : 0;
-                const scoreB = (b && b.score) ? b.score : 0;
-                return scoreB - scoreA;
+                if (b.score !== a.score) return b.score - a.score;
+                return a.cost - b.cost;
             });
+
+            // Mark first option as recommended
+            if (options.length > 0) {
+                options[0].recommended = true;
+            }
 
             return options;
         } catch (error) {
@@ -98,42 +216,59 @@ class RouteOptimizer {
     }
 
     /**
-     * Option A: Standard Allocation
+     * Default option: Everything fits, use 2 own trucks
      */
-    generateStandardOption(routeAnalysis) {
+    generateDefaultOption(routeAnalysis) {
         try {
-            const cost = (COSTS && COSTS.ownTruckPerRoute) ? COSTS.ownTruckPerRoute * 3 : 450; // 3 routes with own trucks
-            
-            const feasibility = this.checkFeasibility('standard', routeAnalysis);
-            
+            const route1 = routeAnalysis.rijnsburg;
+            const route2 = routeAnalysis.aalsmeer;
+            const route3 = routeAnalysis.naaldwijk;
+
+            if (!route1 || !route2 || !route3) {
+                return null;
+            }
+
+            // Total cost: Route 1 (€150) + Route 2 (€150) + Route 3 (€150) = €450
+            // Even though Truck 1 does both Route 1 and Route 3, each route is a separate trip with costs
+            const cost = this.OWN_TRUCK_COST * 3; // 3 routes = 3 trips (even if same truck does 2 routes)
+
             return {
-                id: 'A',
-                name: 'Standard Allocation',
-                description: 'Use both own trucks - Truck 1 does Route 1 then Route 3',
+                id: 'default',
+                name: typeof i18n !== 'undefined' ? i18n.t('optimization.standardAllocation', 'Standard Allocation') : 'Standard Allocation',
+                description: typeof i18n !== 'undefined' ? 
+                    i18n.t('optimization.defaultDescription', 'All carts fit in 2 own trucks - Truck 1 does Route 1 then Route 3, Truck 2 does Route 2') :
+                    'All carts fit in 2 own trucks - Truck 1 does Route 1 then Route 3, Truck 2 does Route 2',
                 allocation: {
                     route1: {
                         truck: 'own-truck-1',
                         route: 'rijnsburg',
                         departure: '09:00',
                         returnTime: '10:30',
-                        cost: COSTS ? COSTS.ownTruckPerRoute : 150
+                        carts: route1.totalCarts,
+                        cost: this.OWN_TRUCK_COST
                     },
                     route2: {
                         truck: 'own-truck-2',
                         route: 'aalsmeer',
                         departure: '10:00',
-                        cost: COSTS ? COSTS.ownTruckPerRoute : 150
+                        carts: route2.totalCarts,
+                        cost: this.OWN_TRUCK_COST
                     },
                     route3: {
                         truck: 'own-truck-1',
                         route: 'naaldwijk',
                         departure: '11:00',
-                        cost: COSTS ? COSTS.ownTruckPerRoute : 150,
+                        carts: route3.totalCarts,
+                        cost: this.OWN_TRUCK_COST, // Separate trip - fuel, driver time, etc.
                         note: 'Truck 1 returns from Route 1'
                     }
                 },
                 cost: cost,
-                feasibility: feasibility || { fits: true, status: 'fits', message: 'All routes fit' },
+                feasibility: {
+                    fits: true,
+                    status: 'fits',
+                    message: typeof i18n !== 'undefined' ? i18n.t('optimization.allRoutesFit', 'All routes fit within capacity') : 'All routes fit within capacity'
+                },
                 recommended: true,
                 pros: typeof i18n !== 'undefined' ? [
                     i18n.t('data.usesOwnTrucks'),
@@ -144,109 +279,67 @@ class RouteOptimizer {
                     i18n.t('data.tightTiming'),
                     i18n.t('data.noBuffer')
                 ] : ['Tight timing if Route 1 delayed', 'No buffer for delays'],
-                score: 0 // Will be calculated later
-            };
-        } catch (error) {
-            console.error('Error generating standard option:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Option B: External Truck for Route 1
-     */
-    generateExternalRoute1Option(routeAnalysis) {
-        try {
-            const cost = (COSTS && COSTS.externalTruckPerTrip && COSTS.ownTruckPerRoute) 
-                ? COSTS.externalTruckPerTrip + (COSTS.ownTruckPerRoute * 2) 
-                : 550;
-            
-            const feasibility = this.checkFeasibility('external_route1', routeAnalysis);
-            
-            return {
-                id: 'B',
-                name: 'External Truck for Route 1',
-                description: typeof i18n !== 'undefined' ? i18n.t('data.useExternalTruckDescription') : 'Use external truck for Route 1, own trucks for Routes 2 & 3',
-                allocation: {
-                    route1: {
-                        truck: 'external-truck',
-                        route: 'rijnsburg',
-                        departure: '09:00',
-                        cost: COSTS ? COSTS.externalTruckPerTrip : 250
-                    },
-                    route2: {
-                        truck: 'own-truck-2',
-                        route: 'aalsmeer',
-                        departure: '10:00',
-                        cost: COSTS ? COSTS.ownTruckPerRoute : 150
-                    },
-                    route3: {
-                        truck: 'own-truck-1',
-                        route: 'naaldwijk',
-                        departure: '11:00',
-                        cost: COSTS ? COSTS.ownTruckPerRoute : 150
-                    }
-                },
-                cost: cost,
-                feasibility: feasibility || { fits: true, status: 'fits', message: 'All routes fit' },
-                recommended: false,
-                pros: typeof i18n !== 'undefined' ? [
-                    i18n.t('data.noTimingPressure'),
-                    i18n.t('data.saferSchedule'),
-                    i18n.t('data.truckAvailableForRoute', '1', '3')
-                ] : ['No timing pressure', 'Safer schedule', 'Truck 1 available for Route 3'],
-                cons: typeof i18n !== 'undefined' ? [
-                    i18n.t('data.higherCost'),
-                    i18n.t('data.externalDependency')
-                ] : ['Higher cost', 'External dependency'],
                 score: 0
             };
         } catch (error) {
-            console.error('Error generating external option:', error);
+            console.error('Error generating default option:', error);
             return null;
         }
     }
 
     /**
-     * Option C: Neighbor's Truck
+     * Neighbor's truck option (only if no overflow)
      */
     generateNeighborOption(routeAnalysis) {
         try {
-            const cost = (COSTS && COSTS.ownTruckPerRoute) ? COSTS.ownTruckPerRoute * 2 : 300; // Only 2 own truck routes
-            
+            const route1 = routeAnalysis.rijnsburg;
+            const route2 = routeAnalysis.aalsmeer;
+            const route3 = routeAnalysis.naaldwijk;
+
+            if (!route1 || !route2 || !route3 || !route1.fits) {
+                return null; // Only show if Route 1 fits
+            }
+
+            const cost = this.OWN_TRUCK_COST * 2; // 2 own trucks for Routes 2 & 3
+
             return {
-                id: 'C',
-                name: "Neighbor's Truck",
-                description: "Use neighbor's truck for Route 1 (free), own trucks for Routes 2 & 3",
+                id: 'neighbor',
+                name: typeof i18n !== 'undefined' ? i18n.t('optimization.neighborTruck', "Neighbor's Truck") : "Neighbor's Truck",
+                description: typeof i18n !== 'undefined' ? 
+                    i18n.t('optimization.neighborDescription', "Use neighbor's truck for Route 1 (free), own trucks for Routes 2 & 3") :
+                    "Use neighbor's truck for Route 1 (free), own trucks for Routes 2 & 3",
                 allocation: {
                     route1: {
                         truck: 'neighbor-truck',
                         route: 'rijnsburg',
                         departure: '09:00',
+                        carts: route1.totalCarts,
                         cost: 0,
-                        requiresAction: '📞 Call neighbor to confirm availability'
+                        requiresAction: typeof i18n !== 'undefined' ? i18n.t('optimization.callNeighbor', '📞 Call neighbor to confirm availability') : '📞 Call neighbor to confirm availability'
                     },
                     route2: {
                         truck: 'own-truck-2',
                         route: 'aalsmeer',
                         departure: '10:00',
-                        cost: COSTS ? COSTS.ownTruckPerRoute : 150
+                        carts: route2.totalCarts,
+                        cost: this.OWN_TRUCK_COST
                     },
                     route3: {
                         truck: 'own-truck-1',
                         route: 'naaldwijk',
                         departure: '11:00',
-                        cost: COSTS ? COSTS.ownTruckPerRoute : 150
+                        carts: route3.totalCarts,
+                        cost: this.OWN_TRUCK_COST
                     }
                 },
                 cost: cost,
                 feasibility: {
+                    fits: true,
                     status: 'needs_check',
-                    message: '📞 Call neighbor to confirm availability',
-                    fits: true
+                    message: typeof i18n !== 'undefined' ? i18n.t('optimization.callNeighbor', '📞 Call neighbor to confirm availability') : '📞 Call neighbor to confirm availability'
                 },
-                recommended: true,
-                requiresAction: 'Call Neighbor',
+                recommended: false,
+                requiresAction: typeof i18n !== 'undefined' ? i18n.t('optimization.callNeighbor', 'Call Neighbor') : 'Call Neighbor',
                 pros: typeof i18n !== 'undefined' ? [
                     i18n.t('data.freeTruck'),
                     i18n.t('data.reliablePartner'),
@@ -265,79 +358,249 @@ class RouteOptimizer {
     }
 
     /**
-     * Generate overflow handling options
+     * Generate overflow handling solutions
      */
-    generateOverflowOptions(routeAnalysis) {
-        const options = [];
+    generateOverflowSolutions(routeAnalysis, overflows) {
+        const solutions = [];
 
-        Object.keys(routeAnalysis).forEach(routeKey => {
-            const analysis = routeAnalysis[routeKey];
-            if (!analysis.capacity.fits) {
-                const overflow = analysis.capacity.overflow;
-                const ownTruckCarts = BUSINESS_RULES.maxStandardCarts;
-                const externalCarts = overflow;
+        // For each overflow route, generate solutions
+        overflows.forEach(overflow => {
+            const route = routeAnalysis[overflow.route];
+            const routeName = route.routeInfo.name;
+            const overflowCarts = overflow.overflow;
 
-                options.push({
-                    id: `D_${routeKey}`,
-                    name: typeof i18n !== 'undefined' ? `${i18n.t('data.overflowHandling')} - ${analysis.routeInfo.name}` : `Overflow Handling - ${analysis.routeInfo.name}`,
-                    description: typeof i18n !== 'undefined' ? i18n.t('data.routeNeeds', analysis.capacity.equivalentStandard, overflow) : `Route needs ${analysis.capacity.equivalentStandard} carts (overflow: ${overflow})`,
-                    allocation: {
-                        [routeKey]: {
-                            truck: 'own-truck',
-                            externalCarrier: true,
-                            ownCarts: ownTruckCarts,
-                            externalCarts: externalCarts,
-                            cost: COSTS.ownTruckPerRoute + (COSTS.externalCarrierPerCart * externalCarts)
-                        }
-                    },
-                    cost: COSTS.ownTruckPerRoute + (COSTS.externalCarrierPerCart * externalCarts),
-                    feasibility: {
-                        status: 'overflow',
-                        overflow: overflow,
-                        message: `Needs ${overflow} additional carts via external carrier`
-                    },
-                    recommended: false,
-                    overflow: true
-                });
-            }
+            // Solution 1: External carrier for overflow carts (BEST)
+            solutions.push({
+                id: `overflow_carrier_${overflow.route}`,
+                name: typeof i18n !== 'undefined' ? 
+                    i18n.t('optimization.overflowCarrier', 'Overflow via External Carrier') : 
+                    'Overflow via External Carrier',
+                description: typeof i18n !== 'undefined' ? 
+                    i18n.t('optimization.overflowCarrierDescription', `Route ${route.routeInfo.id} (${routeName}): ${overflowCarts} carts via external carrier, rest in own truck`, route.routeInfo.id, routeName, overflowCarts) :
+                    `Route ${route.routeInfo.id} (${routeName}): ${overflowCarts} carts via external carrier, rest in own truck`,
+                allocation: this.calculateOverflowAllocation(routeAnalysis, overflow, 'carrier'),
+                cost: (this.OWN_TRUCK_COST * 3) + (overflowCarts * this.EXTERNAL_CARRIER_PER_CART), // 3 routes = 3 trips
+                feasibility: {
+                    fits: true,
+                    status: 'overflow_handled',
+                    message: typeof i18n !== 'undefined' ? 
+                        i18n.t('optimization.overflowHandled', `${overflowCarts} overflow carts handled via external carrier`, overflowCarts) :
+                        `${overflowCarts} overflow carts handled via external carrier`
+                },
+                recommended: true, // Best overflow solution
+                pros: typeof i18n !== 'undefined' ? [
+                    i18n.t('optimization.minimalExtraCost', 'Minimal extra cost'),
+                    i18n.t('optimization.usesOwnTrucks', 'Uses own trucks efficiently'),
+                    i18n.t('optimization.guaranteedCapacity', 'Guaranteed capacity')
+                ] : ['Minimal extra cost', 'Uses own trucks efficiently', 'Guaranteed capacity'],
+                cons: typeof i18n !== 'undefined' ? [
+                    i18n.t('optimization.requiresExternalBooking', 'Requires external carrier booking'),
+                    i18n.t('optimization.splitDelivery', 'Split delivery for overflow route')
+                ] : ['Requires external carrier booking', 'Split delivery for overflow route'],
+                score: 0,
+                overflow: true
+            });
+
+            // Solution 2: External truck for entire overflow route
+            solutions.push({
+                id: `overflow_truck_${overflow.route}`,
+                name: typeof i18n !== 'undefined' ? 
+                    i18n.t('optimization.externalTruckForRoute', 'External Truck for Overflow Route') : 
+                    'External Truck for Overflow Route',
+                description: typeof i18n !== 'undefined' ? 
+                    i18n.t('optimization.externalTruckDescription', `Use external truck for entire Route ${route.routeInfo.id} (${routeName})`, route.routeInfo.id, routeName) :
+                    `Use external truck for entire Route ${route.routeInfo.id} (${routeName})`,
+                allocation: this.calculateOverflowAllocation(routeAnalysis, overflow, 'truck'),
+                cost: (this.OWN_TRUCK_COST * 2) + this.EXTERNAL_TRUCK_COST, // 2 own truck routes + 1 external truck route
+                feasibility: {
+                    fits: true,
+                    status: 'overflow_handled',
+                    message: typeof i18n !== 'undefined' ? 
+                        i18n.t('optimization.fullRouteExternal', 'Full route handled by external truck') :
+                        'Full route handled by external truck'
+                },
+                recommended: false,
+                pros: typeof i18n !== 'undefined' ? [
+                    i18n.t('optimization.simpleSolution', 'Simple solution'),
+                    i18n.t('optimization.guaranteedCapacity', 'Guaranteed capacity'),
+                    i18n.t('optimization.noSplitDelivery', 'No split delivery')
+                ] : ['Simple solution', 'Guaranteed capacity', 'No split delivery'],
+                cons: typeof i18n !== 'undefined' ? [
+                    i18n.t('data.higherCost'),
+                    i18n.t('data.externalDependency')
+                ] : ['Higher cost', 'External dependency'],
+                score: 0,
+                overflow: true
+            });
         });
 
-        return options;
+        return solutions;
     }
 
     /**
-     * Check feasibility of an option
+     * Calculate allocation for overflow scenarios
      */
-    checkFeasibility(scenario, routeAnalysis) {
-        const feasibility = {
-            status: 'fits',
-            message: 'All routes fit within capacity',
-            fits: true,
-            warnings: []
-        };
+    calculateOverflowAllocation(routeAnalysis, overflow, solutionType) {
+        const route1 = routeAnalysis.rijnsburg;
+        const route2 = routeAnalysis.aalsmeer;
+        const route3 = routeAnalysis.naaldwijk;
+        const overflowRoute = routeAnalysis[overflow.route];
 
-        Object.keys(routeAnalysis).forEach(routeKey => {
-            const analysis = routeAnalysis[routeKey];
-            const capacity = analysis.capacity;
+        const allocation = {};
 
-            if (!capacity.fits) {
-                feasibility.fits = false;
-                feasibility.status = 'overflow';
-                feasibility.warnings.push(
-                    `${analysis.routeInfo.name}: ${capacity.overflow} carts overflow`
-                );
-            } else if (capacity.status === 'tight') {
-                feasibility.warnings.push(
-                    `${analysis.routeInfo.name}: Capacity is tight (${capacity.utilization}% used)`
-                );
+        // Default plan: Truck 1 does Route 1 + Route 3, Truck 2 does Route 2
+        // But adjust based on which route has overflow
+
+        if (overflow.route === 'rijnsburg') {
+            // Route 1 overflow
+            if (solutionType === 'carrier') {
+                allocation.route1 = {
+                    truck: 'own-truck-1',
+                    route: 'rijnsburg',
+                    departure: '09:00',
+                    carts: overflowRoute.maxCapacity,
+                    externalCarrier: overflow.overflow,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route2 = {
+                    truck: 'own-truck-2',
+                    route: 'aalsmeer',
+                    departure: '10:00',
+                    carts: route2.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route3 = {
+                    truck: 'own-truck-1',
+                    route: 'naaldwijk',
+                    departure: '11:00',
+                    carts: route3.totalCarts,
+                    cost: this.OWN_TRUCK_COST // Separate trip - fuel, driver time, etc.
+                };
+            } else {
+                // External truck for Route 1
+                allocation.route1 = {
+                    truck: 'external-truck',
+                    route: 'rijnsburg',
+                    departure: '09:00',
+                    carts: overflowRoute.totalCarts,
+                    cost: this.EXTERNAL_TRUCK_COST
+                };
+                allocation.route2 = {
+                    truck: 'own-truck-2',
+                    route: 'aalsmeer',
+                    departure: '10:00',
+                    carts: route2.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route3 = {
+                    truck: 'own-truck-1',
+                    route: 'naaldwijk',
+                    departure: '11:00',
+                    carts: route3.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
             }
-        });
-
-        if (feasibility.warnings.length > 0) {
-            feasibility.message = feasibility.warnings.join('; ');
+        } else if (overflow.route === 'aalsmeer') {
+            // Route 2 overflow
+            if (solutionType === 'carrier') {
+                allocation.route1 = {
+                    truck: 'own-truck-1',
+                    route: 'rijnsburg',
+                    departure: '09:00',
+                    carts: route1.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route2 = {
+                    truck: 'own-truck-2',
+                    route: 'aalsmeer',
+                    departure: '10:00',
+                    carts: overflowRoute.maxCapacity,
+                    externalCarrier: overflow.overflow,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route3 = {
+                    truck: 'own-truck-1',
+                    route: 'naaldwijk',
+                    departure: '11:00',
+                    carts: route3.totalCarts,
+                    cost: this.OWN_TRUCK_COST // Separate trip - fuel, driver time, etc.
+                };
+            } else {
+                // External truck for Route 2
+                allocation.route1 = {
+                    truck: 'own-truck-1',
+                    route: 'rijnsburg',
+                    departure: '09:00',
+                    carts: route1.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route2 = {
+                    truck: 'external-truck',
+                    route: 'aalsmeer',
+                    departure: '10:00',
+                    carts: overflowRoute.totalCarts,
+                    cost: this.EXTERNAL_TRUCK_COST
+                };
+                allocation.route3 = {
+                    truck: 'own-truck-1',
+                    route: 'naaldwijk',
+                    departure: '11:00',
+                    carts: route3.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+            }
+        } else if (overflow.route === 'naaldwijk') {
+            // Route 3 overflow
+            if (solutionType === 'carrier') {
+                allocation.route1 = {
+                    truck: 'own-truck-1',
+                    route: 'rijnsburg',
+                    departure: '09:00',
+                    carts: route1.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route2 = {
+                    truck: 'own-truck-2',
+                    route: 'aalsmeer',
+                    departure: '10:00',
+                    carts: route2.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route3 = {
+                    truck: 'own-truck-1',
+                    route: 'naaldwijk',
+                    departure: '11:00',
+                    carts: overflowRoute.maxCapacity,
+                    externalCarrier: overflow.overflow,
+                    cost: this.OWN_TRUCK_COST // Separate trip - fuel, driver time, etc.
+                };
+            } else {
+                // External truck for Route 3
+                allocation.route1 = {
+                    truck: 'own-truck-1',
+                    route: 'rijnsburg',
+                    departure: '09:00',
+                    carts: route1.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route2 = {
+                    truck: 'own-truck-2',
+                    route: 'aalsmeer',
+                    departure: '10:00',
+                    carts: route2.totalCarts,
+                    cost: this.OWN_TRUCK_COST
+                };
+                allocation.route3 = {
+                    truck: 'external-truck',
+                    route: 'naaldwijk',
+                    departure: '11:00',
+                    carts: overflowRoute.totalCarts,
+                    cost: this.EXTERNAL_TRUCK_COST
+                };
+            }
         }
 
-        return feasibility;
+        return allocation;
     }
 
     /**
@@ -348,19 +611,18 @@ class RouteOptimizer {
         
         let score = 100;
 
-        // Cost factor (lower is better)
-        // Use provided allOptions to avoid infinite recursion
+        // Cost factor (lower is better) - 30 points
         const optionsForComparison = (allOptions && Array.isArray(allOptions)) ? allOptions : [option];
         const validOptions = optionsForComparison.filter(o => o && typeof o.cost === 'number');
         
-        if (validOptions.length === 0) return 50; // Default score if no valid options
-        
-        const minCost = Math.min(...validOptions.map(o => o.cost));
-        const optionCost = typeof option.cost === 'number' ? option.cost : 0;
-        
-        if (minCost > 0) {
-            const costFactor = (optionCost / minCost) * 30; // Max 30 points
-            score -= (costFactor - 30);
+        if (validOptions.length > 0) {
+            const minCost = Math.min(...validOptions.map(o => o.cost));
+            const optionCost = typeof option.cost === 'number' ? option.cost : 0;
+            
+            if (minCost > 0) {
+                const costFactor = (optionCost / minCost) * 30;
+                score -= (costFactor - 30);
+            }
         }
 
         // Feasibility factor (30 points)
@@ -368,7 +630,7 @@ class RouteOptimizer {
             if (option.feasibility.fits) {
                 score += 30;
             } else {
-                score -= 20; // Penalty for overflow
+                score -= 20;
             }
         }
 
@@ -390,7 +652,7 @@ class RouteOptimizer {
      */
     getBestOption() {
         const options = this.generateOptions();
-        return options[0]; // Already sorted by score
+        return options.length > 0 ? options[0] : null;
     }
 }
 
@@ -401,4 +663,3 @@ function initializeOptimizer(orders) {
     routeOptimizer = new RouteOptimizer(orders, ROUTES, TRUCKS);
     return routeOptimizer;
 }
-

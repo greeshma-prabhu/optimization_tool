@@ -73,6 +73,7 @@ class OrderManager {
             try {
                 localStorage.setItem('zuidplas_orders', JSON.stringify(this.orders));
                 localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                localStorage.setItem('zuidplas_using_demo_data', 'true');
             } catch (e) {
                 console.warn('Could not save orders to localStorage:', e);
             }
@@ -99,6 +100,7 @@ class OrderManager {
             try {
                 localStorage.setItem('zuidplas_orders', JSON.stringify(this.orders));
                 localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                localStorage.setItem('zuidplas_using_demo_data', 'false');
             } catch (e) {
                 console.warn('Could not save orders to localStorage:', e);
             }

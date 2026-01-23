@@ -10,18 +10,26 @@
      * Mark active navigation link based on current page
      */
     function updateActiveNavLink() {
-        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'index';
         
+        // Update top navigation items (new layout)
+        document.querySelectorAll('.nav-item').forEach(item => {
+            const page = item.getAttribute('data-page');
+            item.classList.remove('active');
+            if (page === currentPage || (currentPage === '' && page === 'index')) {
+                item.classList.add('active');
+            }
+        });
+        
+        // Update old sidebar nav links (for backward compatibility)
         document.querySelectorAll('.nav-link').forEach(link => {
             const linkPage = link.getAttribute('href');
-            
-            // Remove active class from all links
             link.classList.remove('active');
-            
-            // Add active class if this link matches current page
-            if (linkPage === currentPage || 
-                (currentPage === '' && linkPage === 'index.html')) {
-                link.classList.add('active');
+            if (linkPage) {
+                const linkPageName = linkPage.replace('.html', '').replace('index.html', 'index');
+                if (linkPageName === currentPage || (currentPage === '' && linkPageName === 'index')) {
+                    link.classList.add('active');
+                }
             }
         });
     }

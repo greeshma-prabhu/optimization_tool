@@ -5,37 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Route Optimization - Zuidplas Logistics</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/layout.css">
 </head>
 <body>
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <button class="sidebar-close" onclick="toggleSidebar()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
-
-        <button class="sidebar-toggle" onclick="toggleSidebarCollapse()" title="Collapse sidebar">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-        </button>
-
-        <div class="sidebar-logo">
-            <svg width="32" height="32" viewBox="0 0 32 32">
-                <rect x="4" y="8" width="24" height="16" rx="2" fill="#f97316"/>
-                <rect x="6" y="12" width="8" height="8" fill="#fff"/>
-                <rect x="18" y="12" width="8" height="8" fill="#fff"/>
-            </svg>
-            <span>Zuidplas</span>
+    <!-- Top Header -->
+    <header class="top-header">
+        <div class="header-left">
+            <div class="header-logo">
+                <div class="logo-blocks">
+                    <div class="logo-block d">D</div>
+                    <div class="logo-block flower">
+                        <div class="logo-flower-icon"></div>
+                    </div>
+                    <div class="logo-block z">Z</div>
+                </div>
+                <div class="logo-text-large">
+                    <div class="logo-main-text">DE ZUIDPLAS</div>
+                </div>
+            </div>
         </div>
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-avatar">A</div>
+                <span style="font-size: 14px; color: #374151;">Admin User</span>
+                <div class="user-badge">Admin</div>
+            </div>
+            <button class="logout-btn-header" onclick="handleLogout()" data-i18n="common.logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Uitloggen</span>
+            </button>
+        </div>
+    </header>
 
-        <nav class="sidebar-nav">
-            <a href="index.html" class="nav-link active">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+        <div class="nav-items">
+            <a href="index.html" class="nav-item active">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7"></rect>
                     <rect x="14" y="3" width="7" height="7"></rect>
                     <rect x="14" y="14" width="7" height="7"></rect>
@@ -44,22 +54,22 @@
                 <span data-i18n="nav.dashboard">Dashboard</span>
             </a>
             
-            <a href="orders.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="orders.html" class="nav-item">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 </svg>
                 <span data-i18n="nav.orders">Orders</span>
             </a>
             
-            <a href="optimization.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="optimization.html" class="nav-item">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
                 </svg>
                 <span data-i18n="nav.optimization">Optimization</span>
             </a>
             
-            <a href="trucks.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="trucks.html" class="nav-item">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="1" y="3" width="15" height="13"></rect>
                     <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
@@ -68,8 +78,8 @@
                 <span data-i18n="nav.trucks">Trucks</span>
             </a>
             
-            <a href="cart-loading.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="cart-loading.html" class="nav-item">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="7" width="20" height="14" rx="2"></rect>
                     <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
                     <line x1="12" y1="12" x2="12" y2="16"></line>
@@ -79,54 +89,64 @@
                 <span data-i18n="nav.cartOptimization">Cart Optimization</span>
             </a>
             
-            <a href="costs.html" class="nav-link">
-                <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a href="costs.html" class="nav-item">
+                <svg class="nav-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
                 <span data-i18n="nav.costs">Costs</span>
             </a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <div id="auth-status" style="font-size: 0.75rem; color: #6b7280; margin-bottom: 12px;"></div>
-            <button onclick="handleLogout()" class="logout-btn" style="width: 100%; padding: 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;" data-i18n="common.logout">
-                🚪 Uitloggen
-            </button>
         </div>
-    </aside>
-
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick="toggleSidebar()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-    </button>
+    </nav>
 
     <!-- Main Content -->
     <main class="main-content">
         <!-- Page Header -->
         <div class="page-header">
-            <h1 class="page-title" data-i18n="dashboard.title">Dashboard</h1>
-            <p class="page-subtitle" data-i18n="dashboard.subtitle">Route optimization overview for today</p>
-            <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; align-items: center;">
-                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center;">
-                    <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);" data-i18n="dashboard.selectDate">Select Date:</label>
-                    <input type="date" id="order-date-picker" style="padding: 8px 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 0.9rem;" value="">
-                    </div>
-                    <button class="btn btn-primary" onclick="syncOrders(false)" id="sync-btn" data-i18n="dashboard.syncOrders">
-                        🔄 Sync Orders from API
-                    </button>
-                    <button class="btn btn-primary" onclick="loadDemoData()" id="demo-btn" data-i18n="dashboard.loadDemo">
-                        📦 Load Demo Data
-                    </button>
+            <div class="page-header-top">
+                <div>
+                    <h1 class="page-title" data-i18n="dashboard.title">Dashboard</h1>
+                    <p class="page-subtitle" data-i18n="dashboard.subtitle">Route optimization overview for today</p>
                 </div>
-                <div class="date-time" id="currentDateTime"></div>
+                <div class="dashboard-controls">
+                    <div class="date-picker-wrapper">
+                        <label class="date-picker-label" data-i18n="dashboard.selectDate">Select Date</label>
+                        <div class="date-input-group">
+                            <input type="date" id="order-date-picker" class="date-input" value="">
+                            <button type="button" class="btn-icon" onclick="document.getElementById('order-date-picker').focus(); document.getElementById('order-date-picker').showPicker ? document.getElementById('order-date-picker').showPicker() : null;" title="Open calendar">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="button" class="btn-refresh" id="sync-btn" title="Refresh data">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                            <span data-i18n="dashboard.syncOrders">Sync</span>
+                        </button>
+                        <button type="button" class="btn-demo" id="demo-btn" title="Load demo data">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                                <line x1="15" y1="3" x2="15" y2="21"></line>
+                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                                <line x1="3" y1="15" x2="21" y2="15"></line>
+                            </svg>
+                            <span data-i18n="dashboard.loadDemo">Demo</span>
+                        </button>
+                    </div>
+                    <div class="current-date-time" id="currentDateTime"></div>
+                </div>
             </div>
-            <div id="api-status-message" style="margin-top: 15px; text-align: center; font-size: 0.9rem; color: var(--text-secondary);"></div>
+            <div id="api-status-message" class="api-status-message"></div>
         </div>
 
         <!-- Stats Cards -->
@@ -229,39 +249,109 @@
     <script src="js/optimizer.js"></script>
     <script src="js/navigation.js"></script>
     <script>
-        // Update date and time
-        function updateDateTime() {
-            const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            };
+        // Update last refreshed time
+        function updateLastRefreshed() {
+            const lastRefresh = localStorage.getItem('zuidplas_last_refresh');
             const dateTimeEl = document.getElementById('currentDateTime');
-            if (dateTimeEl) {
-                dateTimeEl.textContent = now.toLocaleDateString('en-US', options);
+            if (!dateTimeEl) return;
+            
+            const lang = localStorage.getItem('zuidplas_user_language') || localStorage.getItem('zuidplas_language') || 'nl';
+            const locale = lang === 'nl' ? 'nl-NL' : 'en-US';
+            
+            if (lastRefresh) {
+                const refreshDate = new Date(parseInt(lastRefresh));
+                const timeStr = refreshDate.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+                const dateStr = refreshDate.toLocaleDateString(locale, { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric'
+                });
+                
+                if (lang === 'nl') {
+                    dateTimeEl.textContent = `Laatst vernieuwd: ${dateStr} om ${timeStr}`;
+                } else {
+                    dateTimeEl.textContent = `Last refreshed: ${dateStr} at ${timeStr}`;
+                }
+            } else {
+                if (lang === 'nl') {
+                    dateTimeEl.textContent = 'Nog niet vernieuwd';
+                } else {
+                    dateTimeEl.textContent = 'Not refreshed yet';
+                }
             }
         }
-        updateDateTime();
-        setInterval(updateDateTime, 60000);
         
-        // Set default date to today
+        // Update on load
+        updateLastRefreshed();
+        
+        // Set default date to today and set up button listeners
         document.addEventListener('DOMContentLoaded', () => {
             const datePicker = document.getElementById('order-date-picker');
             if (datePicker && !datePicker.value) {
                 const today = new Date();
                 datePicker.value = today.toISOString().split('T')[0];
             }
+            
+            // Set up button event listeners (CRITICAL - must prevent calendar opening)
+            const syncBtn = document.getElementById('sync-btn');
+            const demoBtn = document.getElementById('demo-btn');
+            
+            if (syncBtn) {
+                // Remove any existing listeners by cloning
+                const newSyncBtn = syncBtn.cloneNode(true);
+                syncBtn.parentNode.replaceChild(newSyncBtn, syncBtn);
+                
+                newSyncBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    console.log('Sync button clicked - calling syncOrders');
+                    if (typeof window.syncOrders === 'function') {
+                        window.syncOrders(false);
+                    } else if (typeof syncOrders === 'function') {
+                        syncOrders(false);
+                    } else {
+                        console.error('syncOrders function not found!');
+                    }
+                    return false;
+                }, true); // Use capture phase for early binding
+            }
+            
+            if (demoBtn) {
+                // Remove any existing listeners by cloning
+                const newDemoBtn = demoBtn.cloneNode(true);
+                demoBtn.parentNode.replaceChild(newDemoBtn, demoBtn);
+                
+                newDemoBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    console.log('Demo button clicked - calling loadDemoData');
+                    if (typeof window.loadDemoData === 'function') {
+                        window.loadDemoData();
+                    } else if (typeof loadDemoData === 'function') {
+                        loadDemoData();
+                    } else {
+                        console.error('loadDemoData function not found!');
+                    }
+                    return false;
+                }, true); // Use capture phase for early binding
+            }
+            
+            // Prevent date picker from interfering
+            if (datePicker) {
+                datePicker.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
         });
 
         // Use dummy data flag
         let useDummyData = false;
 
-        // Sync orders from API or use dummy data
-        async function syncOrders(useDummy = false) {
+        // Sync orders from API or use dummy data - make it global
+        window.syncOrders = async function(useDummy = false) {
             const syncBtn = document.getElementById('sync-btn');
             const originalText = syncBtn.innerHTML;
             const statusMsg = document.getElementById('api-status-message');
@@ -270,7 +360,14 @@
             try {
                 syncBtn.disabled = true;
                 syncBtn.innerHTML = useDummy ? '📦 Loading Demo Data...' : '⏳ Syncing...';
-                if (statusMsg) statusMsg.innerHTML = '';
+                if (statusMsg) {
+                    statusMsg.innerHTML = '';
+                    statusMsg.classList.remove('show', 'success', 'error');
+                }
+                
+                // Store refresh timestamp
+                localStorage.setItem('zuidplas_last_refresh', Date.now().toString());
+                updateLastRefreshed();
                 
                 // Get selected date or use today
                 const datePicker = document.getElementById('order-date-picker');
@@ -282,8 +379,20 @@
                 // Fetch orders (will auto-fallback to dummy if API fails)
                 const orders = await orderManager.fetchOrders(selectedDate, useDummy);
                 
+                // Store flag for demo data
+                if (useDummy) {
+                    localStorage.setItem('zuidplas_using_demo_data', 'true');
+                } else {
+                    localStorage.setItem('zuidplas_using_demo_data', 'false');
+                }
+                
                 // Assign carts
                 orderManager.assignCarts();
+                
+                // Ensure cartManager is initialized
+                if (typeof cartManager === 'undefined') {
+                    throw new Error('CartManager not initialized. Please refresh the page.');
+                }
                 
                 // Initialize optimizer
                 const optimizer = initializeOptimizer(orders);
@@ -300,16 +409,25 @@
                 if (statusMsg) {
                     if (useDummy) {
                         statusMsg.innerHTML = '✅ Using demo data (20 sample orders)';
-                        statusMsg.style.color = 'var(--success)';
+                        statusMsg.classList.add('show', 'success');
                     } else if (orders.length === 0) {
                         const dateStr = selectedDate ? selectedDate.toLocaleDateString() : 'today';
                         statusMsg.innerHTML = `ℹ️ No orders found for ${dateStr}. Try a different date or use demo data.`;
-                        statusMsg.style.color = 'var(--warning)';
+                        statusMsg.classList.add('show');
                     } else {
-                        statusMsg.innerHTML = `✅ Found ${orders.length} orders from API`;
-                        statusMsg.style.color = 'var(--success)';
+                        // Check if actually from API or demo data
+                        const isDemoData = localStorage.getItem('zuidplas_using_demo_data') === 'true';
+                        if (isDemoData) {
+                            statusMsg.innerHTML = `✅ Using demo data (${orders.length} sample orders)`;
+                        } else {
+                            statusMsg.innerHTML = `✅ Found ${orders.length} orders from API`;
+                        }
+                        statusMsg.classList.add('show', 'success');
                     }
                 }
+                
+                // Update last refreshed time
+                updateLastRefreshed();
                 
                 setTimeout(() => {
                     syncBtn.innerHTML = originalText;
@@ -320,7 +438,7 @@
                 syncBtn.innerHTML = '❌ Error';
                 if (statusMsg) {
                     statusMsg.innerHTML = `❌ Error: ${error.message}. Try using demo data or check proxy server.`;
-                    statusMsg.style.color = 'var(--danger)';
+                    statusMsg.classList.add('show', 'error');
                 }
                 setTimeout(() => {
                     syncBtn.innerHTML = originalText;
@@ -330,10 +448,15 @@
             }
         }
 
-        // Load demo data button
-        function loadDemoData() {
-            syncOrders(true);
-        }
+        // Load demo data button - make it global
+        window.loadDemoData = function() {
+            console.log('loadDemoData called');
+            if (typeof window.syncOrders === 'function') {
+                window.syncOrders(true);
+            } else {
+                console.error('window.syncOrders not available');
+            }
+        };
 
         // Update dashboard display
         function updateDashboard(orders, options) {
@@ -343,6 +466,20 @@
             const cartSummary = orderManager.getCartSummary();
             document.getElementById('total-carts-needed').textContent = 
                 cartSummary.standard + cartSummary.danish;
+            
+            // Update routes status
+            try {
+                const optimizer = initializeOptimizer(orders);
+                const routeAnalysis = optimizer.processOrders();
+                const routesWithOrders = Object.keys(routeAnalysis).filter(routeKey => {
+                    const analysis = routeAnalysis[routeKey];
+                    return analysis && analysis.orders && analysis.orders.length > 0;
+                }).length;
+                document.getElementById('routes-status').textContent = `${routesWithOrders}/3`;
+            } catch (error) {
+                console.error('Error updating routes status:', error);
+                document.getElementById('routes-status').textContent = '0/3';
+            }
             
             // Update routes
             updateRouteOverview(orders, options);
@@ -364,15 +501,56 @@
             
             container.innerHTML = '';
             
-            const routeAnalysis = initializeOptimizer(orders).processOrders();
-            
-            Object.keys(ROUTES).forEach(routeKey => {
-                const route = ROUTES[routeKey];
-                const analysis = routeAnalysis[routeKey];
+            try {
+                const optimizer = initializeOptimizer(orders);
+                const routeAnalysis = optimizer.processOrders();
                 
-                if (!analysis) return;
-                
-                const capacity = analysis.capacity;
+                Object.keys(ROUTES).forEach(routeKey => {
+                    const route = ROUTES[routeKey];
+                    const analysis = routeAnalysis[routeKey];
+                    
+                    // Always show all routes, even if empty
+                    if (!analysis) {
+                        console.warn(`No analysis for route ${routeKey}, creating empty structure`);
+                        // Create empty route card
+                        const emptyCard = document.createElement('div');
+                        emptyCard.className = 'route-card';
+                        emptyCard.innerHTML = `
+                            <div class="route-header">
+                                <div class="route-title">Route ${route.id}: ${route.name}</div>
+                                <div class="route-time">${route.departureTime}</div>
+                            </div>
+                            <div class="route-info">
+                                <div class="route-info-item">
+                                    <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.orders', 'Orders') : 'Orders'}</div>
+                                    <div class="route-info-value">0</div>
+                                </div>
+                                <div class="route-info-item">
+                                    <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartsNeeded', 'Carts Needed') : 'Carts Needed'}</div>
+                                    <div class="route-info-value">0 / 17</div>
+                                </div>
+                                <div class="route-info-item">
+                                    <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.status', 'Status') : 'Status'}</div>
+                                    <div class="route-info-value"><span class="badge success">${typeof i18n !== 'undefined' ? i18n.t('common.ready', 'Ready') : 'Ready'}</span></div>
+                                </div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 0%; background: var(--success)"></div>
+                            </div>
+                        `;
+                        container.appendChild(emptyCard);
+                        return;
+                    }
+                    
+                    // Use capacity object if available, otherwise use direct properties
+                    const capacity = analysis.capacity || {
+                        fits: analysis.fits !== undefined ? analysis.fits : true,
+                        status: analysis.status || 'fits',
+                        maxCapacity: analysis.maxCapacity || 17,
+                        equivalentStandard: analysis.totalCarts || 0,
+                        utilization: analysis.utilization || 0,
+                        overflow: analysis.overflow || 0
+                    };
                 const statusClass = capacity.fits ? 'success' : capacity.status === 'tight' ? 'warning' : 'danger';
                 let statusText = '';
                 if (typeof i18n !== 'undefined') {
@@ -416,6 +594,10 @@
                 
                 container.appendChild(card);
             });
+            } catch (error) {
+                console.error('Error updating route overview:', error);
+                container.innerHTML = `<div class="info-box danger">Error loading route data: ${error.message}</div>`;
+            }
         }
 
         // Update optimization suggestions

@@ -94,6 +94,10 @@ const translations = {
             clientColors: 'Client Colors',
             truck: 'Truck'
         },
+        // Carts
+        carts: {
+            danishCapacityWarning: '⚠️ More than {0} Danish carts - capacity reduced to {1}'
+        },
         // Optimization
         optimization: {
             title: 'Route Optimization Engine',
@@ -120,7 +124,30 @@ const translations = {
             recommended: 'Recommended',
             alternative: 'Alternative',
             callNeighbor: 'Call Neighbor',
-            allFits: 'All fits'
+            allFits: 'All fits',
+            standardAllocation: 'Standard Allocation',
+            defaultDescription: 'All carts fit in 2 own trucks - Truck 1 does Route 1 then Route 3, Truck 2 does Route 2',
+            neighborTruck: "Neighbor's Truck",
+            neighborDescription: "Use neighbor's truck for Route 1 (free), own trucks for Routes 2 & 3",
+            allRoutesFit: 'All routes fit within capacity',
+            overflowCarrier: 'Overflow via External Carrier',
+            overflowCarrierDescription: 'Route {0} ({1}): {2} carts via external carrier, rest in own truck',
+            overflowHandled: '{0} overflow carts handled via external carrier',
+            minimalExtraCost: 'Minimal extra cost',
+            usesOwnTrucks: 'Uses own trucks efficiently',
+            guaranteedCapacity: 'Guaranteed capacity',
+            requiresExternalBooking: 'Requires external carrier booking',
+            splitDelivery: 'Split delivery for overflow route',
+            externalTruckForRoute: 'External Truck for Overflow Route',
+            externalTruckDescription: 'Use external truck for entire Route {0} ({1})',
+            fullRouteExternal: 'Full route handled by external truck',
+            simpleSolution: 'Simple solution',
+            noSplitDelivery: 'No split delivery',
+            noOrdersForRoute: 'No orders for this route',
+            needsAdditionalCarts: 'Needs',
+            additionalCarts: 'additional carts',
+            suggestExternal: 'Suggest external carrier',
+            option: 'Option'
         },
         // Trucks
         trucks: {
@@ -165,6 +192,12 @@ const translations = {
             potentialMonthlySavings: 'Potential monthly savings:',
             ifUsingCheapestOption: 'if using cheapest option',
             averageDailyCost: 'Average daily cost:',
+            perDay: 'per day',
+            loadOrdersTip: 'Load orders and run optimization to see cost-saving recommendations',
+            costSavingsOpportunity: 'Cost Savings Opportunity',
+            savingsOpportunity: 'Consider "{0}" to save €{1} per day (€{2} per month)',
+            neighborTruckAvailable: "Neighbor's Truck Available",
+            neighborTruckSaves: 'Using neighbor\'s truck for Route 1 saves €{0} compared to external truck',
             perDay: 'per day',
             costComparison: 'Cost Comparison',
             costFactors: 'Cost Factors'
@@ -363,6 +396,10 @@ const translations = {
             dontFit: 'passen niet. Overweeg externe vervoerder of buur vrachtwagen.',
             notAssigned: 'Niet Toegewezen'
         },
+        // Carts
+        carts: {
+            danishCapacityWarning: '⚠️ Meer dan {0} Deense karren - capaciteit verlaagd tot {1}'
+        },
         // Optimization
         optimization: {
             title: 'Route Optimalisatie Engine',
@@ -395,7 +432,30 @@ const translations = {
             truckAvailable: 'Vrachtwagen {0} beschikbaar voor Route {1}',
             higherCost: 'Hogere kosten',
             externalDependency: 'Externe afhankelijkheid',
-            efficiency: 'Efficiëntie gebaseerd op kosten, capaciteitsbenutting en haalbaarheid'
+            efficiency: 'Efficiëntie gebaseerd op kosten, capaciteitsbenutting en haalbaarheid',
+            standardAllocation: 'Standaard Toewijzing',
+            defaultDescription: 'Alle karren passen in 2 eigen vrachtwagens - Vrachtwagen 1 doet Route 1 dan Route 3, Vrachtwagen 2 doet Route 2',
+            neighborTruck: "Buur Vrachtwagen",
+            neighborDescription: "Gebruik buur vrachtwagen voor Route 1 (gratis), eigen vrachtwagens voor Routes 2 & 3",
+            allRoutesFit: 'Alle routes passen binnen capaciteit',
+            overflowCarrier: 'Overloop via Externe Vervoerder',
+            overflowCarrierDescription: 'Route {0} ({1}): {2} karren via externe vervoerder, rest in eigen vrachtwagen',
+            overflowHandled: '{0} overloop karren afgehandeld via externe vervoerder',
+            minimalExtraCost: 'Minimale extra kosten',
+            usesOwnTrucks: 'Gebruikt eigen vrachtwagens efficiënt',
+            guaranteedCapacity: 'Gegarandeerde capaciteit',
+            requiresExternalBooking: 'Vereist externe vervoerder boeking',
+            splitDelivery: 'Gesplitste levering voor overloop route',
+            externalTruckForRoute: 'Externe Vrachtwagen voor Overloop Route',
+            externalTruckDescription: 'Gebruik externe vrachtwagen voor volledige Route {0} ({1})',
+            fullRouteExternal: 'Volledige route afgehandeld door externe vrachtwagen',
+            simpleSolution: 'Eenvoudige oplossing',
+            noSplitDelivery: 'Geen gesplitste levering',
+            noOrdersForRoute: 'Geen bestellingen voor deze route',
+            needsAdditionalCarts: 'Heeft',
+            additionalCarts: 'extra karren nodig',
+            suggestExternal: 'Stel externe vervoerder voor',
+            option: 'Optie'
         },
         // Trucks
         trucks: {
@@ -440,6 +500,12 @@ const translations = {
             potentialMonthlySavings: 'Potentiële maandelijkse besparingen:',
             ifUsingCheapestOption: 'bij gebruik van goedkoopste optie',
             averageDailyCost: 'Gemiddelde dagelijkse kosten:',
+            perDay: 'per dag',
+            loadOrdersTip: 'Laad bestellingen en voer optimalisatie uit om kostenbesparende aanbevelingen te zien',
+            costSavingsOpportunity: 'Kostenbesparingsmogelijkheid',
+            savingsOpportunity: 'Overweeg "{0}" om €{1} per dag te besparen (€{2} per maand)',
+            neighborTruckAvailable: 'Buur Vrachtwagen Beschikbaar',
+            neighborTruckSaves: 'Gebruik van buur vrachtwagen voor Route 1 bespaart €{0} vergeleken met externe vrachtwagen',
             perDay: 'per dag',
             costComparison: 'Kosten Vergelijking',
             costFactors: 'Kosten Factoren'
