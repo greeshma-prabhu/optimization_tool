@@ -1288,9 +1288,10 @@
                     const selectTruckMsg = typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruckFirst', 'Please select a truck for this route') : 'Please select a truck for this route';
                     
                     // Calculate cart statistics for display
-                    const totalCarts = routeCarts.length;
-                    const standardCarts = routeCarts.filter(c => c.type !== 'danish').length;
-                    const danishCarts = routeCarts.filter(c => c.type === 'danish').length;
+                    // CRITICAL: Use routeInfo.totalCarts (from optimizer) for consistency, not routeCarts.length
+                    const totalCarts = routeInfo.totalCarts || routeCarts.length;
+                    const standardCarts = routeInfo.standardCarts || routeCarts.filter(c => c.type !== 'danish').length;
+                    const danishCarts = routeInfo.danishCarts || routeCarts.filter(c => c.type === 'danish').length;
                     const maxCapacity = routeInfo.maxCapacity || 17;
                     
                     const routeCard = document.createElement('div');
@@ -1379,7 +1380,8 @@
                 
                 // Calculate combined capacity for multiple trucks
                 const combinedCapacity = getCombinedCapacity(assignedTruckIds, routeCarts);
-                const totalCarts = routeCarts.length;
+                // CRITICAL: Use routeInfo.totalCarts (from optimizer) for consistency
+                const totalCarts = routeInfo.totalCarts || routeCarts.length;
                 const fits = totalCarts <= combinedCapacity.max;
                 const overflow = Math.max(0, totalCarts - combinedCapacity.max);
                 

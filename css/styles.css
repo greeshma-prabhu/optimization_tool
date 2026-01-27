@@ -455,6 +455,7 @@ body {
     gap: 8px;
 }
 
+.btn-sync,
 .btn-refresh,
 .btn-demo {
     display: flex;
@@ -477,11 +478,23 @@ body {
     -ms-user-select: none;
 }
 
+.btn-sync {
+    /* Same orange style as other buttons */
+}
+
 .btn-demo:focus,
 .btn-demo:active {
     outline: none;
     border-color: #ea580c;
     background: #ea580c;
+}
+
+.btn-sync:hover {
+    background: #ea580c;
+    border-color: #ea580c;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
 }
 
 .btn-refresh:hover,
@@ -493,12 +506,14 @@ body {
     box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
 }
 
+.btn-sync:active,
 .btn-refresh:active,
 .btn-demo:active {
     transform: translateY(0);
     box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
 }
 
+.btn-sync:disabled,
 .btn-refresh:disabled,
 .btn-demo:disabled {
     opacity: 0.6;
@@ -506,9 +521,66 @@ body {
     transform: none;
 }
 
+.btn-sync svg,
 .btn-refresh svg,
 .btn-demo svg {
     flex-shrink: 0;
+    transition: transform 0.3s;
+}
+
+.btn-sync.refreshing svg,
+.btn-refresh.refreshing svg {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.header-status-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: 16px;
+}
+
+.auto-refresh-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #166534;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.last-updated {
+    font-size: 13px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.last-updated strong {
+    color: #1f2937;
+    font-weight: 600;
 }
 
 .current-date-time {

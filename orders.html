@@ -6,6 +6,31 @@
     <title>Daily Orders - Zuidplas Logistics</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/layout.css">
+    <style>
+        /* CRITICAL: Ensure Sync Now button is always clickable and doesn't trigger date picker */
+        #sync-orders-btn,
+        #export-orders-btn {
+            position: relative;
+            z-index: 1000;
+            pointer-events: auto !important;
+        }
+        
+        .action-buttons {
+            position: relative;
+            z-index: 1000;
+        }
+        
+        /* Prevent date input from interfering with button clicks */
+        #order-date-picker {
+            pointer-events: auto;
+        }
+        
+        /* When button is clicked, ensure date input doesn't get focus */
+        #sync-orders-btn:active,
+        #export-orders-btn:active {
+            z-index: 1001;
+        }
+    </style>
 </head>
 <body>
     <!-- Top Header -->
@@ -140,11 +165,31 @@
     <!-- Main Content -->
     <main class="main-content" style="margin-left: 0;">
         <div class="page-header">
-            <h1 class="page-title" data-i18n="orders.title">Daily Orders</h1>
-            <p class="page-subtitle" id="orders-date">Loading...</p>
-            <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="syncOrders()" data-i18n="orders.syncNow">🔄 Sync Now</button>
-                <button class="btn btn-secondary" onclick="exportOrders()" data-i18n="orders.exportCSV">📥 Export CSV</button>
+            <div class="page-header-top">
+                <div>
+                    <h1 class="page-title" data-i18n="orders.title">Daily Orders</h1>
+                    <p class="page-subtitle" id="orders-date">Loading...</p>
+                </div>
+                <div class="dashboard-controls">
+                    <div class="date-picker-wrapper">
+                        <label class="date-picker-label" data-i18n="dashboard.selectDate">Select Date</label>
+                        <div class="date-input-group">
+                            <input type="date" id="order-date-picker" class="date-input" value="" onchange="updateOrdersDate()" tabindex="0" style="pointer-events: auto;">
+                            <button type="button" class="btn-icon" onclick="document.getElementById('order-date-picker').focus(); document.getElementById('order-date-picker').showPicker ? document.getElementById('order-date-picker').showPicker() : null;" title="Open calendar">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-primary" id="sync-orders-btn" data-i18n="orders.syncNow" style="padding: 10px 20px;">🔄 Sync Now</button>
+                        <button type="button" class="btn btn-secondary" id="export-orders-btn" data-i18n="orders.exportCSV" style="padding: 10px 20px;">📥 Export CSV</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -248,15 +293,24 @@
     <script src="js/orders.js"></script>
     <script src="js/navigation.js"></script>
     <script>
-        // Set date - USE SELECTED LANGUAGE
+        // Set date - USE SELECTED DATE FROM PICKER
         function updateOrdersDate() {
             const dateEl = document.getElementById('orders-date');
-            if (!dateEl) return;
+            const datePicker = document.getElementById('order-date-picker');
+            if (!dateEl || !datePicker) return;
+            
+            // Get selected date or default to today
+            let selectedDate;
+            if (datePicker.value) {
+                selectedDate = new Date(datePicker.value);
+            } else {
+                selectedDate = new Date();
+                datePicker.value = selectedDate.toISOString().split('T')[0];
+            }
             
             const savedLang = localStorage.getItem('zuidplas_user_language') || localStorage.getItem('zuidplas_language') || 'nl';
             const locale = savedLang === 'nl' ? 'nl-NL' : 'en-US';
-            const date = new Date();
-            const dateStr = date.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const dateStr = selectedDate.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             
             if (typeof i18n !== 'undefined') {
                 dateEl.textContent = i18n.t('orders.ordersFor', 'Orders for') + ' ' + dateStr;
@@ -265,15 +319,154 @@
             }
         }
         
-        // Update date on load
-        updateOrdersDate();
+        // Initialize date picker on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const datePicker = document.getElementById('order-date-picker');
+            if (datePicker && !datePicker.value) {
+                const today = new Date();
+                datePicker.value = today.toISOString().split('T')[0];
+            }
+            updateOrdersDate();
+            
+            // CRITICAL: Make date input only focusable when clicking directly on it
+            if (datePicker) {
+                // Prevent date input from getting focus when clicking buttons
+                datePicker.addEventListener('focus', function(e) {
+                    // Check if focus came from a button click
+                    const activeElement = document.activeElement;
+                    if (activeElement && activeElement.tagName === 'BUTTON') {
+                        e.preventDefault();
+                        datePicker.blur();
+                        return false;
+                    }
+                });
+                
+                // Prevent date input from opening when clicking nearby
+                datePicker.addEventListener('mousedown', function(e) {
+                    // Only allow if clicking directly on the input
+                    if (e.target !== datePicker) {
+                        e.stopPropagation();
+                    }
+                });
+            }
+            
+            // Fix Sync Now button - AGGRESSIVE FIX
+            const syncBtn = document.getElementById('sync-orders-btn');
+            if (syncBtn) {
+                // Remove any existing listeners by cloning
+                const newSyncBtn = syncBtn.cloneNode(true);
+                syncBtn.parentNode.replaceChild(newSyncBtn, syncBtn);
+                const finalSyncBtn = document.getElementById('sync-orders-btn');
+                
+                // CRITICAL: Handle mousedown to blur date picker but DON'T prevent default
+                finalSyncBtn.addEventListener('mousedown', function(e) {
+                    // Don't prevent default - we want the click to fire
+                    e.stopPropagation();
+                    
+                    // Immediately blur date picker if it has focus
+                    if (datePicker) {
+                        datePicker.blur();
+                        if (document.activeElement === datePicker) {
+                            datePicker.blur();
+                        }
+                    }
+                }, true); // Capture phase
+                
+                // Handle click to actually sync - THIS IS THE MAIN HANDLER
+                finalSyncBtn.addEventListener('click', function(e) {
+                    console.log('🔄 Sync Now button CLICKED');
+                    
+                    // Stop propagation but DON'T stop immediate - allow other handlers
+                    e.stopPropagation();
+                    
+                    // Ensure date picker is NOT focused
+                    if (datePicker) {
+                        if (document.activeElement === datePicker) {
+                            datePicker.blur();
+                        }
+                        datePicker.blur();
+                    }
+                    
+                    // Call syncOrders function - try multiple ways to access it
+                    try {
+                        if (typeof syncOrders === 'function') {
+                            console.log('✅ Calling syncOrders() function');
+                            syncOrders();
+                        } else if (typeof window.syncOrders === 'function') {
+                            console.log('✅ Calling window.syncOrders() function');
+                            window.syncOrders();
+                        } else {
+                            console.error('❌ syncOrders function not found!');
+                            console.log('Available functions:', Object.keys(window).filter(k => k.includes('sync')));
+                            alert('Error: syncOrders function not found. Please refresh the page.');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error calling syncOrders:', error);
+                        alert('Error calling syncOrders: ' + error.message);
+                    }
+                }, false); // Use bubble phase, not capture
+            }
+            
+            // Fix Export CSV button
+            const exportBtn = document.getElementById('export-orders-btn');
+            if (exportBtn) {
+                // Remove any existing listeners
+                const newExportBtn = exportBtn.cloneNode(true);
+                exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+                const finalExportBtn = document.getElementById('export-orders-btn');
+                
+                finalExportBtn.addEventListener('mousedown', function(e) {
+                    // Close date picker immediately on mousedown
+                    if (datePicker) {
+                        datePicker.blur();
+                    }
+                }, true);
+                
+                finalExportBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    // Ensure date picker is closed
+                    if (datePicker) {
+                        datePicker.blur();
+                    }
+                    
+                    exportOrders();
+                    return false;
+                }, true); // Use capture phase
+            }
+        });
+        
+        // Update date on load (fallback)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateOrdersDate);
+        } else {
+            updateOrdersDate();
+        }
 
-        // Sync orders
+        // Sync orders - USE SELECTED DATE
         async function syncOrders() {
             try {
-                const orders = await orderManager.fetchOrders();
+                const datePicker = document.getElementById('order-date-picker');
+                let selectedDate = null;
+                
+                if (datePicker && datePicker.value) {
+                    selectedDate = datePicker.value; // YYYY-MM-DD format
+                    console.log('📅 Fetching orders for selected date:', selectedDate);
+                } else {
+                    // Default to today
+                    selectedDate = new Date().toISOString().split('T')[0];
+                    if (datePicker) {
+                        datePicker.value = selectedDate;
+                    }
+                    console.log('📅 Using today as default:', selectedDate);
+                }
+                
+                const orders = await orderManager.fetchOrders(selectedDate);
                 orderManager.assignCarts();
                 updateSummary();
+                updateOrdersDate(); // Update displayed date
             } catch (error) {
                 showError('Failed to sync orders: ' + error.message);
             }

@@ -11,7 +11,94 @@ class RouteOptimizer {
         this.orders = orders || [];
         this.routes = routes || ROUTES;
         this.trucks = trucks || TRUCKS;
-        this.cartManager = cartManager;
+        
+        // Get cartManager from multiple sources
+        this.cartManager = typeof cartManager !== 'undefined' ? cartManager : 
+                          (typeof window !== 'undefined' && window.cartManager ? window.cartManager : null);
+        
+        if (!this.cartManager) {
+            console.error('❌ cartManager not available in RouteOptimizer!');
+            console.error('   Creating fallback cartManager...');
+            
+            // Create minimal fallback
+            const fallbackCapacities = {
+                standard: { '612': 72, '575': 32, '902': 40, '588': 40, '996': 32, '856': 20 },
+                danish: 17
+            };
+            
+            this.cartManager = {
+                assignCartType: (order) => {
+                    const danishCustomers = ['Superflora', 'Flamingo', 'Flower Trade Consult Bleiswijk', 'MM Flowers', 'Dijk Flora'];
+                    const customerName = (order.customer || order.customerName || '').toLowerCase();
+                    const isDanish = danishCustomers.some(dc => customerName.includes(dc.toLowerCase()));
+                    return { ...order, cartType: isDanish ? 'danish' : 'standard' };
+                },
+                calculateCartsNeeded: (order) => {
+                    const cartType = order.cartType || 'standard';
+                    const quantity = order.quantity || 1;
+                    const crateType = order.crateType || '612';
+                    const capacity = cartType === 'danish' ? 17 : (fallbackCapacities.standard[crateType] || 72);
+                    const carts = Math.ceil(quantity / capacity);
+                    return { carts: carts, capacity: capacity, remaining: (carts * capacity) - quantity };
+                },
+                calculateRouteCarts: (orders) => {
+                    // Minimal implementation - group by customer and route
+                    const routeCarts = {
+                        rijnsburg: { standard: 0, danish: 0, orders: [], clients: {} },
+                        aalsmeer: { standard: 0, danish: 0, orders: [], clients: {} },
+                        naaldwijk: { standard: 0, danish: 0, orders: [], clients: {} }
+                    };
+                    
+                    // Group by customer
+                    const ordersByCustomer = {};
+                    orders.forEach(order => {
+                        const customerName = order.customer || order.customerName || `Order ${order.orderId || order.id}`;
+                        if (!ordersByCustomer[customerName]) {
+                            ordersByCustomer[customerName] = [];
+                        }
+                        ordersByCustomer[customerName].push(order);
+                    });
+                    
+                    // Process each customer
+                    Object.keys(ordersByCustomer).forEach(customerName => {
+                        const customerOrders = ordersByCustomer[customerName];
+                        const firstOrder = customerOrders[0];
+                        const cartType = firstOrder.cartType || 'standard';
+                        const totalQuantity = customerOrders.reduce((sum, o) => sum + (o.quantity || 0), 0);
+                        const crateType = firstOrder.crateType || '612';
+                        const capacity = cartType === 'danish' ? 17 : (fallbackCapacities.standard[crateType] || 72);
+                        const cartsNeeded = Math.ceil(totalQuantity / capacity);
+                        
+                        // Determine route (simple hash for now)
+                        const routeHash = (customerName.charCodeAt(0) || 0) % 3;
+                        const routes = ['rijnsburg', 'aalsmeer', 'naaldwijk'];
+                        const route = routes[routeHash];
+                        
+                        if (routeCarts[route]) {
+                            if (cartType === 'danish') {
+                                routeCarts[route].danish += cartsNeeded;
+                            } else {
+                                routeCarts[route].standard += cartsNeeded;
+                            }
+                            routeCarts[route].orders.push(...customerOrders);
+                            routeCarts[route].clients[customerName] = customerOrders;
+                        }
+                    });
+                    
+                    return routeCarts;
+                },
+                capacities: fallbackCapacities,
+                determineRoute: (order) => {
+                    const location = (order.deliveryLocation || order.location || '').toLowerCase();
+                    if (location.includes('rijnsburg')) return 'rijnsburg';
+                    if (location.includes('aalsmeer')) return 'aalsmeer';
+                    if (location.includes('naaldwijk')) return 'naaldwijk';
+                    return 'aalsmeer';
+                }
+            };
+            
+            console.warn('⚠️ Using fallback cartManager in RouteOptimizer');
+        }
         
         // Truck capacities
         this.TRUCK_CAPACITY = 17; // Standard capacity

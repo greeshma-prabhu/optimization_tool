@@ -64,50 +64,58 @@ class AuthManager {
     }
 
     /**
-     * Get valid token (refresh if needed)
+     * Get valid token (refresh if needed) - NO FALLBACK
      */
     async getValidToken() {
         // Try loading from storage first
         const storedToken = this.loadStoredToken();
         if (storedToken && this.isTokenValid()) {
+            console.log('✅ Using valid cached token');
             return storedToken;
         }
 
-        // Need to authenticate (returns null if proxy not available - OK for demo mode)
+        // Need to authenticate - throws if fails
         const token = await this.authenticate();
-        return token; // Can be null for demo mode
+        if (!token) {
+            throw new Error('Authentication returned no token');
+        }
+        return token;
     }
 
     /**
-     * Authenticate with Florinet API
+     * Authenticate with Florinet API - NO FALLBACK
      */
     async authenticate() {
+        console.log('=================================');
+        console.log('🔐 AUTH MANAGER: Authenticating...');
+        console.log('API Base:', this.apiBase);
+        console.log('Username:', this.credentials.username);
+        console.log('=================================');
+        
         try {
-            // Try to authenticate, but handle connection errors gracefully (for demo mode)
-            const response = await fetch(`${this.apiBase}/authenticate`, {
+            // Use proxy to bypass CORS
+            const apiUrl = `${this.apiBase}/authenticate`;
+            
+            console.log('📤 Sending auth request to:', apiUrl);
+            console.log('📤 (Proxied to:', this.originalApiBase + '/authenticate', ')');
+            
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
-                body: JSON.stringify(this.credentials),
-                // Add timeout handling
-                signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : null
-            }).catch(err => {
-                // Connection refused or network error - return null for demo mode
-                if (err.message.includes('Failed to fetch') || err.message.includes('CONNECTION_REFUSED')) {
-                    console.log('ℹ️ API proxy not available - using demo mode (this is OK)');
-                    return null; // Return null instead of throwing
-                }
-                throw err; // Re-throw other errors
+                body: JSON.stringify({
+                    username: this.credentials.username.trim(),
+                    password: this.credentials.password.trim()
+                })
             });
-            
-            // If response is null (connection failed), return null for demo mode
-            if (!response) {
-                return null;
-            }
+
+            console.log('📥 Auth response status:', response.status);
 
             if (!response.ok) {
-                throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`Authentication failed: HTTP ${response.status} - ${errorText}`);
             }
 
             const data = await response.json();
@@ -115,12 +123,11 @@ class AuthManager {
             // Handle both JWT tokens and session IDs
             const token = data.token || data.sessionId;
             if (!token) {
-                throw new Error('No token or session ID received from API');
+                throw new Error('No token or session ID received from API: ' + JSON.stringify(data));
             }
 
             // Token expires in 1 hour (3600000 ms)
-            // Session-based auth might have different expiry, but we'll use 1 hour as default
-            const expiryTime = Date.now() + (60 * 60 * 1000);
+            const expiryTime = Date.now() + (50 * 60 * 1000); // 50 minutes for safety
             this.saveToken(token, expiryTime);
             
             // Store auth type for reference
@@ -131,16 +138,18 @@ class AuthManager {
             // Update UI
             this.updateAuthStatus(true);
             
+            console.log('✅ AUTH MANAGER: Authentication successful');
+            console.log('Token expires in 50 minutes');
+            console.log('=================================');
+            
             return token;
         } catch (error) {
-            // Handle connection errors gracefully (for demo mode)
-            if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('CONNECTION_REFUSED'))) {
-                console.log('ℹ️ API proxy not available - using demo mode (this is OK)');
-                return null; // Return null instead of throwing for demo mode
-            }
-            console.error('Authentication error:', error);
+            console.error('=================================');
+            console.error('❌ AUTH MANAGER: Authentication failed');
+            console.error('Error:', error);
+            console.error('=================================');
             this.updateAuthStatus(false, error.message);
-            throw error;
+            throw new Error(`Authentication Failed: ${error.message}. Please check credentials and network connection.`);
         }
     }
 

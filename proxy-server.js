@@ -102,17 +102,131 @@ app.post('/api/authenticate', async (req, res) => {
   }
 });
 
-// Proxy order rows endpoint
-app.get('/api/external/orderrows', async (req, res) => {
-  console.log('📦 Proxying order rows request...');
-  console.log('   Date:', req.query.deliveryDate);
+// Proxy full orders endpoint - supports both single date and date ranges
+app.get('/api/external/orders', async (req, res) => {
+  console.log('📦 Proxying full orders request...');
+  console.log('   Query params:', req.query);
   
   try {
     const deliveryDate = req.query.deliveryDate;
+    const deliveryStartDate = req.query.deliveryStartDate;
+    const deliveryEndDate = req.query.deliveryEndDate;
+    
     const authHeader = req.headers.authorization;
     
     if (!authHeader) {
       return res.status(401).json({ error: 'No authorization token provided' });
+    }
+    
+    // Build query string for API call
+    let apiQueryString = '';
+    if (deliveryStartDate && deliveryEndDate) {
+      apiQueryString = `deliveryStartDate=${deliveryStartDate}&deliveryEndDate=${deliveryEndDate}`;
+      console.log('   Date range:', deliveryStartDate, 'to', deliveryEndDate);
+    } else if (deliveryDate) {
+      apiQueryString = `deliveryStartDate=${deliveryDate}&deliveryEndDate=${deliveryDate}`;
+      console.log('   Single date:', deliveryDate);
+    } else {
+      return res.status(400).json({ error: 'Missing date parameter. Use deliveryDate or deliveryStartDate+deliveryEndDate' });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const sessionCookies = sessions.get(token);
+    
+    let response;
+    
+    if (sessionCookies) {
+      response = await fetch(
+        `${FLORINET_API_BASE}/external/orders?${apiQueryString}`,
+        {
+          headers: { 
+            'Cookie': sessionCookies,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+    } else {
+      response = await fetch(
+        `${FLORINET_API_BASE}/external/orders?${apiQueryString}`,
+        {
+          headers: { 
+            'Authorization': authHeader,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+    }
+    
+    console.log('   API Response Status:', response.status);
+    
+    if (response.status === 500) {
+      console.log('   ⚠️ API returned 500 - might be no orders for this date');
+      return res.status(200).json([]);
+    }
+    
+    const responseText = await response.text();
+    let data;
+    
+    if (!responseText || responseText.trim() === '') {
+      data = [];
+    } else {
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        if (responseText.includes('<html') || responseText.includes('<!DOCTYPE')) {
+          return res.status(200).json([]);
+        }
+        return res.status(response.status).json({ 
+          error: 'Invalid JSON response from API',
+          rawResponse: responseText.substring(0, 500)
+        });
+      }
+    }
+    
+    console.log('✅ Full orders response parsed successfully');
+    console.log('📊 Orders count:', Array.isArray(data) ? data.length : 'unknown');
+    
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('❌ Full orders proxy error:', error);
+    res.status(500).json({ 
+      error: 'Proxy full orders fetch failed', 
+      details: error.message 
+    });
+  }
+});
+
+// Proxy order rows endpoint - supports both single date and date ranges
+app.get('/api/external/orderrows', async (req, res) => {
+  console.log('📦 Proxying order rows request...');
+  console.log('   Query params:', req.query);
+  
+  try {
+    const deliveryDate = req.query.deliveryDate;
+    const deliveryStartDate = req.query.deliveryStartDate;
+    const deliveryEndDate = req.query.deliveryEndDate;
+    const slim = req.query.slim || '1';
+    
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      return res.status(401).json({ error: 'No authorization token provided' });
+    }
+    
+    // Build query string for API call
+    let apiQueryString = '';
+    if (deliveryStartDate && deliveryEndDate) {
+      // Date range
+      apiQueryString = `deliveryStartDate=${deliveryStartDate}&deliveryEndDate=${deliveryEndDate}&slim=${slim}`;
+      console.log('   Date range:', deliveryStartDate, 'to', deliveryEndDate);
+    } else if (deliveryDate) {
+      // Single date
+      apiQueryString = `deliveryStartDate=${deliveryDate}&deliveryEndDate=${deliveryDate}&slim=${slim}`;
+      console.log('   Single date:', deliveryDate);
+    } else {
+      return res.status(400).json({ error: 'Missing date parameter. Use deliveryDate or deliveryStartDate+deliveryEndDate' });
     }
     
     // Check if it's a session ID or JWT token
@@ -127,7 +241,7 @@ app.get('/api/external/orderrows', async (req, res) => {
       
       // Try the API endpoint first
       response = await fetch(
-        `${FLORINET_API_BASE}/external/orderrows?deliveryDate=${deliveryDate}`,
+        `${FLORINET_API_BASE}/external/orderrows?${apiQueryString}`,
         {
           headers: { 
             'Cookie': sessionCookies,
@@ -141,7 +255,7 @@ app.get('/api/external/orderrows', async (req, res) => {
       if (!response.ok && response.status === 500) {
         console.log('   API endpoint failed, trying web endpoint...');
         response = await fetch(
-          `${FLORINET_BASE}/api/orders?deliveryDate=${deliveryDate}`,
+          `${FLORINET_BASE}/api/orders?${apiQueryString}`,
           {
             headers: { 
               'Cookie': sessionCookies,
@@ -154,7 +268,7 @@ app.get('/api/external/orderrows', async (req, res) => {
       // Use JWT token
       console.log('   Using JWT token');
       response = await fetch(
-        `${FLORINET_API_BASE}/external/orderrows?deliveryDate=${deliveryDate}`,
+        `${FLORINET_API_BASE}/external/orderrows?${apiQueryString}`,
         {
           headers: { 
             'Authorization': authHeader,
@@ -179,6 +293,18 @@ app.get('/api/external/orderrows', async (req, res) => {
     const responseText = await response.text();
     console.log('   API Response Length:', responseText.length);
     console.log('   API Response Preview:', responseText.substring(0, 200));
+    
+    // Log first order structure if available (for debugging)
+    try {
+      const parsedData = JSON.parse(responseText);
+      if (Array.isArray(parsedData) && parsedData.length > 0) {
+        console.log('   📋 FIRST ORDER STRUCTURE (from proxy):');
+        console.log('   Fields:', Object.keys(parsedData[0]));
+        console.log('   Sample:', JSON.stringify(parsedData[0], null, 2).substring(0, 500));
+      }
+    } catch (e) {
+      // Not JSON or can't parse - that's OK
+    }
     
     // Try to parse as JSON, but handle empty or non-JSON responses
     let data;
@@ -295,6 +421,67 @@ app.get('/api/external/growers', async (req, res) => {
       error: 'Proxy growers fetch failed', 
       details: error.message 
     });
+  }
+});
+
+// Debug endpoint to see API order structure
+app.get('/api/debug/order-structure', async (req, res) => {
+  console.log('🔍 DEBUG: Fetching order structure...');
+  
+  try {
+    // Get token
+    const authResponse = await fetch(`${FLORINET_BASE}/authenticate`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        username: 'JeroenMainfact',
+        password: '&WWpxaM@#'
+      })
+    });
+    
+    const authData = await authResponse.json();
+    if (!authData.token) {
+      return res.json({ error: 'Auth failed' });
+    }
+    
+    // Get yesterday's date in DD-MM-YYYY format
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const dateStr = `${String(yesterday.getDate()).padStart(2, '0')}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${yesterday.getFullYear()}`;
+    
+    // Fetch orders
+    const ordersResponse = await fetch(
+      `${FLORINET_API_BASE}/external/orderrows?deliveryStartDate=${dateStr}&deliveryEndDate=${dateStr}&slim=1`,
+      {
+        headers: { 
+          'Authorization': `Bearer ${authData.token}`,
+          'Accept': 'application/json'
+        }
+      }
+    );
+    
+    const ordersText = await ordersResponse.text();
+    const orders = JSON.parse(ordersText);
+    
+    if (orders.length > 0) {
+      return res.json({
+        success: true,
+        orderCount: orders.length,
+        firstOrder: orders[0],
+        firstOrderKeys: Object.keys(orders[0]),
+        firstOrderFields: Object.keys(orders[0]).reduce((acc, key) => {
+          acc[key] = typeof orders[0][key];
+          return acc;
+        }, {})
+      });
+    } else {
+      return res.json({ success: true, orderCount: 0, message: 'No orders found' });
+    }
+  } catch (error) {
+    return res.status(500).json({ error: error.message, stack: error.stack });
   }
 });
 

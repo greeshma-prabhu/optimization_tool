@@ -19,7 +19,8 @@ const translations = {
         dashboard: {
             title: 'Route Optimization System',
             subtitle: 'Optimize truck allocation across 3 routes - Fit all carts efficiently',
-            syncOrders: 'Sync Orders from API',
+            syncOrders: 'Sync',
+            refresh: 'Refresh Data',
             loadDemo: 'Load Demo Data',
             selectDate: 'Select Date:',
             todayOrders: "Today's Orders",
@@ -33,7 +34,11 @@ const translations = {
             authFailed: 'Auth Failed',
             clickToSync: 'Click "Sync Orders from API" to fetch real orders, or "Load Demo Data" to test with sample orders',
             noRouteData: 'No route data available',
-            noSuggestions: 'No optimization suggestions available'
+            noSuggestions: 'No optimization suggestions available',
+            lastUpdated: 'Last updated:',
+            autoRefresh: 'Auto-refresh: 5 min',
+            syncing: 'Syncing...',
+            loadingDemo: 'Loading Demo Data...'
         },
         // Orders
         orders: {
@@ -356,7 +361,8 @@ const translations = {
         dashboard: {
             title: 'Route Optimalisatie Systeem',
             subtitle: 'Optimaliseer vrachtwagen toewijzing over 3 routes - Plaats alle wagens efficiënt',
-            syncOrders: 'Synchroniseer Bestellingen van API',
+            syncOrders: 'Synchroniseren',
+            refresh: 'Ververs Gegevens',
             loadDemo: 'Laad Demo Data',
             selectDate: 'Selecteer Datum:',
             todayOrders: "Bestellingen Vandaag",
@@ -370,7 +376,11 @@ const translations = {
             authFailed: 'Auth Mislukt',
             clickToSync: 'Klik "Synchroniseer Bestellingen van API" om echte bestellingen op te halen, of "Laad Demo Data" om te testen met voorbeeldbestellingen',
             noRouteData: 'Geen routegegevens beschikbaar',
-            noSuggestions: 'Geen optimalisatiesuggesties beschikbaar'
+            noSuggestions: 'Geen optimalisatiesuggesties beschikbaar',
+            lastUpdated: 'Laatst bijgewerkt:',
+            autoRefresh: 'Auto-ververs: 5 min',
+            syncing: 'Synchroniseren...',
+            loadingDemo: 'Demo Data Laden...'
         },
         // Orders
         orders: {

@@ -124,15 +124,21 @@
                         </div>
                     </div>
                     <div class="action-buttons">
-                        <button type="button" class="btn-refresh" id="sync-btn" title="Refresh data">
+                        <button type="button" class="btn-sync" id="sync-btn" title="Sync data for selected date" onclick="syncDataForDate()">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"></path>
+                            </svg>
+                            <span data-i18n="dashboard.syncOrders">Sync</span>
+                        </button>
+                        <button type="button" class="btn-refresh" id="refresh-btn" title="Refresh today's orders (yesterday until 7 AM)" onclick="refreshTodaysOrders()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="refresh-icon">
                                 <polyline points="23 4 23 10 17 10"></polyline>
                                 <polyline points="1 20 1 14 7 14"></polyline>
                                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                             </svg>
-                            <span data-i18n="dashboard.syncOrders">Sync</span>
+                            <span data-i18n="dashboard.refresh">Refresh Data</span>
                         </button>
-                        <button type="button" class="btn-demo" id="demo-btn" title="Load demo data">
+                        <button type="button" class="btn-demo" id="demo-btn" title="Load demo data" onclick="loadDemoData()">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                 <line x1="9" y1="3" x2="9" y2="21"></line>
@@ -142,6 +148,9 @@
                             </svg>
                             <span data-i18n="dashboard.loadDemo">Demo</span>
                         </button>
+                    </div>
+                    <div class="header-status-info">
+                        <!-- Removed "Last updated" - only showing "Last refreshed" below -->
                     </div>
                     <div class="current-date-time" id="currentDateTime"></div>
                 </div>
@@ -281,9 +290,26 @@
                 }
             }
         }
+
+        // Update last updated time display
+        function updateLastUpdatedTime() {
+            const now = new Date();
+            const lang = localStorage.getItem('zuidplas_user_language') || localStorage.getItem('zuidplas_language') || 'nl';
+            const locale = lang === 'nl' ? 'nl-NL' : 'en-US';
+            const timeStr = now.toLocaleTimeString(locale, { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            const element = document.getElementById('lastUpdatedTime');
+            if (element) {
+                element.textContent = timeStr;
+            }
+        }
         
         // Update on load
         updateLastRefreshed();
+        updateLastUpdatedTime();
         
         // Set default date to today and set up button listeners
         document.addEventListener('DOMContentLoaded', () => {
@@ -363,17 +389,56 @@
 
         // Use dummy data flag
         let useDummyData = false;
+        window.isRefreshing = false;
 
-        // Sync orders from API or use dummy data - make it global
-        window.syncOrders = async function(useDummy = false) {
-            const syncBtn = document.getElementById('sync-btn');
-            const originalText = syncBtn.innerHTML;
-            const statusMsg = document.getElementById('api-status-message');
-            useDummyData = useDummy;
+        // Sync data for selected date - uses date picker
+        window.syncDataForDate = async function() {
+            if (window.isRefreshing) {
+                console.log('Sync already in progress...');
+                return;
+            }
+            
+            console.log('🔄 Sync data for selected date');
+            
+            window.isRefreshing = true;
+            const btn = document.getElementById('sync-btn');
+            if (btn) {
+                btn.classList.add('refreshing');
+                btn.disabled = true;
+            }
             
             try {
-                syncBtn.disabled = true;
-                syncBtn.innerHTML = useDummy ? '📦 Loading Demo Data...' : '⏳ Syncing...';
+                await window.syncOrders(false);
+            } catch (error) {
+                console.error('Sync failed:', error);
+            } finally {
+                window.isRefreshing = false;
+                if (btn) {
+                    btn.classList.remove('refreshing');
+                    btn.disabled = false;
+                }
+            }
+        };
+
+        // Refresh today's orders (yesterday until 7 AM today) - planning window
+        window.refreshTodaysOrders = async function() {
+            if (window.isRefreshing) {
+                console.log('Refresh already in progress...');
+                return;
+            }
+            
+            console.log('🔄 Refresh today\'s orders (planning window)');
+            
+            window.isRefreshing = true;
+            const btn = document.getElementById('refresh-btn');
+            const statusMsg = document.getElementById('api-status-message');
+            
+            if (btn) {
+                btn.classList.add('refreshing');
+                btn.disabled = true;
+            }
+            
+            try {
                 if (statusMsg) {
                     statusMsg.innerHTML = '';
                     statusMsg.classList.remove('show', 'success', 'error');
@@ -382,16 +447,221 @@
                 // Store refresh timestamp
                 localStorage.setItem('zuidplas_last_refresh', Date.now().toString());
                 updateLastRefreshed();
+                updateLastUpdatedTime();
                 
-                // Get selected date or use today
+                // Fetch today's planning orders (yesterday until 7 AM today)
+                console.log('📅 Fetching today\'s planning orders (yesterday until 7 AM today)...');
+                const apiOrders = await florinetAPI.fetchOrdersForPlanning();
+                
+                if (apiOrders && apiOrders.length > 0) {
+                    // Process API orders
+                    const orders = orderManager.processOrders(apiOrders);
+                    orderManager.orders = orders;
+                    orderManager.filteredOrders = [...orders];
+                    orderManager.updateOrderCount();
+                    orderManager.displayOrders();
+                    
+                    // Assign carts
+                    orderManager.assignCarts();
+                    
+                    // Update orders array
+                    const ordersWithCarts = orderManager.orders;
+                    
+                    // Initialize optimizer
+                    const optimizer = initializeOptimizer(ordersWithCarts);
+                    const options = optimizer.generateOptions();
+                    
+                    // Update dashboard
+                    updateDashboard(ordersWithCarts, options);
+                    
+                    // Store in localStorage
+                    localStorage.setItem('zuidplas_orders', JSON.stringify(ordersWithCarts));
+                    localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                    localStorage.setItem('zuidplas_using_demo_data', 'false');
+                    localStorage.setItem('zuidplas_orders_loaded', 'true');
+                    
+                    // Clear previous truck assignments
+                    localStorage.removeItem('zuidplas_route_truck_assignments');
+                    
+                    // Update last updated time
+                    updateLastUpdatedTime();
+                    
+                    // Show success message
+                    if (statusMsg) {
+                        statusMsg.innerHTML = `✅ Found ${ordersWithCarts.length} orders for today's planning window`;
+                        statusMsg.classList.add('show', 'success');
+                    }
+                    
+                    console.log('✅ Today\'s orders refreshed:', ordersWithCarts.length);
+                } else {
+                    console.log('ℹ️ No orders for today\'s planning window');
+                    if (statusMsg) {
+                        statusMsg.innerHTML = 'ℹ️ No orders found for today\'s planning window (yesterday until 7 AM today)';
+                        statusMsg.classList.add('show');
+                    }
+                }
+            } catch (error) {
+                console.error('Refresh today\'s orders failed:', error);
+                if (statusMsg) {
+                    statusMsg.innerHTML = `
+                        <div style="padding: 16px; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px;">
+                            <strong style="color: #991b1b;">❌ Failed to refresh today's orders</strong><br>
+                            <small style="color: #7f1d1d;">${error.message}</small>
+                        </div>
+                    `;
+                    statusMsg.classList.add('show', 'error');
+                }
+            } finally {
+                window.isRefreshing = false;
+                if (btn) {
+                    btn.classList.remove('refreshing');
+                    btn.disabled = false;
+                }
+            }
+        };
+
+        // Sync orders from API or use dummy data - make it global
+        window.syncOrders = async function(useDummy = false) {
+            const syncBtn = document.getElementById('sync-btn');
+            const originalText = syncBtn ? syncBtn.innerHTML : '';
+            const statusMsg = document.getElementById('api-status-message');
+            useDummyData = useDummy;
+            
+            try {
+                if (syncBtn) {
+                    syncBtn.disabled = true;
+                    const btnText = typeof i18n !== 'undefined' 
+                        ? (useDummy ? i18n.t('dashboard.loadingDemo', 'Loading Demo Data...') : i18n.t('dashboard.syncing', 'Syncing...'))
+                        : (useDummy ? '📦 Loading Demo Data...' : '⏳ Syncing...');
+                    syncBtn.innerHTML = btnText;
+                }
+                if (statusMsg) {
+                    statusMsg.innerHTML = '';
+                    statusMsg.classList.remove('show', 'success', 'error');
+                }
+                
+                // Store refresh timestamp
+                localStorage.setItem('zuidplas_last_refresh', Date.now().toString());
+                updateLastRefreshed();
+                updateLastUpdatedTime();
+                
+                // Get selected date from date picker
                 const datePicker = document.getElementById('order-date-picker');
                 let selectedDate = null;
                 if (datePicker && datePicker.value) {
                     selectedDate = new Date(datePicker.value);
+                    console.log('📅 Using selected date:', selectedDate.toISOString().split('T')[0]);
+                } else {
+                    // Set default to today
+                    selectedDate = new Date();
+                    if (datePicker) {
+                        datePicker.value = selectedDate.toISOString().split('T')[0];
+                    }
+                    console.log('📅 Using today as default:', selectedDate.toISOString().split('T')[0]);
                 }
                 
-                // Fetch orders (will auto-fallback to dummy if API fails)
-                const orders = await orderManager.fetchOrders(selectedDate, useDummy);
+                let orders = [];
+                
+                if (useDummy) {
+                    // Use dummy data
+                    orders = await orderManager.fetchOrders(selectedDate, true);
+                } else {
+                    // Fetch orders from API for the selected date
+                    try {
+                        console.log('📅 Fetching orders for date:', selectedDate.toISOString().split('T')[0]);
+                        const apiOrders = await florinetAPI.fetchOrdersForDate(selectedDate);
+                        if (apiOrders && apiOrders.length > 0) {
+                            // Process API orders
+                            orders = orderManager.processOrders(apiOrders);
+                            orderManager.orders = orders;
+                            orderManager.filteredOrders = [...orders];
+                            
+                            // CRITICAL: Assign carts BEFORE displaying
+                            console.log('🔧 Assigning carts to orders...');
+                            orderManager.assignCarts();
+                            console.log('✅ Carts assigned. Orders count:', orderManager.orders.length);
+                            
+                            // Update orders array to use the one with carts assigned
+                            orders = orderManager.orders;
+                            
+                            orderManager.updateOrderCount();
+                            orderManager.displayOrders();
+                            
+                            // Initialize optimizer with orders that have carts assigned
+                            console.log('🔧 Initializing optimizer with', orders.length, 'orders...');
+                            const optimizer = initializeOptimizer(orders);
+                            const options = optimizer.generateOptions();
+                            
+                            // Update dashboard
+                            updateDashboard(orders, options);
+                            
+                            // Store in localStorage with compression to avoid quota exceeded
+                            try {
+                                if (orders.length > 500) {
+                                    // Store only essential fields for large datasets
+                                    const compressed = orders.slice(0, 500).map(o => ({
+                                        id: o.id,
+                                        customer: o.customer,
+                                        deliveryLocation: o.deliveryLocation,
+                                        quantity: o.quantity,
+                                        cartType: o.cartType,
+                                        cartsNeeded: o.cartsNeeded
+                                    }));
+                                    localStorage.setItem('zuidplas_orders', JSON.stringify(compressed));
+                                    console.log(`⚠️ Stored ${compressed.length} compressed orders (out of ${orders.length} total)`);
+                                } else {
+                                    localStorage.setItem('zuidplas_orders', JSON.stringify(orders));
+                                }
+                                localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                                localStorage.setItem('zuidplas_using_demo_data', 'false');
+                                localStorage.setItem('zuidplas_orders_loaded', 'true');
+                                
+                                // Clear previous truck assignments
+                                localStorage.removeItem('zuidplas_route_truck_assignments');
+                                console.log('🔄 Cleared previous truck assignments - user must select fresh');
+                            } catch (e) {
+                                if (e.name === 'QuotaExceededError') {
+                                    console.warn('⚠️ localStorage quota exceeded, storing summary only');
+                                    try {
+                                        localStorage.setItem('zuidplas_orders_count', orders.length.toString());
+                                        localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                                        localStorage.setItem('zuidplas_orders_loaded', 'true');
+                                    } catch (e2) {
+                                        console.error('❌ Could not store even summary:', e2);
+                                    }
+                                } else {
+                                    console.warn('Could not save orders to localStorage:', e);
+                                }
+                            }
+                        } else {
+                            // No orders from API - this is OK, empty array is valid
+                            console.log('ℹ️ No orders from API (empty array is normal)');
+                            orders = [];
+                        }
+                    } catch (apiError) {
+                        console.error('=================================');
+                        console.error('❌ API FETCH FAILED - NO FALLBACK');
+                        console.error('Error:', apiError);
+                        console.error('=================================');
+                        
+                        // Show error to user - NO FALLBACK
+                        if (statusMsg) {
+                            statusMsg.innerHTML = `
+                                <div style="padding: 16px; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px;">
+                                    <strong style="color: #991b1b;">❌ API Connection Failed</strong><br>
+                                    <small style="color: #7f1d1d;">${apiError.message}</small><br><br>
+                                    <button onclick="manualRefresh()" style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 8px;">
+                                        Retry Connection
+                                    </button>
+                                </div>
+                            `;
+                            statusMsg.classList.add('show', 'error');
+                        }
+                        
+                        // Throw error - no fallback
+                        throw apiError;
+                    }
+                }
                 
                 // Store flag for demo data
                 if (useDummy) {
@@ -400,15 +670,28 @@
                     localStorage.setItem('zuidplas_using_demo_data', 'false');
                 }
                 
-                // Assign carts
-                orderManager.assignCarts();
-                
                 // Ensure cartManager is initialized
                 if (typeof cartManager === 'undefined') {
                     throw new Error('CartManager not initialized. Please refresh the page.');
                 }
                 
-                // Initialize optimizer
+                // CRITICAL: Assign carts BEFORE creating optimizer
+                console.log('🔧 Assigning carts to orders...');
+                console.log('   Orders before assignCarts:', orders.length);
+                orderManager.assignCarts();
+                console.log('✅ Carts assigned. Orders count:', orderManager.orders.length);
+                
+                // CRITICAL: Use orderManager.orders (which has carts assigned) instead of local orders variable
+                orders = orderManager.orders;
+                console.log('   Using orders with carts:', orders.length);
+                console.log('   Sample order with cart:', orders[0] ? {
+                    id: orders[0].id,
+                    cartType: orders[0].cartType,
+                    cartsNeeded: orders[0].cartsNeeded
+                } : 'No orders');
+                
+                // Initialize optimizer with orders that have carts assigned
+                console.log('🔧 Initializing optimizer with', orders.length, 'orders...');
                 const optimizer = initializeOptimizer(orders);
                 
                 // Generate options
@@ -442,11 +725,14 @@
                 
                 // Update last refreshed time
                 updateLastRefreshed();
+                updateLastUpdatedTime();
                 
-                setTimeout(() => {
-                    syncBtn.innerHTML = originalText;
-                    syncBtn.disabled = false;
-                }, 2000);
+                if (syncBtn) {
+                    setTimeout(() => {
+                        syncBtn.innerHTML = originalText;
+                        syncBtn.disabled = false;
+                    }, 2000);
+                }
                 
             } catch (error) {
                 syncBtn.innerHTML = '❌ Error';
@@ -477,13 +763,37 @@
             // Update stats
             document.getElementById('total-orders-count').textContent = orders.length;
             
-            const cartSummary = orderManager.getCartSummary();
-            document.getElementById('total-carts-needed').textContent = 
-                cartSummary.standard + cartSummary.danish;
+            // CRITICAL: Calculate carts from optimizer (groups by customer), not from individual orders
+            try {
+                const ordersWithCarts = orderManager.orders.length > 0 ? orderManager.orders : orders;
+                const optimizer = initializeOptimizer(ordersWithCarts);
+                const routeAnalysis = optimizer.processOrders();
+                
+                // Sum total carts from all routes (already grouped by customer)
+                let totalCarts = 0;
+                Object.keys(routeAnalysis).forEach(routeKey => {
+                    const analysis = routeAnalysis[routeKey];
+                    if (analysis && analysis.totalCarts) {
+                        totalCarts += analysis.totalCarts;
+                    }
+                });
+                
+                document.getElementById('total-carts-needed').textContent = totalCarts;
+                console.log(`📊 Dashboard: ${orders.length} orders → ${totalCarts} carts (grouped by customer)`);
+            } catch (error) {
+                console.error('Error calculating total carts:', error);
+                // Fallback to old method
+                const cartSummary = orderManager.getCartSummary();
+                document.getElementById('total-carts-needed').textContent = 
+                    cartSummary.standard + cartSummary.danish;
+            }
             
             // Update routes status
             try {
-                const optimizer = initializeOptimizer(orders);
+                // Use orderManager.orders which has carts assigned
+                const ordersWithCarts = orderManager.orders.length > 0 ? orderManager.orders : orders;
+                console.log('📊 Updating routes status with', ordersWithCarts.length, 'orders');
+                const optimizer = initializeOptimizer(ordersWithCarts);
                 const routeAnalysis = optimizer.processOrders();
                 const routesWithOrders = Object.keys(routeAnalysis).filter(routeKey => {
                     const analysis = routeAnalysis[routeKey];
@@ -516,7 +826,10 @@
             container.innerHTML = '';
             
             try {
-                const optimizer = initializeOptimizer(orders);
+                // Use orderManager.orders which has carts assigned
+                const ordersWithCarts = orderManager.orders.length > 0 ? orderManager.orders : orders;
+                console.log('📊 Updating route overview with', ordersWithCarts.length, 'orders');
+                const optimizer = initializeOptimizer(ordersWithCarts);
                 const routeAnalysis = optimizer.processOrders();
                 
                 Object.keys(ROUTES).forEach(routeKey => {
@@ -772,9 +1085,10 @@
                     const token = await authManager.getValidToken();
                     if (token) {
                         console.log('✅ Authentication ready');
-                        // Optionally auto-fetch orders
-                        // await syncOrders();
                     }
+                    
+                    // No auto-refresh - user must click refresh button manually
+                    console.log('✅ Page loaded - use Refresh Data button to load orders');
                 } catch (error) {
                     console.error('Initial load error:', error);
                 }
