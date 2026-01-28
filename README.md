@@ -11,13 +11,30 @@ Professional route optimization system with Florinet API integration for automat
    cd /opt/Zuidplas_logistic_tool
    ```
 
-2. **Start local server**
+2. **Start servers**
+
+   **Option A: Start both servers automatically (EASIEST)**
    ```bash
-   python3 -m http.server 8000
+   ./start-all.sh
+   ```
+   This starts both the proxy server (port 3001) and HTTP server (port 8080) automatically.
+
+   **Option B: Start servers manually (2 terminals)**
+
+   **Terminal 1: Start Proxy Server (REQUIRED for API)**
+   ```bash
+   npm start
+   ```
+   This runs on port 3001 and handles API calls.
+
+   **Terminal 2: Start HTTP Server (for static files)**
+   ```bash
+   python3 -m http.server 8080
    ```
 
 3. **Open in browser**
-   - Navigate to: `http://localhost:8000`
+   - Navigate to: `http://localhost:8080`
+   - The proxy server (port 3001) will handle API calls automatically
    - The system will auto-authenticate with Florinet API
 
 ## 📁 Project Structure

@@ -373,10 +373,9 @@
                 }, true); // Capture phase
                 
                 // Handle click to actually sync - THIS IS THE MAIN HANDLER
-                finalSyncBtn.addEventListener('click', function(e) {
+                finalSyncBtn.addEventListener('click', async function(e) {
                     console.log('🔄 Sync Now button CLICKED');
-                    
-                    // Stop propagation but DON'T stop immediate - allow other handlers
+                    e.preventDefault();
                     e.stopPropagation();
                     
                     // Ensure date picker is NOT focused
@@ -387,17 +386,14 @@
                         datePicker.blur();
                     }
                     
-                    // Call syncOrders function - try multiple ways to access it
+                    // Call syncOrders function - it's now on window object
                     try {
-                        if (typeof syncOrders === 'function') {
-                            console.log('✅ Calling syncOrders() function');
-                            syncOrders();
-                        } else if (typeof window.syncOrders === 'function') {
+                        if (typeof window.syncOrders === 'function') {
                             console.log('✅ Calling window.syncOrders() function');
-                            window.syncOrders();
+                            await window.syncOrders();
                         } else {
-                            console.error('❌ syncOrders function not found!');
-                            console.log('Available functions:', Object.keys(window).filter(k => k.includes('sync')));
+                            console.error('❌ syncOrders function not found on window!');
+                            console.log('Available window functions:', Object.keys(window).filter(k => k.includes('sync')));
                             alert('Error: syncOrders function not found. Please refresh the page.');
                         }
                     } catch (error) {
@@ -446,8 +442,29 @@
         }
 
         // Sync orders - USE SELECTED DATE
-        async function syncOrders() {
+        // Make it globally accessible
+        window.syncOrders = async function syncOrders() {
             try {
+                console.log('🔄 syncOrders() called');
+                
+                // Show loading state
+                const syncBtn = document.getElementById('sync-orders-btn');
+                if (syncBtn) {
+                    syncBtn.disabled = true;
+                    syncBtn.textContent = '⏳ Syncing...';
+                }
+                
+                // Check if orderManager is initialized
+                if (typeof orderManager === 'undefined' || !orderManager) {
+                    console.error('❌ orderManager is not initialized!');
+                    showError('Order manager not initialized. Please refresh the page.');
+                    if (syncBtn) {
+                        syncBtn.disabled = false;
+                        syncBtn.textContent = '🔄 Sync Now';
+                    }
+                    return;
+                }
+                
                 const datePicker = document.getElementById('order-date-picker');
                 let selectedDate = null;
                 
@@ -463,14 +480,37 @@
                     console.log('📅 Using today as default:', selectedDate);
                 }
                 
+                console.log('📦 Calling orderManager.fetchOrders...');
                 const orders = await orderManager.fetchOrders(selectedDate);
+                console.log('✅ Fetched', orders.length, 'orders');
+                
+                console.log('🔧 Assigning carts...');
                 orderManager.assignCarts();
+                
+                console.log('📊 Updating summary...');
                 updateSummary();
                 updateOrdersDate(); // Update displayed date
+                
+                // Hide error message if it exists
+                const errorMsg = document.getElementById('error-message');
+                if (errorMsg) {
+                    errorMsg.style.display = 'none';
+                }
+                
+                console.log('✅ Sync complete!');
+                
             } catch (error) {
+                console.error('❌ Sync error:', error);
                 showError('Failed to sync orders: ' + error.message);
+            } finally {
+                // Restore button state
+                const syncBtn = document.getElementById('sync-orders-btn');
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.textContent = '🔄 Sync Now';
+                }
             }
-        }
+        };
 
         // Apply filters
         function applyFilters() {
@@ -515,15 +555,27 @@
             }
         }
 
-        // Auto-load on page load
+        // Auto-load on page load (only if orderManager is ready)
         document.addEventListener('DOMContentLoaded', async () => {
-            setTimeout(async () => {
-                try {
-                    await syncOrders();
-                } catch (error) {
-                    console.error('Auto-load error:', error);
+            // Wait for orderManager to be initialized
+            let attempts = 0;
+            const checkOrderManager = setInterval(() => {
+                attempts++;
+                if (typeof orderManager !== 'undefined' && orderManager) {
+                    clearInterval(checkOrderManager);
+                    setTimeout(async () => {
+                        try {
+                            console.log('🔄 Auto-loading orders...');
+                            await window.syncOrders();
+                        } catch (error) {
+                            console.error('Auto-load error:', error);
+                        }
+                    }, 500);
+                } else if (attempts > 20) {
+                    clearInterval(checkOrderManager);
+                    console.warn('⚠️ orderManager not found after 2 seconds, skipping auto-load');
                 }
-            }, 1000);
+            }, 100);
         });
         
         // Toggle sidebar collapse (desktop)

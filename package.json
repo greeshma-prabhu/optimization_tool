@@ -1,11 +1,12 @@
 {
-  "name": "florinet-proxy",
+  "name": "zuidplas-optimization",
   "version": "1.0.0",
-  "description": "Proxy server for Florinet API to bypass CORS",
-  "main": "proxy-server.js",
+  "description": "Zuidplas Logistics Route Optimization System",
+  "main": "index.html",
   "scripts": {
-    "start": "node proxy-server.js",
-    "dev": "nodemon proxy-server.js"
+    "dev": "vercel dev",
+    "build": "echo 'Static site - no build needed'",
+    "start": "node proxy-server.js"
   },
   "dependencies": {
     "express": "^4.18.2",

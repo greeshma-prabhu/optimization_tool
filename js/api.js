@@ -5,27 +5,61 @@
 
 class FlorinetAPI {
     constructor() {
-        // Use proxy server to bypass CORS (required for browser)
-        // Proxy server must be running on localhost:3001
-        this.baseURL = 'http://localhost:3001/api';
+        // UNIVERSAL FIX: Works with ANY server (Python, Node, Apache, etc.)
+        // Automatically detects environment and routes API calls correctly
+        const hostname = window.location.hostname;
+        const port = window.location.port;
+        const protocol = window.location.protocol;
+        const fullUrl = window.location.href;
+        
+        // Universal detection - works with any localhost setup
+        const isLocalhost = hostname === 'localhost' || 
+                           hostname === '127.0.0.1' ||
+                           hostname === '' ||
+                           port === '8080' ||
+                           port === '3000' ||
+                           port === '8000' ||
+                           fullUrl.includes('localhost') ||
+                           fullUrl.includes('127.0.0.1');
+        const isVercel = hostname.includes('vercel.app') || hostname.includes('vercel.com');
+        
+        // UNIVERSAL ROUTING: Always use proxy server for localhost
+        // This works with Python HTTP server, Node.js, or ANY static server
+        if (isLocalhost && !isVercel) {
+            // Local development - ALWAYS use proxy server (static servers can't handle /api routes)
+            this.baseURL = 'http://localhost:3001/api';
+            this.isLocalhost = true;
+            console.log('=================================');
+            console.log('🔧 LOCAL DEVELOPMENT MODE');
+            console.log('📍 Current URL:', fullUrl);
+            console.log('🌐 API Proxy: http://localhost:3001/api');
+            console.log('✅ Works with ANY server (Python, Node, Apache, etc.)');
+            console.log('⚠️ Make sure proxy server is running: npm start');
+            console.log('=================================');
+        } else if (isVercel) {
+            // Vercel production - use serverless functions
+            this.baseURL = '/api';
+            this.isLocalhost = false;
+            console.log('🌐 Vercel Production - using serverless functions');
+        } else {
+            // Other production - try serverless functions
+            this.baseURL = '/api';
+            this.isLocalhost = false;
+            console.log('🌐 Production mode - using relative API paths');
+        }
+        
         this.originalBaseURL = 'https://summit.florinet.nl/api/v1';
-        this.username = 'JeroenMainfact';
-        this.password = '&WWpxaM@#';
         this.token = null;
         this.tokenExpiry = null;
-        this.authManager = authManager;
+        this.authManager = typeof authManager !== 'undefined' ? authManager : null;
         
         // Auto-refresh settings
         this.autoRefreshInterval = null;
         this.refreshIntervalMs = 5 * 60 * 1000; // 5 minutes
         
-        console.log('=================================');
-        console.log('🚀 FlorinetAPI INITIALIZED');
-        console.log('Base URL (Proxy):', this.baseURL);
-        console.log('Original API URL:', this.originalBaseURL);
-        console.log('Username:', this.username);
-        console.log('Password length:', this.password.length);
-        console.log('=================================');
+        console.log('✅ FlorinetAPI initialized');
+        console.log('   Base URL:', this.baseURL);
+        console.log('   Environment:', isLocalhost ? 'Local Development' : 'Production');
     }
 
     /**
@@ -52,45 +86,46 @@ class FlorinetAPI {
     }
 
     /**
-     * Authenticate with detailed logging - NO FALLBACK
-     * Uses proxy server to bypass CORS
+     * Authenticate via Vercel serverless proxy
+     * Credentials are stored securely in Vercel environment variables
+     * No credentials sent from browser - secure for all users
      */
     async authenticate() {
-        console.log('=================================');
-        console.log('🔐 AUTHENTICATING...');
-        console.log('URL (via proxy):', `${this.baseURL}/authenticate`);
-        console.log('Username:', this.username);
-        console.log('Password length:', this.password.length);
-        console.log('=================================');
+        console.log('🔐 Authenticating...');
+        
+        // Build full URL - always use absolute URL for localhost
+        let authUrl;
+        if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
+            authUrl = `${this.baseURL}/authenticate`;
+        } else {
+            authUrl = `${window.location.origin}${this.baseURL}/authenticate`;
+        }
+        
+        console.log('📤 Auth URL:', authUrl);
         
         try {
-            const requestBody = {
-                username: this.username.trim(),
-                password: this.password.trim()
-            };
-            
-            console.log('📤 Sending authentication request via proxy...');
-            
-            const response = await fetch(`${this.baseURL}/authenticate`, {
+            const response = await fetch(authUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
+                }
             });
 
             console.log('📥 Response status:', response.status);
-            console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
-
-            const responseText = await response.text();
-            console.log('📥 Response body:', responseText);
 
             if (!response.ok) {
-                throw new Error(`Authentication failed: HTTP ${response.status} - ${responseText}`);
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { message: errorText };
+                }
+                throw new Error(`Authentication failed: HTTP ${response.status} - ${errorData.message || errorText}`);
             }
 
-            const data = JSON.parse(responseText);
+            const data = await response.json();
             
             if (!data.token) {
                 throw new Error('No token in response: ' + JSON.stringify(data));
@@ -102,7 +137,7 @@ class FlorinetAPI {
             localStorage.setItem('florinet_token', this.token);
             localStorage.setItem('florinet_token_expiry', this.tokenExpiry);
             
-            console.log('✅ AUTHENTICATION SUCCESS');
+            console.log('✅ AUTHENTICATION SUCCESS', data.cached ? '(cached)' : '');
             console.log('Token (first 50 chars):', this.token.substring(0, 50) + '...');
             console.log('Token expires in 50 minutes');
             console.log('=================================');
@@ -116,7 +151,7 @@ class FlorinetAPI {
             console.error('Error message:', error.message);
             console.error('Error stack:', error.stack);
             console.error('=================================');
-            throw new Error(`API Authentication Failed: ${error.message}. Please check credentials and network connection.`);
+            throw new Error(`API Authentication Failed: ${error.message}. Please check Vercel environment variables and network connection.`);
         }
     }
 
@@ -166,10 +201,20 @@ class FlorinetAPI {
                 ...options.headers
             };
 
-            console.log(`📤 Making request to: ${this.baseURL}${endpoint}`);
-
+            // Build full URL - always use absolute URL to avoid 404
+            let fullUrl;
+            if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+                fullUrl = endpoint;
+            } else if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
+                fullUrl = `${this.baseURL}${endpoint}`;
+            } else {
+                fullUrl = `${window.location.origin}${this.baseURL}${endpoint}`;
+            }
+            
+            console.log(`📤 Making request to: ${fullUrl}`);
+            
             // Make request
-            const response = await fetch(`${this.baseURL}${endpoint}`, {
+            const response = await fetch(fullUrl, {
                 ...options,
                 headers
             });
@@ -260,15 +305,20 @@ class FlorinetAPI {
         try {
             const token = await this.getToken();
             
-            // Fetch orderrows (has quantity, product info)
-            const orderrowsUrl = new URL(`${this.baseURL}/external/orderrows`);
-            orderrowsUrl.searchParams.append('deliveryStartDate', startDate);
-            orderrowsUrl.searchParams.append('deliveryEndDate', endDate);
-            orderrowsUrl.searchParams.append('slim', '1');
+            // Fetch orderrows (has quantity, product info) via proxy
+            // CRITICAL: Use correct endpoint path - proxy server uses /api/external/orderrows
+            let orderrowsUrl;
+            if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
+                // Localhost proxy - use /api/external/orderrows
+                orderrowsUrl = `${this.baseURL.replace('/api', '/api/external')}/orderrows?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}&slim=1`;
+            } else {
+                // Vercel serverless - use /api/orderrows (serverless function)
+                orderrowsUrl = `${window.location.origin}${this.baseURL}/orderrows?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}&slim=1`;
+            }
             
-            console.log('📤 Fetching orderrows:', orderrowsUrl.toString());
+            console.log('📤 Fetching orderrows from:', orderrowsUrl);
             
-            const orderrowsResponse = await fetch(orderrowsUrl.toString(), {
+            const orderrowsResponse = await fetch(orderrowsUrl, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -278,12 +328,12 @@ class FlorinetAPI {
 
             if (orderrowsResponse.status === 401) {
                 console.log('⚠️ Token expired (401), re-authenticating...');
-                await this.authenticate();
+                const newToken = await this.authenticate();
                 
-                const retryResponse = await fetch(orderrowsUrl.toString(), {
+                const retryResponse = await fetch(orderrowsUrl, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${this.token}`,
+                        'Authorization': `Bearer ${newToken}`,
                         'Accept': 'application/json'
                     }
                 });
@@ -294,7 +344,7 @@ class FlorinetAPI {
                 }
                 
                 const orderrows = await retryResponse.json();
-                return await this.joinWithFullOrders(orderrows, startDate, endDate, token);
+                return await this.joinWithFullOrders(orderrows, startDate, endDate, newToken);
             }
 
             if (!orderrowsResponse.ok) {
@@ -327,14 +377,20 @@ class FlorinetAPI {
         console.log('=================================');
         
         try {
-            // Fetch full orders
-            const ordersUrl = new URL(`${this.baseURL}/external/orders`);
-            ordersUrl.searchParams.append('deliveryStartDate', startDate);
-            ordersUrl.searchParams.append('deliveryEndDate', endDate);
+            // Fetch full orders via proxy
+            // CRITICAL: Use correct endpoint path - proxy server uses /api/external/orders
+            let ordersUrl;
+            if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
+                // Localhost proxy - use /api/external/orders
+                ordersUrl = `${this.baseURL.replace('/api', '/api/external')}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
+            } else {
+                // Vercel serverless - use /api/orders (serverless function)
+                ordersUrl = `${window.location.origin}${this.baseURL}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
+            }
             
-            console.log('📤 Fetching full orders:', ordersUrl.toString());
+            console.log('📤 Fetching full orders from:', ordersUrl);
             
-            const ordersResponse = await fetch(ordersUrl.toString(), {
+            const ordersResponse = await fetch(ordersUrl, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -520,14 +576,19 @@ class FlorinetAPI {
         try {
             const token = await this.getToken();
             
-            // Try /external/orders endpoint (full orders, not just orderrows)
-            const url = new URL(`${this.baseURL}/external/orders`);
-            url.searchParams.append('deliveryStartDate', startDate);
-            url.searchParams.append('deliveryEndDate', endDate);
+            // Try /external/orders endpoint - Use correct path for proxy
+            let url;
+            if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
+                // Localhost proxy - use /api/external/orders
+                url = `${this.baseURL.replace('/api', '/api/external')}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
+            } else {
+                // Vercel serverless - use /api/orders
+                url = `${window.location.origin}${this.baseURL}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
+            }
             
-            console.log('📤 Request URL (full orders):', url.toString());
+            console.log('📤 Request URL (full orders):', url);
             
-            const response = await fetch(url.toString(), {
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,

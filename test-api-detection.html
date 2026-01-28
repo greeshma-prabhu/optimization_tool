@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><title>API Detection Test</title></head>
+<body>
+<h1>API Detection Test</h1>
+<div id="result"></div>
+<script>
+const hostname = window.location.hostname;
+const port = window.location.port;
+const fullUrl = window.location.href;
+const isLocalhost = hostname === 'localhost' || 
+                   hostname === '127.0.0.1' ||
+                   hostname === '' ||
+                   port === '8080' ||
+                   port === '3000' ||
+                   fullUrl.includes('localhost:8080') ||
+                   fullUrl.includes('127.0.0.1:8080');
+const isVercel = hostname.includes('vercel.app') || hostname.includes('vercel.com');
+const baseURL = (isLocalhost && !isVercel) ? 'http://localhost:3001/api' : '/api';
+
+document.getElementById('result').innerHTML = `
+<pre>
+Hostname: ${hostname}
+Port: ${port}
+Full URL: ${fullUrl}
+Is Localhost: ${isLocalhost}
+Is Vercel: ${isVercel}
+Base URL: ${baseURL}
+</pre>
+`;
+</script>
+</body>
+</html>
