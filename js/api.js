@@ -306,13 +306,13 @@ class FlorinetAPI {
             const token = await this.getToken();
             
             // Fetch orderrows (has quantity, product info) via proxy
-            // CRITICAL: Use correct endpoint path - proxy server uses /api/external/orderrows
+            // CRITICAL: Use correct endpoint path based on environment
             let orderrowsUrl;
             if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
                 // Localhost proxy - use /api/external/orderrows
                 orderrowsUrl = `${this.baseURL.replace('/api', '/api/external')}/orderrows?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}&slim=1`;
             } else {
-                // Vercel serverless - use /api/orderrows (serverless function)
+                // Vercel serverless - use /api/orderrows (serverless function, NOT /api/external/orderrows)
                 orderrowsUrl = `${window.location.origin}${this.baseURL}/orderrows?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}&slim=1`;
             }
             
@@ -378,13 +378,13 @@ class FlorinetAPI {
         
         try {
             // Fetch full orders via proxy
-            // CRITICAL: Use correct endpoint path - proxy server uses /api/external/orders
+            // CRITICAL: Use correct endpoint path based on environment
             let ordersUrl;
             if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
                 // Localhost proxy - use /api/external/orders
                 ordersUrl = `${this.baseURL.replace('/api', '/api/external')}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
             } else {
-                // Vercel serverless - use /api/orders (serverless function)
+                // Vercel serverless - use /api/orders (serverless function, NOT /api/external/orders)
                 ordersUrl = `${window.location.origin}${this.baseURL}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
             }
             
@@ -576,13 +576,13 @@ class FlorinetAPI {
         try {
             const token = await this.getToken();
             
-            // Try /external/orders endpoint - Use correct path for proxy
+            // Try /external/orders endpoint - Use correct path based on environment
             let url;
             if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
                 // Localhost proxy - use /api/external/orders
                 url = `${this.baseURL.replace('/api', '/api/external')}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
             } else {
-                // Vercel serverless - use /api/orders
+                // Vercel serverless - use /api/orders (serverless function, NOT /api/external/orders)
                 url = `${window.location.origin}${this.baseURL}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
             }
             
