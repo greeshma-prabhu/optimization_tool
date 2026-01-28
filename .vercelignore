@@ -2,3 +2,9 @@ node_modules
 .git
 *.log
 .DS_Store
+proxy-server.js
+run.sh
+run-vercel.sh
+start-all.sh
+*.md
+!README.md
