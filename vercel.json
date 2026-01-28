@@ -1,31 +1,8 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/authenticate",
-      "dest": "/api/authenticate.js"
-    },
-    {
-      "src": "/api/orderrows",
-      "dest": "/api/orderrows.js"
-    },
-    {
-      "src": "/api/orders",
-      "dest": "/api/orders.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     }
   ]
 }
