@@ -449,9 +449,24 @@
                 updateLastRefreshed();
                 updateLastUpdatedTime();
                 
-                // Fetch today's planning orders (yesterday until 7 AM today)
-                console.log('📅 Fetching today\'s planning orders (yesterday until 7 AM today)...');
-                const apiOrders = await florinetAPI.fetchOrdersForPlanning();
+                // Get selected date from date picker (same as sync)
+                const datePicker = document.getElementById('order-date-picker');
+                let selectedDate = null;
+                if (datePicker && datePicker.value) {
+                    selectedDate = new Date(datePicker.value);
+                    console.log('📅 Refresh: Using selected date from picker:', selectedDate.toISOString().split('T')[0]);
+                } else {
+                    // Default to today
+                    selectedDate = new Date();
+                    if (datePicker) {
+                        datePicker.value = selectedDate.toISOString().split('T')[0];
+                    }
+                    console.log('📅 Refresh: Using today as default:', selectedDate.toISOString().split('T')[0]);
+                }
+                
+                // Fetch orders for the selected date (same as sync)
+                console.log('📅 Fetching orders for selected date:', selectedDate.toISOString().split('T')[0]);
+                const apiOrders = await florinetAPI.fetchOrdersForDate(selectedDate);
                 
                 if (apiOrders && apiOrders.length > 0) {
                     // Process API orders
