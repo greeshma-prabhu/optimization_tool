@@ -474,25 +474,85 @@
                     // Update dashboard
                     updateDashboard(ordersWithCarts, options);
                     
-                    // Store in localStorage
-                    localStorage.setItem('zuidplas_orders', JSON.stringify(ordersWithCarts));
-                    localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
-                    localStorage.setItem('zuidplas_using_demo_data', 'false');
-                    localStorage.setItem('zuidplas_orders_loaded', 'true');
+                    // Get existing orders count for comparison
+                    const existingOrders = JSON.parse(localStorage.getItem('zuidplas_orders') || '[]');
+                    const existingCount = existingOrders.length;
+                    const hasChanges = ordersWithCarts.length !== existingCount;
                     
-                    // Clear previous truck assignments
-                    localStorage.removeItem('zuidplas_route_truck_assignments');
-                    
-                    // Update last updated time
-                    updateLastUpdatedTime();
-                    
-                    // Show success message
-                    if (statusMsg) {
-                        statusMsg.innerHTML = `✅ Found ${ordersWithCarts.length} orders for today's planning window`;
-                        statusMsg.classList.add('show', 'success');
+                    if (hasChanges) {
+                        console.log(`🔄 Changes detected: ${existingCount} → ${ordersWithCarts.length} orders`);
+                    } else {
+                        console.log('ℹ️ No changes detected - same number of orders');
                     }
                     
-                    console.log('✅ Today\'s orders refreshed:', ordersWithCarts.length);
+                    // Store in localStorage with quota handling
+                    try {
+                        // Compress if too many orders to avoid quota exceeded
+                        if (ordersWithCarts.length > 500) {
+                            // Store only essential fields for large datasets
+                            const compressed = ordersWithCarts.slice(0, 500).map(o => ({
+                                id: o.id,
+                                orderId: o.orderId,
+                                customer: o.customer,
+                                deliveryLocation: o.deliveryLocation,
+                                quantity: o.quantity,
+                                cartType: o.cartType,
+                                cartsNeeded: o.cartsNeeded,
+                                route: o.route
+                            }));
+                            localStorage.setItem('zuidplas_orders', JSON.stringify(compressed));
+                            console.log(`⚠️ Stored ${compressed.length} compressed orders (out of ${ordersWithCarts.length} total)`);
+                        } else {
+                            localStorage.setItem('zuidplas_orders', JSON.stringify(ordersWithCarts));
+                        }
+                        localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                        localStorage.setItem('zuidplas_using_demo_data', 'false');
+                        localStorage.setItem('zuidplas_orders_loaded', 'true');
+                        
+                        // Clear previous truck assignments
+                        localStorage.removeItem('zuidplas_route_truck_assignments');
+                        
+                        // Update last updated time
+                        updateLastUpdatedTime();
+                        
+                        // Show success message with change info
+                        if (statusMsg) {
+                            if (hasChanges) {
+                                statusMsg.innerHTML = `✅ Updated: Found ${ordersWithCarts.length} orders (was ${existingCount})`;
+                            } else {
+                                statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders (no changes)`;
+                            }
+                            statusMsg.classList.add('show', 'success');
+                        }
+                        
+                        console.log('✅ Today\'s orders refreshed:', ordersWithCarts.length, hasChanges ? '(updated)' : '(no changes)');
+                    } catch (e) {
+                        if (e.name === 'QuotaExceededError') {
+                            console.warn('⚠️ localStorage quota exceeded, storing summary only');
+                            try {
+                                // Store only essential metadata
+                                localStorage.setItem('zuidplas_orders_count', ordersWithCarts.length.toString());
+                                localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                                localStorage.setItem('zuidplas_orders_loaded', 'true');
+                                
+                                // Clear old data to free space
+                                localStorage.removeItem('zuidplas_orders');
+                                
+                                if (statusMsg) {
+                                    statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders (too many to store locally)`;
+                                    statusMsg.classList.add('show', 'success');
+                                }
+                            } catch (e2) {
+                                console.error('❌ Could not store even summary:', e2);
+                                if (statusMsg) {
+                                    statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders (could not save to storage)`;
+                                    statusMsg.classList.add('show', 'success');
+                                }
+                            }
+                        } else {
+                            throw e; // Re-throw if not quota error
+                        }
+                    }
                 } else {
                     console.log('ℹ️ No orders for today\'s planning window');
                     if (statusMsg) {
