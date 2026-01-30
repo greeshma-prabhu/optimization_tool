@@ -1,14 +1,4 @@
 {
-  "version": 2,
-  "buildCommand": "echo 'Static site - no build needed'",
-  "outputDirectory": ".",
-  "framework": null,
-  "installCommand": "npm install",
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/authenticate",
