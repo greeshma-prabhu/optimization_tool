@@ -1,11 +1,11 @@
 /**
  * Vercel Serverless Function - Fetch Orderrows
- * Base URL: https://summit.florinet.nl/api/v1 (NOT summit.florinet.nl)
+ * Base URL: https://summit.florinet.nl/api/v1
  */
 
 const FLORINET_BASE_URL = 'https://summit.florinet.nl/api/v1';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -39,7 +39,7 @@ module.exports = async function handler(req, res) {
 
         console.log('[Orderrows API] Fetching from:', url.toString());
 
-        // Fetch from Florinet
+        // Fetch from Florinet (using native fetch - Node 18+)
         const orderrowsResponse = await fetch(url.toString(), {
             method: 'GET',
             headers: {
@@ -72,4 +72,4 @@ module.exports = async function handler(req, res) {
             message: error.message
         });
     }
-};
+}
