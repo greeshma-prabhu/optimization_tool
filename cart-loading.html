@@ -658,7 +658,7 @@
                 // Group by customer (same as Dashboard)
                 const ordersByCustomer = {};
                 this.orders.forEach(order => {
-                    const customerName = order.customer || order.customerName || 'Unknown';
+                    const customerName = order.customer_name || order.customer || order.customerName || 'Unknown';
                     if (!ordersByCustomer[customerName]) {
                         ordersByCustomer[customerName] = [];
                     }
@@ -683,7 +683,8 @@
                     for (let i = 0; i < cartsNeeded; i++) {
                         allCarts.push({
                             id: `cart-${customerName}-${i + 1}`,
-                            customer: customerName,
+                            client: customerName,  // Use 'client' field (not 'customer')
+                            customer: customerName, // Keep for backwards compatibility
                             route: route,
                             type: cartType,
                             orders: customerOrders, // All orders for this customer
