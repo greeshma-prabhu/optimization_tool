@@ -1,9 +1,9 @@
 /**
  * Vercel Serverless Function - Authenticate with Florinet API
- * Base URL: https://app.2growsoftware.com/api/v1 (NOT summit.florinet.nl)
+ * Base URL: https://summit.florinet.nl/api/v1 (NOT summit.florinet.nl)
  */
 
-const FLORINET_BASE_URL = 'https://app.2growsoftware.com/api/v1';
+const FLORINET_BASE_URL = 'https://summit.florinet.nl/api/v1';
 
 module.exports = async function handler(req, res) {
     // CORS headers

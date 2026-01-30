@@ -14,6 +14,11 @@ class AuthManager {
             username: 'JeroenMainfact',
             password: '&WWpxaM@#'
         };
+        
+        console.log('🔐 AUTH CONFIG:');
+        console.log('   Username:', this.credentials.username);
+        console.log('   Password length:', this.credentials.password.length);
+        console.log('   Password (masked):', this.credentials.password.substring(0, 2) + '****' + this.credentials.password.substring(this.credentials.password.length - 2));
     }
 
     /**

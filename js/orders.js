@@ -880,7 +880,11 @@ class OrderManager {
     }
 
     /**
-     * Get cart summary - CRITICAL: Group by customer first, then sum
+     * Get cart summary - CRITICAL: Count each customer's cartsNeeded ONCE (not per order!)
+     * 
+     * IMPORTANT: assignCarts() sets the SAME cartsNeeded value on ALL orders from the same customer.
+     * So if customer "ABC" has 5 orders and needs 10 carts, ALL 5 orders have cartsNeeded: 10.
+     * We must count this as 10 carts TOTAL, not 5 × 10 = 50 carts!
      */
     getCartSummary() {
         const summary = {
@@ -899,20 +903,29 @@ class OrderManager {
             ordersByCustomer[customerName].push(order);
         });
         
-        // Sum carts per customer (not per order) - each customer contributes once
+        // For each customer, take cartsNeeded from FIRST order only (all orders have same value)
         Object.keys(ordersByCustomer).forEach(customerName => {
             const customerOrders = ordersByCustomer[customerName];
             const firstOrder = customerOrders[0];
+            
+            // CRITICAL: cartsNeeded is SAME for all orders from this customer
+            // So we only count it ONCE (from first order)
+            const cartsNeeded = firstOrder.cartsNeeded || 0;
             const cartType = firstOrder.cartType || 'standard';
-            const cartsNeeded = firstOrder.cartsNeeded || 0; // Same for all orders from same customer
             
             if (cartType === 'danish') {
-                summary.danish += cartsNeeded; // Add once per customer, not per order
+                summary.danish += cartsNeeded;
                 summary.specialHandling++;
             } else {
-                summary.standard += cartsNeeded; // Add once per customer, not per order
+                summary.standard += cartsNeeded;
             }
         });
+        
+        console.log('📊 CART SUMMARY (grouped by customer):');
+        console.log(`   Unique customers: ${Object.keys(ordersByCustomer).length}`);
+        console.log(`   Standard carts: ${summary.standard}`);
+        console.log(`   Danish carts: ${summary.danish}`);
+        console.log(`   Total carts: ${summary.standard + summary.danish}`);
 
         return summary;
     }

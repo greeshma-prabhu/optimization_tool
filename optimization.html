@@ -167,6 +167,9 @@
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
     
+    <!-- GLOBAL STATE MANAGER - CRITICAL FOR DATA SYNC -->
+    <script src="js/app-state.js"></script>
+    
     <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
@@ -435,11 +438,61 @@
             }
         }
 
-        // Auto-run on load if orders available
+        // Auto-load orders from global state and run optimization
         document.addEventListener('DOMContentLoaded', () => {
-            if (orderManager.orders.length > 0) {
-                runOptimization();
+            console.log('═══════════════════════════════════════');
+            console.log('🔄 OPTIMIZATION PAGE: Loading orders...');
+            console.log('═══════════════════════════════════════');
+            
+            // Wait for appState to be initialized
+            function checkAndLoadOrders() {
+                if (typeof window.appState === 'undefined') {
+                    console.log('⏳ Waiting for appState...');
+                    setTimeout(checkAndLoadOrders, 100);
+                    return;
+                }
+                
+                // CRITICAL: Load orders from global state
+                const orders = window.appState.getOrders();
+                
+                if (orders && orders.length > 0) {
+                    console.log(`✅ Loaded ${orders.length} orders from global state`);
+                    console.log(`Sample order:`, orders[0]);
+                    
+                    // Update orderManager with fresh data
+                    orderManager.orders = orders;
+                    orderManager.filteredOrders = [...orders];
+                    
+                    // Run optimization with fresh data
+                    console.log('🔧 Running optimization with fresh data...');
+                    runOptimization();
+                } else {
+                    console.warn('⚠️ No orders in global state');
+                    console.log('Please sync data from Dashboard first');
+                    
+                    // Show error message
+                    const summaryContainer = document.getElementById('input-summary-content');
+                    if (summaryContainer) {
+                        summaryContainer.innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: #666;">
+                                <h3>No Orders Loaded</h3>
+                                <p>Please go to Dashboard and click "Refresh Data" to load orders.</p>
+                                <a href="index.html" class="btn btn-primary" style="margin-top: 20px;">Go to Dashboard</a>
+                            </div>
+                        `;
+                    }
+                }
             }
+            
+            checkAndLoadOrders();
+        });
+        
+        // Listen for orders updates from other pages
+        window.addEventListener('ordersUpdated', (event) => {
+            console.log(`📢 Orders updated (${event.detail.count} orders), reloading optimization...`);
+            orderManager.orders = event.detail.orders;
+            orderManager.filteredOrders = [...event.detail.orders];
+            runOptimization();
         });
         
         // Reload optimization display when language changes

@@ -285,6 +285,9 @@
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
     
+    <!-- GLOBAL STATE MANAGER - CRITICAL FOR DATA SYNC -->
+    <script src="js/app-state.js"></script>
+    
     <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
@@ -555,27 +558,53 @@
             }
         }
 
-        // Auto-load on page load (only if orderManager is ready)
+        // Auto-load on page load (try global state first, then API)
         document.addEventListener('DOMContentLoaded', async () => {
-            // Wait for orderManager to be initialized
-            let attempts = 0;
-            const checkOrderManager = setInterval(() => {
-                attempts++;
-                if (typeof orderManager !== 'undefined' && orderManager) {
-                    clearInterval(checkOrderManager);
+            // Wait for orderManager and appState to be initialized
+            function checkAndLoadOrders() {
+                if (typeof orderManager === 'undefined' || typeof window.appState === 'undefined') {
+                    setTimeout(checkAndLoadOrders, 100);
+                    return;
+                }
+                
+                // PRIORITY 1: Try loading from global state
+                const globalOrders = window.appState.getOrders();
+                if (globalOrders && globalOrders.length > 0) {
+                    console.log(`✅ Orders page: Loaded ${globalOrders.length} orders from global state`);
+                    orderManager.orders = globalOrders;
+                    orderManager.filteredOrders = [...globalOrders];
+                    orderManager.assignCarts();
+                    orderManager.updateOrderCount();
+                    orderManager.displayOrders();
+                    updateSummary();
+                    updateOrdersDate();
+                } else {
+                    // PRIORITY 2: Fetch from API
+                    console.log('🔄 Orders page: No global state, fetching from API...');
                     setTimeout(async () => {
                         try {
-                            console.log('🔄 Auto-loading orders...');
                             await window.syncOrders();
                         } catch (error) {
                             console.error('Auto-load error:', error);
                         }
                     }, 500);
-                } else if (attempts > 20) {
-                    clearInterval(checkOrderManager);
-                    console.warn('⚠️ orderManager not found after 2 seconds, skipping auto-load');
                 }
-            }, 100);
+            }
+            
+            checkAndLoadOrders();
+        });
+        
+        // Listen for orders updates from Dashboard
+        window.addEventListener('ordersUpdated', (event) => {
+            console.log(`📢 Orders page: Orders updated (${event.detail.count} orders), reloading...`);
+            if (typeof orderManager !== 'undefined') {
+                orderManager.orders = event.detail.orders;
+                orderManager.filteredOrders = [...event.detail.orders];
+                orderManager.assignCarts();
+                orderManager.updateOrderCount();
+                orderManager.displayOrders();
+                updateSummary();
+            }
         });
         
         // Toggle sidebar collapse (desktop)

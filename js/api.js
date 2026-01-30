@@ -147,6 +147,7 @@ class FlorinetAPI {
         });
 
         console.log(`📤 GET ${url.toString()}`);
+        console.log(`   Token: ${token.substring(0, 20)}...`);
 
         const response = await fetch(url.toString(), {
             method: 'GET',
@@ -156,11 +157,14 @@ class FlorinetAPI {
             }
         });
 
+        console.log(`📥 Response: ${response.status} ${response.statusText}`);
+
         // Handle token expiry
         if (response.status === 401) {
             console.log('⚠️ Token expired (401), re-authenticating...');
             await this.authenticate();
             
+            console.log('🔄 Retrying request with new token...');
             // Retry with new token
             const retryResponse = await fetch(url.toString(), {
                 method: 'GET',
@@ -170,8 +174,11 @@ class FlorinetAPI {
                 }
             });
             
+            console.log(`📥 Retry response: ${retryResponse.status} ${retryResponse.statusText}`);
+            
             if (!retryResponse.ok) {
                 const errorText = await retryResponse.text();
+                console.error(`❌ Retry failed:`, errorText);
                 throw new Error(`Retry failed: HTTP ${retryResponse.status} - ${errorText}`);
             }
             
@@ -180,88 +187,185 @@ class FlorinetAPI {
 
         if (!response.ok) {
             const errorText = await response.text();
+            console.error(`❌ API error:`, errorText);
             throw new Error(`API error: HTTP ${response.status} - ${errorText}`);
         }
 
-        return response.json();
+        const data = await response.json();
+        console.log(`✅ Received ${Array.isArray(data) ? data.length : 'object'} items`);
+        return data;
     }
 
     /**
      * Load all lookup data (customers, locations, products)
-     * Call this ONCE at startup
+     * REQUIRED - Must work for proper customer/location names
      */
     async loadLookupData() {
-        console.log('=================================');
-        console.log('📋 LOADING LOOKUP DATA');
-        console.log('=================================');
+        console.log('╔═══════════════════════════════════════════════════════════╗');
+        console.log('║  📋 LOADING CUSTOMERS & LOCATIONS (REQUIRED)              ║');
+        console.log('╚═══════════════════════════════════════════════════════════╝');
         
+        // STEP 1: Ensure we have a valid token
+        console.log('');
+        console.log('STEP 1: Authentication');
+        console.log('──────────────────────────────────────────────────────────');
+        let token;
         try {
-            // Fetch all in parallel
-            const [customers, locations, products] = await Promise.all([
-                this.fetchWithAuth('/external/customers'),
-                this.fetchWithAuth('/external/locations'),
-                this.fetchWithAuth('/external/composite-products')
-            ]);
-            
-            // Build customer map: id → customer object
-            this.customerMap.clear();
-            customers.forEach(customer => {
-                this.customerMap.set(customer.id, customer);
-            });
-            console.log(`✅ Loaded ${this.customerMap.size} customers`);
-            if (customers[0]) {
-                console.log('   Sample customer:', {
-                    id: customers[0].id,
-                    name: customers[0].name,
-                    fields: Object.keys(customers[0])
-                });
-            }
-            
-            // Build location map: id → location object
-            this.locationMap.clear();
-            locations.forEach(location => {
-                this.locationMap.set(location.id, location);
-            });
-            console.log(`✅ Loaded ${this.locationMap.size} locations`);
-            if (locations[0]) {
-                console.log('   Sample location:', {
-                    id: locations[0].id,
-                    name: locations[0].name,
-                    fields: Object.keys(locations[0])
-                });
-            }
-            
-            // Build product map: id → product object
-            this.productMap.clear();
-            products.forEach(product => {
-                this.productMap.set(product.id, product);
-            });
-            console.log(`✅ Loaded ${this.productMap.size} products`);
-            if (products[0]) {
-                console.log('   Sample product:', {
-                    id: products[0].id,
-                    name: products[0].name,
-                    fields: Object.keys(products[0])
-                });
-            }
-            
-            console.log('=================================');
-            
-            return {
-                customers: this.customerMap,
-                locations: this.locationMap,
-                products: this.productMap
-            };
-            
+            token = await this.getToken();
+            console.log('✅ Token acquired:', token.substring(0, 30) + '...');
         } catch (error) {
-            console.error('❌ Failed to load lookup data:', error);
-            // Don't throw - app can still work with orderrow data
-            return {
-                customers: this.customerMap,
-                locations: this.locationMap,
-                products: this.productMap
-            };
+            console.error('❌ FAILED to get token:', error.message);
+            console.error('   Cannot proceed without authentication!');
+            throw error;
         }
+        
+        // STEP 2: Fetch customers
+        console.log('');
+        console.log('STEP 2: Fetching Customers');
+        console.log('──────────────────────────────────────────────────────────');
+        let customers = [];
+        let customersFailed = false;
+        try {
+            console.log('📤 Calling: GET /external/customers');
+            customers = await this.fetchWithAuth('/external/customers');
+            
+            if (!Array.isArray(customers)) {
+                throw new Error('Response is not an array: ' + typeof customers);
+            }
+            
+            console.log(`✅ SUCCESS: Fetched ${customers.length} customers`);
+            
+            if (customers.length > 0) {
+                console.log('   Sample customer:', JSON.stringify(customers[0], null, 2).substring(0, 300));
+            } else {
+                console.warn('⚠️  API returned 0 customers - this might be wrong!');
+            }
+        } catch (error) {
+            console.error('❌ FAILED to fetch customers:');
+            console.error('   Error:', error.message);
+            console.error('   This means customer names will show as IDs!');
+            customersFailed = true;
+        }
+        
+        // STEP 3: Fetch locations
+        console.log('');
+        console.log('STEP 3: Fetching Locations');
+        console.log('──────────────────────────────────────────────────────────');
+        let locations = [];
+        let locationsFailed = false;
+        try {
+            console.log('📤 Calling: GET /external/locations');
+            locations = await this.fetchWithAuth('/external/locations');
+            
+            if (!Array.isArray(locations)) {
+                throw new Error('Response is not an array: ' + typeof locations);
+            }
+            
+            console.log(`✅ SUCCESS: Fetched ${locations.length} locations`);
+            
+            if (locations.length > 0) {
+                console.log('   Sample location:', JSON.stringify(locations[0], null, 2).substring(0, 300));
+            } else {
+                console.warn('⚠️  API returned 0 locations - this might be wrong!');
+            }
+        } catch (error) {
+            console.error('❌ FAILED to fetch locations:');
+            console.error('   Error:', error.message);
+            console.error('   This means location names will show as IDs!');
+            locationsFailed = true;
+        }
+        
+        // STEP 4: Fetch products (optional, less critical)
+        console.log('');
+        console.log('STEP 4: Fetching Products (optional)');
+        console.log('──────────────────────────────────────────────────────────');
+        let products = [];
+        try {
+            console.log('📤 Calling: GET /external/composite-products');
+            products = await this.fetchWithAuth('/external/composite-products');
+            console.log(`✅ Fetched ${products.length} products`);
+        } catch (error) {
+            console.log('⚠️  Could not fetch products:', error.message);
+            console.log('   (This is optional, using fallback)');
+        }
+        
+        // STEP 5: Build lookup maps
+        console.log('');
+        console.log('STEP 5: Building Lookup Maps');
+        console.log('──────────────────────────────────────────────────────────');
+        
+        // Customer map
+        this.customerMap.clear();
+        if (Array.isArray(customers) && customers.length > 0) {
+            customers.forEach(customer => {
+                if (customer && customer.id) {
+                    this.customerMap.set(customer.id, customer);
+                }
+            });
+            console.log(`✅ Customer map: ${this.customerMap.size} entries`);
+            
+            // Show first 3 mappings
+            const firstThree = Array.from(this.customerMap.entries()).slice(0, 3);
+            firstThree.forEach(([id, c]) => {
+                console.log(`   ${id} → ${c.name || c.company_name || 'NO NAME'}`);
+            });
+        } else {
+            console.error('❌ Customer map is EMPTY - names will not work!');
+        }
+        
+        // Location map
+        this.locationMap.clear();
+        if (Array.isArray(locations) && locations.length > 0) {
+            locations.forEach(location => {
+                if (location && location.id) {
+                    this.locationMap.set(location.id, location);
+                }
+            });
+            console.log(`✅ Location map: ${this.locationMap.size} entries`);
+            
+            // Show first 3 mappings
+            const firstThree = Array.from(this.locationMap.entries()).slice(0, 3);
+            firstThree.forEach(([id, l]) => {
+                console.log(`   ${id} → ${l.name || 'NO NAME'}`);
+            });
+        } else {
+            console.error('❌ Location map is EMPTY - locations will not work!');
+        }
+        
+        // Product map (optional)
+        this.productMap.clear();
+        if (Array.isArray(products) && products.length > 0) {
+            products.forEach(product => {
+                if (product && product.id) {
+                    this.productMap.set(product.id, product);
+                }
+            });
+            console.log(`✅ Product map: ${this.productMap.size} entries`);
+        }
+        
+        // FINAL SUMMARY
+        console.log('');
+        console.log('╔═══════════════════════════════════════════════════════════╗');
+        console.log('║  📊 FINAL SUMMARY                                         ║');
+        console.log('╚═══════════════════════════════════════════════════════════╝');
+        console.log(`Customers: ${this.customerMap.size} ${customersFailed ? '❌ FAILED' : '✅ OK'}`);
+        console.log(`Locations: ${this.locationMap.size} ${locationsFailed ? '❌ FAILED' : '✅ OK'}`);
+        console.log(`Products:  ${this.productMap.size}`);
+        
+        if (customersFailed || locationsFailed) {
+            console.error('');
+            console.error('⚠️⚠️⚠️  CRITICAL ISSUE  ⚠️⚠️⚠️');
+            console.error('Customer or location fetch FAILED!');
+            console.error('Orders will show IDs instead of names.');
+            console.error('Check authentication and API access above.');
+        }
+        console.log('╚═══════════════════════════════════════════════════════════╝');
+        
+        return {
+            customers: this.customerMap,
+            locations: this.locationMap,
+            products: this.productMap
+        };
     }
 
     /**
@@ -270,13 +374,28 @@ class FlorinetAPI {
      * @param {string} endDate - dd-mm-YYYY format
      */
     async getOrdersRange(startDate, endDate) {
-        console.log('=================================');
-        console.log('📦 FETCHING ORDERROWS');
-        console.log(`   Date range: ${startDate} to ${endDate}`);
-        console.log('=================================');
+        console.log('╔═══════════════════════════════════════════════════════════╗');
+        console.log('║  📦 FETCHING ORDERS WITH ENRICHMENT                       ║');
+        console.log('╚═══════════════════════════════════════════════════════════╝');
+        console.log(`Date range: ${startDate} to ${endDate}`);
+        console.log('');
         
         try {
-            // Fetch orderrows
+            // STEP 1: Load lookup data FIRST (customers, locations, products)
+            // This is CRITICAL - must happen before enrichment!
+            if (this.customerMap.size === 0 || this.locationMap.size === 0) {
+                console.log('⚠️ Lookup maps are empty - loading now...');
+                await this.loadLookupData();
+            } else {
+                console.log('✅ Using cached lookup data:');
+                console.log(`   - ${this.customerMap.size} customers`);
+                console.log(`   - ${this.locationMap.size} locations`);
+                console.log(`   - ${this.productMap.size} products`);
+            }
+            console.log('');
+            
+            // STEP 2: Fetch orderrows
+            console.log('📦 Fetching orderrows from API...');
             const orderrows = await this.fetchWithAuth('/external/orderrows', {
                 deliveryStartDate: startDate,
                 deliveryEndDate: endDate,
@@ -284,46 +403,143 @@ class FlorinetAPI {
             });
             
             console.log(`✅ Received ${orderrows.length} orderrows`);
+            console.log('');
             
-            // Enrich each orderrow with customer/location/product data
+            // STEP 3: Enrich each orderrow with customer/location/product data
+            console.log('🔄 Enriching orderrows with customer/location names...');
             const enrichedOrders = orderrows.map(row => this.enrichOrderrow(row));
+            
+            // Count how many were successfully enriched
+            const withCustomer = enrichedOrders.filter(o => !o.customer_name?.startsWith('customer ')).length;
+            const withLocation = enrichedOrders.filter(o => !o.location_name?.startsWith('Location ')).length;
+            
+            console.log(`✅ Enrichment complete:`);
+            console.log(`   - ${withCustomer}/${orderrows.length} orders have customer names`);
+            console.log(`   - ${withLocation}/${orderrows.length} orders have location names`);
+            
+            if (withCustomer < orderrows.length || withLocation < orderrows.length) {
+                console.warn('⚠️ Some orders missing enrichment data!');
+                console.warn(`   Missing customers: ${orderrows.length - withCustomer}`);
+                console.warn(`   Missing locations: ${orderrows.length - withLocation}`);
+            }
+            
+            // ROUTE DISTRIBUTION ANALYSIS
+            console.log('');
+            console.log('═══════════════════════════════════════');
+            console.log('📊 ROUTE DISTRIBUTION ANALYSIS');
+            console.log('═══════════════════════════════════════');
+            
+            const routeCounts = {
+                rijnsburg: 0,
+                aalsmeer: 0,
+                naaldwijk: 0
+            };
+            
+            const locationsByRoute = {
+                rijnsburg: new Set(),
+                aalsmeer: new Set(),
+                naaldwijk: new Set()
+            };
+            
+            enrichedOrders.forEach(order => {
+                const route = order.route || 'rijnsburg';
+                routeCounts[route]++;
+                locationsByRoute[route].add(order.location_name);
+            });
+            
+            console.log(`Total orders: ${enrichedOrders.length}`);
+            console.log(`Rijnsburg: ${routeCounts.rijnsburg} orders (${locationsByRoute.rijnsburg.size} locations)`);
+            console.log(`Aalsmeer: ${routeCounts.aalsmeer} orders (${locationsByRoute.aalsmeer.size} locations)`);
+            console.log(`Naaldwijk: ${routeCounts.naaldwijk} orders (${locationsByRoute.naaldwijk.size} locations)`);
+            console.log('───────────────────────────────────────');
+            
+            // Show unique locations per route
+            if (locationsByRoute.rijnsburg.size > 0) {
+                console.log('Rijnsburg locations:', Array.from(locationsByRoute.rijnsburg).slice(0, 5).join(', ') + 
+                    (locationsByRoute.rijnsburg.size > 5 ? ` ... (${locationsByRoute.rijnsburg.size} total)` : ''));
+            }
+            if (locationsByRoute.aalsmeer.size > 0) {
+                console.log('Aalsmeer locations:', Array.from(locationsByRoute.aalsmeer).slice(0, 5).join(', ') + 
+                    (locationsByRoute.aalsmeer.size > 5 ? ` ... (${locationsByRoute.aalsmeer.size} total)` : ''));
+            }
+            if (locationsByRoute.naaldwijk.size > 0) {
+                console.log('Naaldwijk locations:', Array.from(locationsByRoute.naaldwijk).slice(0, 5).join(', ') + 
+                    (locationsByRoute.naaldwijk.size > 5 ? ` ... (${locationsByRoute.naaldwijk.size} total)` : ''));
+            }
+            console.log('═══════════════════════════════════════');
             
             // Show sample
             if (enrichedOrders.length > 0) {
-                console.log('📋 SAMPLE ENRICHED ORDERROW:');
-                console.log('   ', JSON.stringify(enrichedOrders[0], null, 2).substring(0, 800));
+                console.log('');
+                console.log('📋 Sample enriched order:');
+                const sample = enrichedOrders[0];
+                console.log(`   Customer: ${sample.customer_name}`);
+                console.log(`   Location: ${sample.location_name}`);
+                console.log(`   Route: ${sample.route}`);
+                console.log(`   Product: ${sample.product_name}`);
+                console.log(`   Quantity: ${sample.total_stems}`);
             }
             
-            console.log('=================================');
+            console.log('');
+            console.log('╚═══════════════════════════════════════════════════════════╝');
             return enrichedOrders;
             
         } catch (error) {
-            console.error('❌ Failed to fetch orderrows:', error);
+            console.error('❌ Failed to fetch/enrich orderrows:', error);
             throw error;
         }
     }
 
     /**
-     * Enrich orderrow with customer/location/product names
-     * Following the manual exactly
+     * Map location name to route (Rijnsburg, Aalsmeer, Naaldwijk)
+     */
+    mapLocationToRoute(locationName) {
+        if (!locationName) return 'rijnsburg'; // Default
+        
+        const location = locationName.toLowerCase();
+        
+        // Route 2: Aalsmeer
+        if (location.includes('aalsmeer') || 
+            location.includes('alsmeer')) {
+            return 'aalsmeer';
+        }
+        
+        // Route 3: Naaldwijk
+        if (location.includes('naaldwijk') || 
+            location.includes('nldwijk') ||
+            location.includes('zuidplas') ||
+            location.includes('kwekerij') ||
+            location.includes('klondike')) {
+            return 'naaldwijk';
+        }
+        
+        // Route 1: Rijnsburg (default for everything else)
+        return 'rijnsburg';
+    }
+    
+    /**
+     * Enrich orderrow with customer/location/product names from lookup maps
+     * MUST have loaded lookup data first via loadLookupData()
      */
     enrichOrderrow(row) {
         // Get nested order data
         const order = row.order || {};
         
-        // Get customer from map
+        // GET CUSTOMER from map (REQUIRED)
         const customer = this.customerMap.get(order.customer_id);
         if (customer) {
-            row.customer_name = customer.name;
+            row.customer_name = customer.name || customer.company_name || `Customer ${order.customer_id}`;
             row.customer_code = customer.code;
             row.customer_address = customer.address;
             row.customer_city = customer.city;
             row.customer_postal_code = customer.postal_code;
         } else {
-            row.customer_name = `Customer ${order.customer_id || 'Unknown'}`;
+            // NO FALLBACK - show ID so it's obvious something is wrong
+            row.customer_name = `customer ${order.customer_id}`;
+            console.warn(`⚠️ Customer ${order.customer_id} not found in map!`);
         }
         
-        // Get delivery location from map
+        // GET LOCATION from map (REQUIRED)
         const location = this.locationMap.get(order.delivery_location_id);
         if (location) {
             row.location_name = location.name;
@@ -332,10 +548,12 @@ class FlorinetAPI {
             row.location_latitude = location.latitude;
             row.location_longitude = location.longitude;
         } else {
-            row.location_name = `Location ${order.delivery_location_id || 'Unknown'}`;
+            // NO FALLBACK - show ID so it's obvious something is wrong
+            row.location_name = `Location ${order.delivery_location_id}`;
+            console.warn(`⚠️ Location ${order.delivery_location_id} not found in map!`);
         }
         
-        // Get product from map
+        // GET PRODUCT from map (optional)
         const product = this.productMap.get(row.composite_product_id);
         if (product) {
             row.product_name = product.name;
@@ -345,8 +563,11 @@ class FlorinetAPI {
             row.flower_variety = product.variety;
             row.stem_length = product.stem_length;
         } else {
-            row.product_name = `Product ${row.composite_product_id || 'Unknown'}`;
+            row.product_name = `Product ${row.composite_product_id}`;
         }
+        
+        // MAP LOCATION TO ROUTE
+        row.route = this.mapLocationToRoute(row.location_name);
         
         // Extract packaging properties
         const props = this.extractProperties(row);

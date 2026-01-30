@@ -620,11 +620,47 @@
                 <!-- Populated by JavaScript -->
             </div>
         </div>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- DEBUG PANEL - Remove after verification -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="debug-panel" style="position: fixed; bottom: 10px; right: 10px; background: #1a1a1a; color: #0f0; padding: 12px; font-family: 'Courier New', monospace; font-size: 11px; border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); min-width: 280px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #333;">
+            <strong style="color: #ff6b35;">🐛 STATE MONITOR (CART OPT)</strong>
+            <button onclick="this.parentElement.parentElement.style.display='none'" style="background: #333; color: #fff; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 10px;">×</button>
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">Global State:</span> 
+            <strong id="debug-global-orders" style="color: #0f0;">0</strong> orders
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">LocalStorage:</span> 
+            <strong id="debug-local-orders" style="color: #ff0;">0</strong> orders
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">OrderManager:</span> 
+            <strong id="debug-manager-orders" style="color: #f80;">0</strong> orders
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">Last Sync:</span> 
+            <strong id="debug-last-sync" style="color: #0ff; font-size: 10px;">Never</strong>
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">Current Date:</span> 
+            <strong id="debug-current-date" style="color: #0ff; font-size: 10px;">-</strong>
+        </div>
+        <button onclick="debugCheckState()" style="margin-top: 8px; width: 100%; padding: 6px; background: #ff6b35; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+            🔍 Check State
+        </button>
     </div>
 
     <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
+    
+    <!-- GLOBAL STATE MANAGER - BEFORE PAGE SCRIPTS -->
+    <script src="js/app-state.js"></script>
     
     <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
@@ -651,9 +687,16 @@
              * Get all carts that need to be loaded
              */
             getAllCarts() {
-                const ordersWithCarts = this.orders.map(order => 
-                    this.cartManager.assignCartType(order)
-                );
+                // CRITICAL: Use already-calculated cart assignments from Dashboard!
+                const ordersWithCarts = this.orders.map(order => {
+                    // If cart info already exists from Dashboard, use it
+                    if (order.cartType && order.cartsNeeded !== undefined) {
+                        console.log(`✅ Using pre-calculated carts for ${order.customer}: ${order.cartsNeeded} carts`);
+                        return order;
+                    }
+                    // Otherwise, calculate it now
+                    return this.cartManager.assignCartType(order);
+                });
                 
                 // Group by client (same client = same cart)
                 const ordersByClient = {};
@@ -985,12 +1028,21 @@
         }
 
         function optimizeCartLoading() {
-            // CRITICAL: Only run optimization if orders were explicitly loaded
-            // Check if orders exist AND were loaded in current session (not stale cache)
-            const hasFreshOrders = localStorage.getItem('zuidplas_orders_loaded') === 'true';
+            // CRITICAL: Check if orders are available (from global state or orderManager)
             const hasOrders = orderManager && orderManager.orders && orderManager.orders.length > 0;
+            const hasGlobalStateOrders = typeof window.appState !== 'undefined' && window.appState.hasOrders();
             
-            if (!hasOrders || !hasFreshOrders) {
+            // If no orders in orderManager but orders exist in global state, load them
+            if (!hasOrders && hasGlobalStateOrders) {
+                console.log('📦 Loading orders from global state...');
+                const orders = window.appState.getOrders();
+                orderManager.orders = orders;
+                orderManager.filteredOrders = [...orders];
+                console.log(`✅ Loaded ${orders.length} orders from global state`);
+            }
+            
+            // Final check - if still no orders, show error
+            if (!orderManager.orders || orderManager.orders.length === 0) {
                 // Show clear message - orders must be loaded first
                 // Use i18n for proper language support
                 const message = typeof i18n !== 'undefined' 
@@ -2541,12 +2593,11 @@
             }
         }
 
-        // Check on page load - but DON'T auto-optimize
-        // Only show message if no fresh orders are available
+        // Check on page load - auto-load orders from global state
         document.addEventListener('DOMContentLoaded', () => {
-            // Wait for i18n to be fully initialized
+            // Wait for i18n and appState to be fully initialized
             function checkOrdersAndDisplay() {
-                if (typeof i18n === 'undefined') {
+                if (typeof i18n === 'undefined' || typeof window.appState === 'undefined') {
                     setTimeout(checkOrdersAndDisplay, 100);
                     return;
                 }
@@ -2559,24 +2610,54 @@
                     i18n.setLanguage(savedLang);
                 }
                 
-                // Check if orders were explicitly loaded (not just cached)
-                const hasFreshOrders = localStorage.getItem('zuidplas_orders_loaded') === 'true';
-                const hasOrders = orderManager && orderManager.orders && orderManager.orders.length > 0;
+                // FORCE RELOAD from localStorage (don't trust memory)
+                console.log('🔄 Cart Optimization: Force loading from storage...');
+                const storedOrders = localStorage.getItem('zuidplas_orders') || localStorage.getItem('cachedOrders');
+                let orders = [];
                 
-                if (!hasOrders || !hasFreshOrders) {
-                    // Clear display - no orders loaded (will use correct language)
+                if (storedOrders) {
+                    try {
+                        orders = JSON.parse(storedOrders);
+                        console.log(`✅ Loaded ${orders.length} orders from localStorage`);
+                        
+                        // Update appState memory
+                        window.appState.orders = orders;
+                        window.appState.ordersLoaded = orders.length > 0;
+                    } catch (e) {
+                        console.error('Failed to parse stored orders:', e);
+                    }
+                } else {
+                    console.log('ℹ️ No orders in localStorage');
+                }
+                
+                if (!orders || orders.length === 0) {
+                    // Clear display - no orders loaded
                     clearCartOptimizationDisplay();
                     console.log('💡 No orders loaded. Please load orders from Dashboard first.');
                 } else {
-                    // Orders were loaded - auto-optimize
-                    console.log('📦 Found fresh orders, auto-optimizing...');
+                    // Orders are available - load them into orderManager
+                    console.log(`📦 Found ${orders.length} orders in global state, loading...`);
+                    orderManager.orders = orders;
+                    orderManager.filteredOrders = [...orders];
+                    
                     // Ensure truck assignments are loaded before optimizing
                     loadTruckAssignments();
+                    
+                    // Auto-optimize
+                    console.log('🔧 Auto-optimizing cart loading...');
                     optimizeCartLoading();
                 }
             }
             
             checkOrdersAndDisplay();
+            
+            // Listen for orders updates from other pages
+            window.addEventListener('ordersUpdated', (event) => {
+                console.log(`📢 Orders updated (${event.detail.count} orders), reloading...`);
+                orderManager.orders = event.detail.orders;
+                orderManager.filteredOrders = [...event.detail.orders];
+                optimizeCartLoading();
+            });
         });
         
         // Toggle sidebar collapse (desktop)
@@ -2649,6 +2730,80 @@
         
         // Make logout function global
         window.handleLogout = handleLogout;
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DEBUG STATE CHECKER
+        // ═══════════════════════════════════════════════════════════════════
+        function debugCheckState() {
+            const globalCount = window.appState?.getOrderCount() || 0;
+            
+            // Check BOTH old and new localStorage keys
+            const oldData = localStorage.getItem('cachedOrders');
+            const newData = localStorage.getItem('zuidplas_orders');
+            const oldCount = oldData ? JSON.parse(oldData).length : 0;
+            const newCount = newData ? JSON.parse(newData).length : 0;
+            
+            const managerCount = orderManager?.orders?.length || 0;
+            const lastSync = localStorage.getItem('lastSyncDate') || 'Never';
+            const currentDate = window.appState?.currentDate || '-';
+            
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log('🐛 DEBUG STATE CHECK (CART OPTIMIZATION)');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log(`Global State (memory): ${globalCount} orders`);
+            console.log(`OLD LocalStorage (cachedOrders): ${oldCount} orders`);
+            console.log(`NEW LocalStorage (zuidplas_orders): ${newCount} orders`);
+            console.log(`OrderManager: ${managerCount} orders`);
+            console.log(`Last Sync: ${lastSync}`);
+            console.log(`Current Date: ${currentDate}`);
+            console.log('window.appState:', window.appState);
+            console.log('orderManager.orders:', orderManager?.orders?.slice(0, 2));
+            console.log('═══════════════════════════════════════════════════════════════════');
+            
+            alert(`🐛 CART OPT STATE\n\nMemory: ${globalCount} orders\nOLD storage: ${oldCount}\nNEW storage: ${newCount}\nManager: ${managerCount}\nLast sync: ${lastSync}\nDate: ${currentDate}`);
+        }
+        
+        // Update debug panel every 2 seconds
+        function updateDebugPanel() {
+            const globalCount = window.appState?.getOrderCount() || 0;
+            
+            // Check BOTH old and new localStorage keys
+            const oldData = localStorage.getItem('cachedOrders');
+            const newData = localStorage.getItem('zuidplas_orders');
+            const localCount = newData ? JSON.parse(newData).length : (oldData ? JSON.parse(oldData).length : 0);
+            
+            const managerCount = orderManager?.orders?.length || 0;
+            const lastSync = localStorage.getItem('lastSyncDate') || 'Never';
+            const currentDate = window.appState?.currentDate || '-';
+            
+            const globalEl = document.getElementById('debug-global-orders');
+            const localEl = document.getElementById('debug-local-orders');
+            const managerEl = document.getElementById('debug-manager-orders');
+            const syncEl = document.getElementById('debug-last-sync');
+            const dateEl = document.getElementById('debug-current-date');
+            
+            if (globalEl) globalEl.textContent = globalCount;
+            if (localEl) localEl.textContent = localCount;
+            if (managerEl) managerEl.textContent = managerCount;
+            if (syncEl) syncEl.textContent = lastSync === 'Never' ? 'Never' : new Date(lastSync).toLocaleTimeString();
+            if (dateEl) dateEl.textContent = currentDate;
+        }
+        
+        // Make functions global
+        window.debugCheckState = debugCheckState;
+        window.updateDebugPanel = updateDebugPanel;
+        
+        // Listen for orders updated event and update debug panel immediately
+        window.addEventListener('ordersUpdated', (event) => {
+            console.log('📢 Debug panel: Orders updated event received:', event.detail.count);
+            updateDebugPanel();
+        });
+        
+        // Update debug panel periodically
+        setInterval(updateDebugPanel, 2000);
+        
+        // Initial update
+        setTimeout(updateDebugPanel, 1000);
 
     </script>
 </body>

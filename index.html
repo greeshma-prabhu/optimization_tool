@@ -242,12 +242,44 @@
         
         <!-- Info Message -->
         <div id="info-message" class="info-box info" style="display: none; margin-top: 20px;"></div>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- DEBUG PANEL - Remove after verification -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="debug-panel" style="position: fixed; bottom: 10px; right: 10px; background: #1a1a1a; color: #0f0; padding: 12px; font-family: 'Courier New', monospace; font-size: 11px; border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); min-width: 280px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #333;">
+            <strong style="color: #0ff;">🐛 STATE MONITOR (DASHBOARD)</strong>
+            <button onclick="this.parentElement.parentElement.style.display='none'" style="background: #333; color: #fff; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 10px;">×</button>
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">Global State:</span> 
+            <strong id="debug-global-orders" style="color: #0f0;">0</strong> orders
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">LocalStorage:</span> 
+            <strong id="debug-local-orders" style="color: #ff0;">0</strong> orders
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">Last Sync:</span> 
+            <strong id="debug-last-sync" style="color: #0ff; font-size: 10px;">Never</strong>
+        </div>
+        <div style="margin: 6px 0;">
+            <span style="color: #888;">Current Date:</span> 
+            <strong id="debug-current-date" style="color: #0ff; font-size: 10px;">-</strong>
+        </div>
+        <button onclick="debugCheckState()" style="margin-top: 8px; width: 100%; padding: 6px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+            🔍 Check State
+        </button>
     </div>
 
     <!-- Scripts -->
     <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
+    
+    <!-- GLOBAL STATE MANAGER - BEFORE PAGE SCRIPTS -->
+    <script src="js/app-state.js"></script>
     
     <!-- PAGE-SPECIFIC SCRIPTS -->
     <script src="js/data.js"></script>
@@ -490,8 +522,7 @@
                     updateDashboard(ordersWithCarts, options);
                     
                     // Get existing orders count for comparison
-                    const existingOrders = JSON.parse(localStorage.getItem('zuidplas_orders') || '[]');
-                    const existingCount = existingOrders.length;
+                    const existingCount = window.appState.getOrderCount();
                     const hasChanges = ordersWithCarts.length !== existingCount;
                     
                     if (hasChanges) {
@@ -500,74 +531,32 @@
                         console.log('ℹ️ No changes detected - same number of orders');
                     }
                     
-                    // Store in localStorage with quota handling
-                    try {
-                        // Compress if too many orders to avoid quota exceeded
-                        if (ordersWithCarts.length > 500) {
-                            // Store only essential fields for large datasets
-                            const compressed = ordersWithCarts.slice(0, 500).map(o => ({
-                                id: o.id,
-                                orderId: o.orderId,
-                                customer: o.customer,
-                                deliveryLocation: o.deliveryLocation,
-                                quantity: o.quantity,
-                                cartType: o.cartType,
-                                cartsNeeded: o.cartsNeeded,
-                                route: o.route
-                            }));
-                            localStorage.setItem('zuidplas_orders', JSON.stringify(compressed));
-                            console.log(`⚠️ Stored ${compressed.length} compressed orders (out of ${ordersWithCarts.length} total)`);
+                    // STORE IN GLOBAL STATE (handles localStorage automatically)
+                    console.log(`🔄 Saving ${ordersWithCarts.length} orders to global state...`);
+                    window.appState.setOrders(ordersWithCarts, selectedDate);
+                    
+                    // Update debug panel
+                    setTimeout(() => {
+                        updateDebugPanel();
+                    }, 100);
+                    
+                    // Clear previous truck assignments
+                    localStorage.removeItem('zuidplas_route_truck_assignments');
+                    
+                    // Update last updated time
+                    updateLastUpdatedTime();
+                    
+                    // Show success message with change info
+                    if (statusMsg) {
+                        if (hasChanges) {
+                            statusMsg.innerHTML = `✅ Updated: Found ${ordersWithCarts.length} orders (was ${existingCount})`;
                         } else {
-                            localStorage.setItem('zuidplas_orders', JSON.stringify(ordersWithCarts));
+                            statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders (no changes)`;
                         }
-                        localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
-                        localStorage.setItem('zuidplas_using_demo_data', 'false');
-                        localStorage.setItem('zuidplas_orders_loaded', 'true');
-                        
-                        // Clear previous truck assignments
-                        localStorage.removeItem('zuidplas_route_truck_assignments');
-                        
-                        // Update last updated time
-                        updateLastUpdatedTime();
-                        
-                        // Show success message with change info
-                        if (statusMsg) {
-                            if (hasChanges) {
-                                statusMsg.innerHTML = `✅ Updated: Found ${ordersWithCarts.length} orders (was ${existingCount})`;
-                            } else {
-                                statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders (no changes)`;
-                            }
-                            statusMsg.classList.add('show', 'success');
-                        }
-                        
-                        console.log('✅ Today\'s orders refreshed:', ordersWithCarts.length, hasChanges ? '(updated)' : '(no changes)');
-                    } catch (e) {
-                        if (e.name === 'QuotaExceededError') {
-                            console.warn('⚠️ localStorage quota exceeded, storing summary only');
-                            try {
-                                // Store only essential metadata
-                                localStorage.setItem('zuidplas_orders_count', ordersWithCarts.length.toString());
-                                localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
-                                localStorage.setItem('zuidplas_orders_loaded', 'true');
-                                
-                                // Clear old data to free space
-                                localStorage.removeItem('zuidplas_orders');
-                                
-                                if (statusMsg) {
-                                    statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders (too many to store locally)`;
-                                    statusMsg.classList.add('show', 'success');
-                                }
-                            } catch (e2) {
-                                console.error('❌ Could not store even summary:', e2);
-                                if (statusMsg) {
-                                    statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders (could not save to storage)`;
-                                    statusMsg.classList.add('show', 'success');
-                                }
-                            }
-                        } else {
-                            throw e; // Re-throw if not quota error
-                        }
+                        statusMsg.classList.add('show', 'success');
                     }
+                    
+                    console.log('✅ Today\'s orders refreshed:', ordersWithCarts.length, hasChanges ? '(updated)' : '(no changes)');
                 } else {
                     console.log('ℹ️ No orders for today\'s planning window');
                     if (statusMsg) {
@@ -667,47 +656,21 @@
                             const optimizer = initializeOptimizer(orders);
                             const options = optimizer.generateOptions();
                             
-                            // Update dashboard
-                            updateDashboard(orders, options);
-                            
-                            // Store in localStorage with compression to avoid quota exceeded
-                            try {
-                                if (orders.length > 500) {
-                                    // Store only essential fields for large datasets
-                                    const compressed = orders.slice(0, 500).map(o => ({
-                                        id: o.id,
-                                        customer: o.customer,
-                                        deliveryLocation: o.deliveryLocation,
-                                        quantity: o.quantity,
-                                        cartType: o.cartType,
-                                        cartsNeeded: o.cartsNeeded
-                                    }));
-                                    localStorage.setItem('zuidplas_orders', JSON.stringify(compressed));
-                                    console.log(`⚠️ Stored ${compressed.length} compressed orders (out of ${orders.length} total)`);
-                                } else {
-                                    localStorage.setItem('zuidplas_orders', JSON.stringify(orders));
-                                }
-                                localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
-                                localStorage.setItem('zuidplas_using_demo_data', 'false');
-                                localStorage.setItem('zuidplas_orders_loaded', 'true');
-                                
-                                // Clear previous truck assignments
-                                localStorage.removeItem('zuidplas_route_truck_assignments');
-                                console.log('🔄 Cleared previous truck assignments - user must select fresh');
-                            } catch (e) {
-                                if (e.name === 'QuotaExceededError') {
-                                    console.warn('⚠️ localStorage quota exceeded, storing summary only');
-                                    try {
-                                        localStorage.setItem('zuidplas_orders_count', orders.length.toString());
-                                        localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
-                                        localStorage.setItem('zuidplas_orders_loaded', 'true');
-                                    } catch (e2) {
-                                        console.error('❌ Could not store even summary:', e2);
-                                    }
-                                } else {
-                                    console.warn('Could not save orders to localStorage:', e);
-                                }
-                            }
+                    // Update dashboard
+                    updateDashboard(orders, options);
+                    
+                    // STORE IN GLOBAL STATE (handles localStorage automatically)
+                    console.log(`🔄 Saving ${orders.length} orders to global state...`);
+                    window.appState.setOrders(orders, selectedDate);
+                    
+                    // Update debug panel
+                    setTimeout(() => {
+                        updateDebugPanel();
+                    }, 100);
+                    
+                    // Clear previous truck assignments
+                    localStorage.removeItem('zuidplas_route_truck_assignments');
+                    console.log('🔄 Cleared previous truck assignments - user must select fresh');
                         } else {
                             // No orders from API - this is OK, empty array is valid
                             console.log('ℹ️ No orders from API (empty array is normal)');
@@ -775,6 +738,15 @@
                 // Update dashboard
                 updateDashboard(orders, options);
                 
+                // ✅ SAVE TO GLOBAL STATE (for ALL data sources: API or Demo)
+                console.log(`🔄 Saving ${orders.length} orders to global state...`);
+                window.appState.setOrders(orders, selectedDate);
+                
+                // Update debug panel
+                setTimeout(() => {
+                    updateDebugPanel();
+                }, 100);
+                
                 syncBtn.innerHTML = useDummy ? '✅ Demo Data Loaded' : '✅ Synced';
                 
                 // Show status message
@@ -838,30 +810,14 @@
             // Update stats
             document.getElementById('total-orders-count').textContent = orders.length;
             
-            // CRITICAL: Calculate carts from optimizer (groups by customer), not from individual orders
-            try {
-                const ordersWithCarts = orderManager.orders.length > 0 ? orderManager.orders : orders;
-                const optimizer = initializeOptimizer(ordersWithCarts);
-                const routeAnalysis = optimizer.processOrders();
-                
-                // Sum total carts from all routes (already grouped by customer)
-                let totalCarts = 0;
-                Object.keys(routeAnalysis).forEach(routeKey => {
-                    const analysis = routeAnalysis[routeKey];
-                    if (analysis && analysis.totalCarts) {
-                        totalCarts += analysis.totalCarts;
-                    }
-                });
-                
-                document.getElementById('total-carts-needed').textContent = totalCarts;
-                console.log(`📊 Dashboard: ${orders.length} orders → ${totalCarts} carts (grouped by customer)`);
-            } catch (error) {
-                console.error('Error calculating total carts:', error);
-                // Fallback to old method
-                const cartSummary = orderManager.getCartSummary();
-                document.getElementById('total-carts-needed').textContent = 
-                    cartSummary.standard + cartSummary.danish;
-            }
+            // CRITICAL: Calculate carts grouped by customer (not per order!)
+            // Use getCartSummary() which properly groups by customer
+            const cartSummary = orderManager.getCartSummary();
+            const totalCarts = cartSummary.standard + cartSummary.danish;
+            document.getElementById('total-carts-needed').textContent = totalCarts;
+            console.log(`📊 Dashboard: ${orders.length} orders → ${totalCarts} carts`);
+            console.log(`   Standard carts: ${cartSummary.standard}`);
+            console.log(`   Danish carts: ${cartSummary.danish}`);
             
             // Update routes status
             try {
@@ -1193,6 +1149,75 @@
         
         // Make logout function global - CRITICAL!
         window.handleLogout = handleLogout;
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DEBUG STATE CHECKER
+        // ═══════════════════════════════════════════════════════════════════
+        function debugCheckState() {
+            const globalCount = window.appState?.getOrderCount() || 0;
+            
+            // Check BOTH old and new localStorage keys
+            const oldData = localStorage.getItem('cachedOrders');
+            const newData = localStorage.getItem('zuidplas_orders');
+            const oldCount = oldData ? JSON.parse(oldData).length : 0;
+            const newCount = newData ? JSON.parse(newData).length : 0;
+            
+            const lastSync = localStorage.getItem('lastSyncDate') || 'Never';
+            const currentDate = window.appState?.currentDate || '-';
+            
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log('🐛 DEBUG STATE CHECK (DASHBOARD)');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log(`Global State (memory): ${globalCount} orders`);
+            console.log(`OLD LocalStorage (cachedOrders): ${oldCount} orders`);
+            console.log(`NEW LocalStorage (zuidplas_orders): ${newCount} orders`);
+            console.log(`Last Sync: ${lastSync}`);
+            console.log(`Current Date: ${currentDate}`);
+            console.log('window.appState:', window.appState);
+            console.log('Sample order:', window.appState?.orders?.[0]);
+            console.log('═══════════════════════════════════════════════════════════════════');
+            
+            alert(`🐛 DASHBOARD STATE\n\nMemory: ${globalCount} orders\nOLD storage: ${oldCount} orders\nNEW storage: ${newCount} orders\nLast sync: ${lastSync}\nDate: ${currentDate}`);
+        }
+        
+        // Update debug panel every 2 seconds
+        function updateDebugPanel() {
+            const globalCount = window.appState?.getOrderCount() || 0;
+            
+            // Check BOTH old and new localStorage keys
+            const oldData = localStorage.getItem('cachedOrders');
+            const newData = localStorage.getItem('zuidplas_orders');
+            const localCount = newData ? JSON.parse(newData).length : (oldData ? JSON.parse(oldData).length : 0);
+            
+            const lastSync = localStorage.getItem('lastSyncDate') || 'Never';
+            const currentDate = window.appState?.currentDate || '-';
+            
+            const globalEl = document.getElementById('debug-global-orders');
+            const localEl = document.getElementById('debug-local-orders');
+            const syncEl = document.getElementById('debug-last-sync');
+            const dateEl = document.getElementById('debug-current-date');
+            
+            if (globalEl) globalEl.textContent = globalCount;
+            if (localEl) localEl.textContent = localCount;
+            if (syncEl) syncEl.textContent = lastSync === 'Never' ? 'Never' : new Date(lastSync).toLocaleTimeString();
+            if (dateEl) dateEl.textContent = currentDate;
+        }
+        
+        // Make functions global
+        window.debugCheckState = debugCheckState;
+        window.updateDebugPanel = updateDebugPanel;
+        
+        // Listen for orders updated event and update debug panel immediately
+        window.addEventListener('ordersUpdated', (event) => {
+            console.log('📢 Debug panel: Orders updated event received:', event.detail.count);
+            updateDebugPanel();
+        });
+        
+        // Update debug panel periodically
+        setInterval(updateDebugPanel, 2000);
+        
+        // Initial update
+        setTimeout(updateDebugPanel, 1000);
 
     </script>
 </body>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Florinet Auth Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .test-box {
+            background: #2d2d2d;
+            border: 1px solid #3e3e3e;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .success { color: #4ec9b0; }
+        .error { color: #f48771; }
+        .warning { color: #dcdcaa; }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Florinet API Authentication Test</h1>
+    
+    <div class="test-box">
+        <h2>Test 1: Direct API Auth (will fail due to CORS)</h2>
+        <button onclick="testDirectAuth()">Test Direct Auth</button>
+        <pre id="direct-result">Click button to test...</pre>
+    </div>
+    
+    <div class="test-box">
+        <h2>Test 2: Proxy Auth (via localhost:3001)</h2>
+        <button onclick="testProxyAuth()">Test Proxy Auth</button>
+        <pre id="proxy-result">Click button to test...</pre>
+    </div>
+    
+    <div class="test-box">
+        <h2>Test 3: Fetch Customers (after auth)</h2>
+        <button onclick="testFetchCustomers()">Test Fetch Customers</button>
+        <pre id="customers-result">Authenticate first...</pre>
+    </div>
+    
+    <div class="test-box">
+        <h2>Test 4: Clear Cache & Re-auth</h2>
+        <button onclick="clearCacheAndAuth()">Clear & Re-auth</button>
+        <pre id="clear-result">Click to clear localStorage and re-authenticate...</pre>
+    </div>
+
+    <script>
+        const CREDENTIALS = {
+            username: 'JeroenMainfact',
+            password: '<&WWpxaM@#>'
+        };
+        
+        let cachedToken = null;
+        
+        // Test 1: Direct API authentication (will fail due to CORS)
+        async function testDirectAuth() {
+            const result = document.getElementById('direct-result');
+            result.innerHTML = '⏳ Testing direct API auth...\n';
+            
+            try {
+                const response = await fetch('https://summit.florinet.nl/api/v1/authenticate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(CREDENTIALS)
+                });
+                
+                result.innerHTML += `Status: ${response.status}\n`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    cachedToken = data.token;
+                    result.innerHTML += `<span class="success">✅ SUCCESS!</span>\n`;
+                    result.innerHTML += `Token: ${data.token.substring(0, 30)}...\n`;
+                } else {
+                    const errorText = await response.text();
+                    result.innerHTML += `<span class="error">❌ FAILED</span>\n`;
+                    result.innerHTML += `Error: ${errorText}\n`;
+                }
+            } catch (error) {
+                result.innerHTML += `<span class="error">❌ FAILED</span>\n`;
+                result.innerHTML += `Error: ${error.message}\n`;
+                result.innerHTML += `\n<span class="warning">This is EXPECTED - CORS blocks direct API calls from browser.</span>\n`;
+                result.innerHTML += `<span class="warning">This is why we need the proxy. Try Test 2 instead.</span>\n`;
+            }
+        }
+        
+        // Test 2: Proxy authentication
+        async function testProxyAuth() {
+            const result = document.getElementById('proxy-result');
+            result.innerHTML = '⏳ Testing proxy auth...\n';
+            result.innerHTML += `\nCredentials:\n`;
+            result.innerHTML += `  Username: ${CREDENTIALS.username}\n`;
+            result.innerHTML += `  Password: ${CREDENTIALS.password.substring(0, 2)}****${CREDENTIALS.password.substring(CREDENTIALS.password.length - 2)}\n`;
+            result.innerHTML += `  Password length: ${CREDENTIALS.password.length} chars\n\n`;
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/authenticate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(CREDENTIALS)
+                });
+                
+                result.innerHTML += `Status: ${response.status}\n`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    cachedToken = data.token;
+                    localStorage.setItem('florinet_token', data.token);
+                    result.innerHTML += `<span class="success">✅ SUCCESS!</span>\n`;
+                    result.innerHTML += `Token: ${data.token.substring(0, 30)}...\n`;
+                    result.innerHTML += `Token saved to localStorage.\n`;
+                } else {
+                    const errorData = await response.json();
+                    result.innerHTML += `<span class="error">❌ FAILED</span>\n`;
+                    result.innerHTML += `Error: ${JSON.stringify(errorData, null, 2)}\n`;
+                }
+            } catch (error) {
+                result.innerHTML += `<span class="error">❌ FAILED</span>\n`;
+                result.innerHTML += `Error: ${error.message}\n`;
+            }
+        }
+        
+        // Test 3: Fetch customers
+        async function testFetchCustomers() {
+            const result = document.getElementById('customers-result');
+            result.innerHTML = '⏳ Testing fetch customers...\n';
+            
+            const token = cachedToken || localStorage.getItem('florinet_token');
+            
+            if (!token) {
+                result.innerHTML += `<span class="error">❌ No token available. Authenticate first (Test 2).</span>\n`;
+                return;
+            }
+            
+            result.innerHTML += `Using token: ${token.substring(0, 30)}...\n\n`;
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/external/customers', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                result.innerHTML += `Status: ${response.status}\n`;
+                
+                if (response.ok) {
+                    const customers = await response.json();
+                    result.innerHTML += `<span class="success">✅ SUCCESS!</span>\n`;
+                    result.innerHTML += `Found ${customers.length} customers\n\n`;
+                    result.innerHTML += `Sample customers:\n`;
+                    customers.slice(0, 5).forEach(c => {
+                        result.innerHTML += `  ID ${c.id}: ${c.name || c.company_name}\n`;
+                    });
+                } else {
+                    const errorData = await response.json();
+                    result.innerHTML += `<span class="error">❌ FAILED</span>\n`;
+                    result.innerHTML += `Error: ${JSON.stringify(errorData, null, 2)}\n`;
+                }
+            } catch (error) {
+                result.innerHTML += `<span class="error">❌ FAILED</span>\n`;
+                result.innerHTML += `Error: ${error.message}\n`;
+            }
+        }
+        
+        // Test 4: Clear cache and re-auth
+        async function clearCacheAndAuth() {
+            const result = document.getElementById('clear-result');
+            result.innerHTML = '🗑️  Clearing localStorage...\n';
+            
+            localStorage.clear();
+            cachedToken = null;
+            
+            result.innerHTML += '✅ Cleared!\n\n';
+            result.innerHTML += '⏳ Re-authenticating...\n';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/authenticate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(CREDENTIALS)
+                });
+                
+                result.innerHTML += `Status: ${response.status}\n`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    cachedToken = data.token;
+                    localStorage.setItem('florinet_token', data.token);
+                    result.innerHTML += `<span class="success">✅ SUCCESS!</span>\n`;
+                    result.innerHTML += `New token: ${data.token.substring(0, 30)}...\n`;
+                    result.innerHTML += `\nNow refresh the main app: http://localhost:8080\n`;
+                } else {
+                    const errorData = await response.json();
+                    result.innerHTML += `<span class="error">❌ FAILED</span>\n`;
+                    result.innerHTML += `Error: ${JSON.stringify(errorData, null, 2)}\n`;
+                }
+            } catch (error) {
+                result.innerHTML += `<span class="error">❌ FAILED</span>\n`;
+                result.innerHTML += `Error: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>
+

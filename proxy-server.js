@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // Using correct API URL as confirmed by manager
-const FLORINET_API_BASE = 'https://app.2growsoftware.com/api/v1';
+const FLORINET_API_BASE = 'https://summit.florinet.nl/api/v1';
 
 console.log('═══════════════════════════════════════════════════════');
 console.log('🚀 Florinet API Proxy Server');
@@ -27,17 +27,32 @@ app.use((req, res, next) => {
 
 // Authentication
 app.post('/api/authenticate', async (req, res) => {
-  console.log('🔐 Authenticating...');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('🔐 PROXY: Authentication request received');
+  console.log('   From:', req.ip);
+  console.log('   Body received:', JSON.stringify(req.body));
+  console.log('   Username:', req.body?.username);
+  console.log('   Password length:', req.body?.password?.length);
+  console.log('   Password (masked):', req.body?.password ? 
+    req.body.password.substring(0, 2) + '****' + req.body.password.substring(req.body.password.length - 2) : 
+    'MISSING');
+  console.log('═══════════════════════════════════════════════════════');
   
   try {
+    const bodyToSend = JSON.stringify(req.body);
+    console.log('📤 Forwarding to:', `${FLORINET_API_BASE}/authenticate`);
+    console.log('📤 Body:', bodyToSend);
+    
     const response = await fetch(`${FLORINET_API_BASE}/authenticate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(req.body)
+      body: bodyToSend
     });
+    
+    console.log('📥 API Response:', response.status, response.statusText);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -50,10 +65,12 @@ app.post('/api/authenticate', async (req, res) => {
     
     const data = await response.json();
     console.log('✅ Authentication successful');
+    console.log('   Token:', data.token ? data.token.substring(0, 30) + '...' : 'NO TOKEN');
     return res.status(200).json(data);
     
   } catch (error) {
     console.error('❌ Auth error:', error.message);
+    console.error('   Stack:', error.stack);
     res.status(500).json({ 
       error: 'Authentication failed', 
       details: error.message

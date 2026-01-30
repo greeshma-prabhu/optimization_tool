@@ -5,11 +5,30 @@
 
 class CartManager {
     constructor() {
-        // Use dependencies with fallbacks
-        this.capacities = typeof CART_CAPACITIES !== 'undefined' ? CART_CAPACITIES : {
-            standard: { '612': 72, '575': 32, '902': 40, '588': 40, '996': 32, '856': 20 },
-            danish: 17
+        // TRUCK CAPACITY RULES (from business requirements)
+        this.truckCapacity = {
+            maxStandard: 17,        // Maximum 17 standard carts
+            maxWithDanish: 16,      // If > 6 Danish carts, max reduces to 16
+            danishThreshold: 6      // Threshold for capacity reduction
         };
+        
+        // CART CAPACITIES (from business requirements)
+        // Standard carts - capacity varies by crate type
+        // Danish carts - 24 crates per cart (4 layers of 6)
+        this.capacities = typeof CART_CAPACITIES !== 'undefined' ? CART_CAPACITIES : {
+            standard: { 
+                '612': 72,  // 3 layers of 24
+                '575': 32,  // Extra layer: 16×612 or 10×902
+                '902': 40,  // 4 layers of 10
+                '588': 40,  // Auction trade only
+                '996': 32,  // Extra: 10×902 or 12×612
+                '856': 20   // 
+            },
+            danish: 24      // 4 layers of 6 crates per Danish cart
+        };
+        
+        // DANISH CART CUSTOMERS (from business requirements)
+        // These customers ALWAYS get Danish carts
         this.danishCustomers = typeof DANISH_CART_CUSTOMERS !== 'undefined' ? DANISH_CART_CUSTOMERS : [
             'Superflora',
             'Flamingo',
@@ -325,14 +344,18 @@ class CartManager {
 
     /**
      * Check capacity constraints for a route
+     * BUSINESS RULE: If > 6 Danish carts, max capacity reduces from 17 to 16
+     * BUSINESS RULE: 2 Danish carts ≈ 1 standard cart (Danish carts are slightly larger)
      */
     checkCapacity(standardCarts, danishCarts) {
-        const maxCapacity = danishCarts > BUSINESS_RULES.danishThreshold 
-            ? BUSINESS_RULES.maxCartsWithDanish 
-            : BUSINESS_RULES.maxStandardCarts;
+        // CRITICAL: If > 6 Danish carts, truck capacity reduces to 16 instead of 17
+        const maxCapacity = danishCarts > this.truckCapacity.danishThreshold 
+            ? this.truckCapacity.maxWithDanish 
+            : this.truckCapacity.maxStandard;
         
         const totalCarts = standardCarts + danishCarts;
-        const equivalentStandard = standardCarts + Math.ceil(danishCarts / BUSINESS_RULES.danishToStandardRatio);
+        // Danish cart conversion: 2 Danish ≈ 1 standard
+        const equivalentStandard = standardCarts + Math.ceil(danishCarts / 2);
         
         return {
             totalCarts,
@@ -345,10 +368,10 @@ class CartManager {
             utilization: ((equivalentStandard / maxCapacity) * 100).toFixed(1),
             status: equivalentStandard <= maxCapacity ? 'fits' : 
                    equivalentStandard <= maxCapacity + 2 ? 'tight' : 'overflow',
-            warning: danishCarts > BUSINESS_RULES.danishThreshold 
+            warning: danishCarts > this.truckCapacity.danishThreshold 
                 ? (typeof i18n !== 'undefined' 
-                    ? i18n.t('carts.danishCapacityWarning', `⚠️ More than ${BUSINESS_RULES.danishThreshold} Danish carts - capacity reduced to ${maxCapacity}`, BUSINESS_RULES.danishThreshold, maxCapacity)
-                    : `⚠️ More than ${BUSINESS_RULES.danishThreshold} Danish carts - capacity reduced to ${maxCapacity}`)
+                    ? i18n.t('carts.danishCapacityWarning', `⚠️ More than ${this.truckCapacity.danishThreshold} Danish carts - capacity reduced to ${maxCapacity}`)
+                    : `⚠️ More than ${this.truckCapacity.danishThreshold} Danish carts - capacity reduced to ${maxCapacity}`)
                 : null
         };
     }
@@ -445,11 +468,11 @@ try {
     // Check if required dependencies exist
     if (typeof CART_CAPACITIES === 'undefined') {
         console.error('❌ CART_CAPACITIES not defined! Creating fallback...');
-        // Create fallback capacities
+        // Create fallback capacities (from business requirements)
         if (typeof window !== 'undefined') {
             window.CART_CAPACITIES = {
                 standard: { '612': 72, '575': 32, '902': 40, '588': 40, '996': 32, '856': 20 },
-                danish: 17
+                danish: 24  // 4 layers of 6 crates per Danish cart
             };
         }
     }
@@ -471,10 +494,10 @@ try {
     console.log('✅ CartManager initialized successfully');
 } catch (error) {
     console.error('❌ Failed to initialize CartManager:', error);
-    // Create a minimal fallback
+    // Create a minimal fallback (from business requirements)
     const fallbackCapacities = {
         standard: { '612': 72, '575': 32, '902': 40, '588': 40, '996': 32, '856': 20 },
-        danish: 17
+        danish: 24  // 4 layers of 6 crates per Danish cart
     };
     
     cartManager = {
@@ -488,7 +511,7 @@ try {
             const cartType = order.cartType || 'standard';
             const quantity = order.quantity || 1;
             const crateType = order.crateType || '612';
-            const capacity = cartType === 'danish' ? 17 : (fallbackCapacities.standard[crateType] || 72);
+            const capacity = cartType === 'danish' ? 24 : (fallbackCapacities.standard[crateType] || 72);
             const carts = Math.ceil(quantity / capacity);
             return { carts: carts, capacity: capacity, remaining: (carts * capacity) - quantity };
         },
