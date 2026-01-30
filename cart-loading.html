@@ -622,39 +622,6 @@
         </div>
     </main>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <!-- DEBUG PANEL - Remove after verification -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <div id="debug-panel" style="position: fixed; bottom: 10px; right: 10px; background: #1a1a1a; color: #0f0; padding: 12px; font-family: 'Courier New', monospace; font-size: 11px; border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); min-width: 280px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #333;">
-            <strong style="color: #ff6b35;">🐛 STATE MONITOR (CART OPT)</strong>
-            <button onclick="this.parentElement.parentElement.style.display='none'" style="background: #333; color: #fff; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 10px;">×</button>
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">Global State:</span> 
-            <strong id="debug-global-orders" style="color: #0f0;">0</strong> orders
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">LocalStorage:</span> 
-            <strong id="debug-local-orders" style="color: #ff0;">0</strong> orders
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">OrderManager:</span> 
-            <strong id="debug-manager-orders" style="color: #f80;">0</strong> orders
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">Last Sync:</span> 
-            <strong id="debug-last-sync" style="color: #0ff; font-size: 10px;">Never</strong>
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">Current Date:</span> 
-            <strong id="debug-current-date" style="color: #0ff; font-size: 10px;">-</strong>
-        </div>
-        <button onclick="debugCheckState()" style="margin-top: 8px; width: 100%; padding: 6px; background: #ff6b35; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
-            🔍 Check State
-        </button>
-    </div>
-
     <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
@@ -685,131 +652,52 @@
 
             /**
              * Get all carts that need to be loaded
+             * MUST MATCH DASHBOARD LOGIC EXACTLY!
              */
             getAllCarts() {
-                // CRITICAL: Use already-calculated cart assignments from Dashboard!
-                const ordersWithCarts = this.orders.map(order => {
-                    // If cart info already exists from Dashboard, use it
-                    if (order.cartType && order.cartsNeeded !== undefined) {
-                        console.log(`✅ Using pre-calculated carts for ${order.customer}: ${order.cartsNeeded} carts`);
-                        return order;
+                // Group by customer (same as Dashboard)
+                const ordersByCustomer = {};
+                this.orders.forEach(order => {
+                    const customerName = order.customer || order.customerName || 'Unknown';
+                    if (!ordersByCustomer[customerName]) {
+                        ordersByCustomer[customerName] = [];
                     }
-                    // Otherwise, calculate it now
-                    return this.cartManager.assignCartType(order);
-                });
-                
-                // Group by client (same client = same cart)
-                const ordersByClient = {};
-                ordersWithCarts.forEach(order => {
-                    const clientName = order.customer || order.customerName || 'Unknown';
-                    if (!ordersByClient[clientName]) {
-                        ordersByClient[clientName] = [];
-                    }
-                    ordersByClient[clientName].push(order);
+                    ordersByCustomer[customerName].push(order);
                 });
 
                 const allCarts = [];
-                Object.keys(ordersByClient).forEach(clientName => {
-                    const clientOrders = ordersByClient[clientName];
-                    const route = this.cartManager.determineRoute(clientOrders[0]);
+                
+                // For each customer, count cartsNeeded ONCE (from first order)
+                // This MATCHES the Dashboard getCartSummary() logic!
+                Object.keys(ordersByCustomer).forEach(customerName => {
+                    const customerOrders = ordersByCustomer[customerName];
+                    const firstOrder = customerOrders[0];
                     
-                    // Assign cart type to all orders from this client
-                    const ordersWithCartType = clientOrders.map(order => 
-                        this.cartManager.assignCartType(order)
-                    );
-                    const cartType = ordersWithCartType[0].cartType;
-                    
-                    // CRITICAL: Distribute orders across carts properly
-                    // Each cart should only contain orders that fit in that cart
-                    let currentCartOrders = [];
-                    let currentCartCapacity = 0;
-                    let cartIndex = 1;
-                    const cartCapacity = cartType === 'danish' 
-                        ? this.cartManager.capacities.danish 
-                        : this.cartManager.capacities.standard[ordersWithCartType[0].crateType || '612'] || 72;
-                    
-                    ordersWithCartType.forEach(order => {
-                        const quantity = order.quantity || order.amount || 0;
-                        
-                        // If this order fits in current cart
-                        if (currentCartCapacity + quantity <= cartCapacity) {
-                            currentCartOrders.push(order);
-                            currentCartCapacity += quantity;
-                        } else {
-                            // Current cart is full, create it and start new cart
-                            if (currentCartOrders.length > 0) {
-                                allCarts.push({
-                                    id: `cart-${clientName}-${cartIndex}`,
-                                    client: clientName,
-                                    route: route,
-                                    type: cartType,
-                                    orders: [...currentCartOrders], // Copy array
-                                    cartNumber: cartIndex,
-                                    totalCarts: 0, // Will be calculated
-                                    capacity: cartCapacity,
-                                    usedCapacity: currentCartCapacity
-                                });
-                                cartIndex++;
-                            }
-                            
-                            // Start new cart with this order
-                            currentCartOrders = [order];
-                            currentCartCapacity = quantity;
-                            
-                            // If single order exceeds cart capacity, split it
-                            if (quantity > cartCapacity) {
-                                const fullCarts = Math.floor(quantity / cartCapacity);
-                                const remainder = quantity % cartCapacity;
-                                
-                                // Create full carts
-                                for (let i = 0; i < fullCarts; i++) {
-                                    allCarts.push({
-                                        id: `cart-${clientName}-${cartIndex}`,
-                                        client: clientName,
-                                        route: route,
-                                        type: cartType,
-                                        orders: [{...order, quantity: cartCapacity}],
-                                        cartNumber: cartIndex,
-                                        totalCarts: 0,
-                                        capacity: cartCapacity,
-                                        usedCapacity: cartCapacity
-                                    });
-                                    cartIndex++;
-                                }
-                                
-                                // Handle remainder
-                                if (remainder > 0) {
-                                    currentCartOrders = [{...order, quantity: remainder}];
-                                    currentCartCapacity = remainder;
-                                } else {
-                                    currentCartOrders = [];
-                                    currentCartCapacity = 0;
-                                }
-                            }
-                        }
-                    });
-                    
-                    // Don't forget the last cart
-                    if (currentCartOrders.length > 0) {
+                    // CRITICAL: All orders from same customer have SAME cartsNeeded value
+                    // So we only count it ONCE (from first order)
+                    const cartsNeeded = firstOrder.cartsNeeded || 1;
+                    const cartType = firstOrder.cartType || 'standard';
+                    const route = this.cartManager.determineRoute(firstOrder);
+
+                    // Create the exact number of carts for this customer
+                    for (let i = 0; i < cartsNeeded; i++) {
                         allCarts.push({
-                            id: `cart-${clientName}-${cartIndex}`,
-                            client: clientName,
+                            id: `cart-${customerName}-${i + 1}`,
+                            customer: customerName,
                             route: route,
                             type: cartType,
-                            orders: currentCartOrders,
-                            cartNumber: cartIndex,
-                            totalCarts: 0,
-                            capacity: cartCapacity,
-                            usedCapacity: currentCartCapacity
+                            orders: customerOrders, // All orders for this customer
+                            cartNumber: i + 1,
+                            totalCarts: cartsNeeded
                         });
                     }
-                    
-                    // Update totalCarts for all carts from this client
-                    const clientCarts = allCarts.filter(c => c.client === clientName);
-                    clientCarts.forEach(cart => {
-                        cart.totalCarts = clientCarts.length;
-                    });
                 });
+
+                console.log(`📦 CART CALCULATION (matches Dashboard):`);
+                console.log(`   Total carts: ${allCarts.length}`);
+                console.log(`   Unique customers: ${Object.keys(ordersByCustomer).length}`);
+                console.log(`   Standard: ${allCarts.filter(c => c.type === 'standard').length}`);
+                console.log(`   Danish: ${allCarts.filter(c => c.type === 'danish').length}`);
 
                 return allCarts;
             }

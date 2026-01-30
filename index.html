@@ -244,36 +244,6 @@
         <div id="info-message" class="info-box info" style="display: none; margin-top: 20px;"></div>
     </main>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <!-- DEBUG PANEL - Remove after verification -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <div id="debug-panel" style="position: fixed; bottom: 10px; right: 10px; background: #1a1a1a; color: #0f0; padding: 12px; font-family: 'Courier New', monospace; font-size: 11px; border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); min-width: 280px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #333;">
-            <strong style="color: #0ff;">🐛 STATE MONITOR (DASHBOARD)</strong>
-            <button onclick="this.parentElement.parentElement.style.display='none'" style="background: #333; color: #fff; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 10px;">×</button>
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">Global State:</span> 
-            <strong id="debug-global-orders" style="color: #0f0;">0</strong> orders
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">LocalStorage:</span> 
-            <strong id="debug-local-orders" style="color: #ff0;">0</strong> orders
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">Last Sync:</span> 
-            <strong id="debug-last-sync" style="color: #0ff; font-size: 10px;">Never</strong>
-        </div>
-        <div style="margin: 6px 0;">
-            <span style="color: #888;">Current Date:</span> 
-            <strong id="debug-current-date" style="color: #0ff; font-size: 10px;">-</strong>
-        </div>
-        <button onclick="debugCheckState()" style="margin-top: 8px; width: 100%; padding: 6px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
-            🔍 Check State
-        </button>
-    </div>
-
-    <!-- Scripts -->
     <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
