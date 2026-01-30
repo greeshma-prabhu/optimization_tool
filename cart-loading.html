@@ -1098,16 +1098,37 @@
         }
 
         // Store current truck assignments for each route (can be single truck or combination like "truck1+truck2")
-        // DO NOT load from localStorage - assignments are cleared when new data is loaded
-        // User must select trucks fresh each time
+        // Load from localStorage to persist across navigation
+        // Only cleared when new orders are synced (handled in index.html and orders.js)
         let routeTruckAssignments = {
             rijnsburg: null,  // No default - user must select
             aalsmeer: null,   // No default - user must select
             naaldwijk: null   // No default - user must select
         };
         
-        // DO NOT load saved assignments - they are cleared when new orders are loaded
-        // This ensures user selects trucks fresh each time
+        // Load saved assignments from localStorage (persists across navigation)
+        function loadTruckAssignments() {
+            try {
+                const saved = localStorage.getItem('zuidplas_route_truck_assignments');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    // Only restore if we have valid assignments
+                    if (parsed && typeof parsed === 'object') {
+                        routeTruckAssignments = {
+                            rijnsburg: parsed.rijnsburg || null,
+                            aalsmeer: parsed.aalsmeer || null,
+                            naaldwijk: parsed.naaldwijk || null
+                        };
+                        console.log('✅ Restored truck assignments from localStorage:', routeTruckAssignments);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load truck assignments:', e);
+            }
+        }
+        
+        // Load assignments on page load
+        loadTruckAssignments();
         
         // Parse truck assignment string to get array of truck IDs
         function parseTruckAssignment(assignment) {
@@ -1203,14 +1224,31 @@
                 { id: 'external', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck' }
             ];
             
-            // Multi-truck combinations
+            // Multi-truck combinations - expanded to include all possible combinations
             const combinations = [
+                // Two truck combinations
                 { id: 'truck1+truck2', name: 'Truck 1 + Truck 2' },
+                { id: 'truck1+neighbor', name: 'Truck 1 + Neighbor\'s Truck' },
+                { id: 'truck1+external', name: 'Truck 1 + External Truck' },
+                { id: 'truck2+neighbor', name: 'Truck 2 + Neighbor\'s Truck' },
+                { id: 'truck2+external', name: 'Truck 2 + External Truck' },
+                { id: 'neighbor+external', name: 'Neighbor\'s Truck + External Truck' },
                 { id: 'neighbor+neighbor', name: '2 Neighbor\'s Trucks' },
-                { id: 'external+truck1', name: 'External Truck + Truck 1' },
-                { id: 'external+truck2', name: 'External Truck + Truck 2' },
-                { id: 'neighbor+truck1', name: 'Neighbor\'s Truck + Truck 1' },
-                { id: 'neighbor+truck2', name: 'Neighbor\'s Truck + Truck 2' }
+                { id: 'external+external', name: '2 External Trucks' },
+                // Three truck combinations
+                { id: 'truck1+truck2+neighbor', name: 'Truck 1 + Truck 2 + Neighbor\'s Truck' },
+                { id: 'truck1+truck2+external', name: 'Truck 1 + Truck 2 + External Truck' },
+                { id: 'truck1+neighbor+external', name: 'Truck 1 + Neighbor\'s Truck + External Truck' },
+                { id: 'truck2+neighbor+external', name: 'Truck 2 + Neighbor\'s Truck + External Truck' },
+                { id: 'neighbor+neighbor+external', name: '2 Neighbor\'s Trucks + External Truck' },
+                { id: 'neighbor+external+external', name: 'Neighbor\'s Truck + 2 External Trucks' },
+                // Four truck combinations (for very large routes)
+                { id: 'truck1+truck2+neighbor+external', name: 'Truck 1 + Truck 2 + Neighbor\'s Truck + External Truck' },
+                { id: 'truck1+neighbor+neighbor+external', name: 'Truck 1 + 2 Neighbor\'s Trucks + External Truck' },
+                { id: 'truck1+neighbor+external+external', name: 'Truck 1 + Neighbor\'s Truck + 2 External Trucks' },
+                { id: 'truck2+neighbor+neighbor+external', name: 'Truck 2 + 2 Neighbor\'s Trucks + External Truck' },
+                { id: 'truck2+neighbor+external+external', name: 'Truck 2 + Neighbor\'s Truck + 2 External Trucks' },
+                { id: 'neighbor+neighbor+external+external', name: '2 Neighbor\'s Trucks + 2 External Trucks' }
             ];
             
             const allOptions = [...singleTrucks, ...combinations];
@@ -1373,6 +1411,13 @@
                         </div>
                     `;
                     container.appendChild(routeCard);
+                    
+                    // Restore saved truck selection in dropdown
+                    const selector = document.getElementById(`truck-select-${route.key}`);
+                    if (selector && routeTruckAssignments[route.key]) {
+                        selector.value = routeTruckAssignments[route.key];
+                    }
+                    
                     return; // Skip showing carts/visualization until truck is selected
                 }
                 
@@ -1416,6 +1461,12 @@
                 // Create route card
                 const routeCard = createRouteCard(route, updatedRouteInfo, routeCarts, routeCapacity, assignedTrucksStr, assignedTruckName, assignedTruckIds);
                 container.appendChild(routeCard);
+                
+                // Restore saved truck selection in dropdown (if not already selected)
+                const selector = document.getElementById(`truck-selector-${route.key}`);
+                if (selector && routeTruckAssignments[route.key] && selector.value !== routeTruckAssignments[route.key]) {
+                    selector.value = routeTruckAssignments[route.key];
+                }
             });
         }
         
@@ -1565,27 +1616,31 @@
                         </div>
                         <div id="add-truck-buttons-${route.key}" style="display: flex; gap: 8px; flex-wrap: wrap;">
                             ${(() => {
-                                const availableOptions = getAvailableTruckOptions(route.key);
-                                const singleTrucks = availableOptions.filter(t => 
-                                    !t.id.includes('+') && t.available && 
-                                    !assignedTruckIds.includes(t.id)
-                                );
+                                // Always show both buttons - allow adding multiple external and neighbor trucks
+                                // Count how many of each are already added
+                                const externalCount = assignedTruckIds.filter(id => id === 'external').length;
+                                const neighborCount = assignedTruckIds.filter(id => id === 'neighbor').length;
                                 
-                                if (singleTrucks.length === 0) {
-                                    return '<div style="font-size: 0.85rem; color: var(--text-secondary);">No additional trucks available</div>';
-                                }
+                                const externalText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.addExternalTruck', 'Add External Truck') : 'Add External Truck';
+                                const neighborText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.addNeighborTruck', 'Add Neighbor\'s Truck') : 'Add Neighbor\'s Truck';
                                 
-                                return singleTrucks.map(truck => {
-                                    return `
-                                        <button 
-                                            type="button"
-                                            class="btn btn-secondary" 
-                                            style="font-size: 0.85rem; padding: 6px 12px;"
-                                            onclick="addTruckToRoute('${route.key}', '${truck.id}')">
-                                            + ${truck.name}
-                                        </button>
-                                    `;
-                                }).join('');
+                                // Always show both buttons - can add multiple
+                                return `
+                                    <button 
+                                        type="button"
+                                        class="btn btn-primary" 
+                                        style="font-size: 0.9rem; padding: 8px 16px; cursor: pointer;"
+                                        onclick="addTruckToRoute('${route.key}', 'external')">
+                                        + ${externalText}${externalCount > 0 ? ` (${externalCount})` : ''}
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        class="btn btn-primary" 
+                                        style="font-size: 0.9rem; padding: 8px 16px; cursor: pointer;"
+                                        onclick="addTruckToRoute('${route.key}', 'neighbor')">
+                                        + ${neighborText}${neighborCount > 0 ? ` (${neighborCount})` : ''}
+                                    </button>
+                                `;
                             })()}
                         </div>
                     </div>
@@ -1748,8 +1803,9 @@
             const currentAssignment = routeTruckAssignments[routeKey] || 'truck1';
             const currentTrucks = parseTruckAssignment(currentAssignment);
             
-            // Check if truck is already assigned
-            if (currentTrucks.includes(newTruckId)) {
+            // Allow multiple external and neighbor trucks - don't check if already added
+            // Only check for truck1 and truck2 (can't have multiple of same own truck)
+            if ((newTruckId === 'truck1' || newTruckId === 'truck2') && currentTrucks.includes(newTruckId)) {
                 alert(typeof i18n !== 'undefined' 
                     ? i18n.t('cartLoading.truckAlreadyAdded', 'This truck is already assigned to this route.')
                     : 'This truck is already assigned to this route.');
@@ -2514,6 +2570,8 @@
                 } else {
                     // Orders were loaded - auto-optimize
                     console.log('📦 Found fresh orders, auto-optimizing...');
+                    // Ensure truck assignments are loaded before optimizing
+                    loadTruckAssignments();
                     optimizeCartLoading();
                 }
             }

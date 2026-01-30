@@ -1,69 +1,42 @@
 /**
- * Zuidplas Logistics - Florinet API Client
- * Handles all API communication with Florinet Summit
+ * Florinet API Client - REBUILT FROM MANUAL
+ * Base URL: https://app.2growsoftware.com/api/v1
+ * Following FLORINET_API_MANUAL.md exactly
  */
 
 class FlorinetAPI {
     constructor() {
-        // UNIVERSAL FIX: Works with ANY server (Python, Node, Apache, etc.)
-        // Automatically detects environment and routes API calls correctly
+        // Environment detection
         const hostname = window.location.hostname;
-        const port = window.location.port;
-        const protocol = window.location.protocol;
-        const fullUrl = window.location.href;
-        
-        // Universal detection - works with any localhost setup
-        const isLocalhost = hostname === 'localhost' || 
-                           hostname === '127.0.0.1' ||
-                           hostname === '' ||
-                           port === '8080' ||
-                           port === '3000' ||
-                           port === '8000' ||
-                           fullUrl.includes('localhost') ||
-                           fullUrl.includes('127.0.0.1');
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
         const isVercel = hostname.includes('vercel.app') || hostname.includes('vercel.com');
         
-        // UNIVERSAL ROUTING: Always use proxy server for localhost
-        // This works with Python HTTP server, Node.js, or ANY static server
+        // PROXY ROUTING
         if (isLocalhost && !isVercel) {
-            // Local development - ALWAYS use proxy server (static servers can't handle /api routes)
+            // Local: use proxy server
             this.baseURL = 'http://localhost:3001/api';
             this.isLocalhost = true;
-            console.log('=================================');
-            console.log('🔧 LOCAL DEVELOPMENT MODE');
-            console.log('📍 Current URL:', fullUrl);
-            console.log('🌐 API Proxy: http://localhost:3001/api');
-            console.log('✅ Works with ANY server (Python, Node, Apache, etc.)');
-            console.log('⚠️ Make sure proxy server is running: npm start');
-            console.log('=================================');
-        } else if (isVercel) {
-            // Vercel production - use serverless functions
-            this.baseURL = '/api';
-            this.isLocalhost = false;
-            console.log('🌐 Vercel Production - using serverless functions');
+            console.log('🔧 LOCAL MODE - Using proxy: http://localhost:3001/api');
         } else {
-            // Other production - try serverless functions
+            // Production: use Vercel serverless functions
             this.baseURL = '/api';
             this.isLocalhost = false;
-            console.log('🌐 Production mode - using relative API paths');
+            console.log('🌐 PRODUCTION MODE - Using serverless: /api');
         }
         
-        this.originalBaseURL = 'https://summit.florinet.nl/api/v1';
         this.token = null;
         this.tokenExpiry = null;
-        this.authManager = typeof authManager !== 'undefined' ? authManager : null;
         
-        // Auto-refresh settings
-        this.autoRefreshInterval = null;
-        this.refreshIntervalMs = 5 * 60 * 1000; // 5 minutes
+        // Cached lookup maps
+        this.customerMap = new Map();
+        this.locationMap = new Map();
+        this.productMap = new Map();
         
         console.log('✅ FlorinetAPI initialized');
-        console.log('   Base URL:', this.baseURL);
-        console.log('   Environment:', isLocalhost ? 'Local Development' : 'Production');
     }
 
     /**
-     * Convert ISO date (YYYY-MM-DD) to Florinet format (DD-MM-YYYY)
+     * Convert ISO date (YYYY-MM-DD) to Florinet format (dd-mm-YYYY)
      */
     toFlorinetDate(isoDate) {
         if (!isoDate) return null;
@@ -71,39 +44,23 @@ class FlorinetAPI {
             ? isoDate.toISOString().split('T')[0]
             : isoDate;
         const [year, month, day] = date.split('-');
-        const result = `${day}-${month}-${year}`;
-        console.log(`📅 Date conversion: ${isoDate} → ${result}`);
-        return result;
+        return `${day}-${month}-${year}`;
     }
 
     /**
-     * Convert Florinet date (DD-MM-YYYY) to ISO format (YYYY-MM-DD)
-     */
-    fromFlorinetDate(florinetDate) {
-        if (!florinetDate) return null;
-        const [day, month, year] = florinetDate.split('-');
-        return `${year}-${month}-${day}`;
-    }
-
-    /**
-     * Authenticate via Vercel serverless proxy
-     * Credentials are stored securely in Vercel environment variables
-     * No credentials sent from browser - secure for all users
+     * Authenticate with Florinet API
+     * Returns JWT token
      */
     async authenticate() {
-        console.log('🔐 Authenticating...');
-        
-        // Build full URL - always use absolute URL for localhost
-        let authUrl;
-        if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
-            authUrl = `${this.baseURL}/authenticate`;
-        } else {
-            authUrl = `${window.location.origin}${this.baseURL}/authenticate`;
-        }
-        
-        console.log('📤 Auth URL:', authUrl);
+        console.log('🔐 Authenticating with Florinet...');
         
         try {
+            const authUrl = this.isLocalhost 
+                ? `${this.baseURL}/authenticate`
+                : `${window.location.origin}${this.baseURL}/authenticate`;
+            
+            console.log('📤 Auth URL:', authUrl);
+            
             const response = await fetch(authUrl, {
                 method: 'POST',
                 headers: {
@@ -112,56 +69,44 @@ class FlorinetAPI {
                 }
             });
 
-            console.log('📥 Response status:', response.status);
-
             if (!response.ok) {
                 const errorText = await response.text();
-                let errorData;
-                try {
-                    errorData = JSON.parse(errorText);
-                } catch {
-                    errorData = { message: errorText };
-                }
-                throw new Error(`Authentication failed: HTTP ${response.status} - ${errorData.message || errorText}`);
+                throw new Error(`Authentication failed: HTTP ${response.status} - ${errorText}`);
             }
 
             const data = await response.json();
             
             if (!data.token) {
-                throw new Error('No token in response: ' + JSON.stringify(data));
+                throw new Error('No token in response');
             }
 
             this.token = data.token;
+            // Token expires in ~60 minutes, cache for 50 minutes to be safe
             this.tokenExpiry = Date.now() + (50 * 60 * 1000);
             
+            // Store in localStorage
             localStorage.setItem('florinet_token', this.token);
             localStorage.setItem('florinet_token_expiry', this.tokenExpiry);
             
-            console.log('✅ AUTHENTICATION SUCCESS', data.cached ? '(cached)' : '');
-            console.log('Token (first 50 chars):', this.token.substring(0, 50) + '...');
-            console.log('Token expires in 50 minutes');
-            console.log('=================================');
+            console.log('✅ Authentication successful');
+            console.log('   Token expires in 50 minutes');
             
             return this.token;
             
         } catch (error) {
-            console.error('=================================');
-            console.error('❌ AUTHENTICATION FAILED');
-            console.error('Error name:', error.name);
-            console.error('Error message:', error.message);
-            console.error('Error stack:', error.stack);
-            console.error('=================================');
-            throw new Error(`API Authentication Failed: ${error.message}. Please check Vercel environment variables and network connection.`);
+            console.error('❌ Authentication failed:', error);
+            throw error;
         }
     }
 
     /**
-     * Get valid token - NO FALLBACK
+     * Get valid token (from cache or by authenticating)
      */
     async getToken() {
-        // Check if token is still valid
+        // Check memory cache
         if (this.token && this.tokenExpiry && Date.now() < this.tokenExpiry) {
-            console.log('✅ Using cached token (valid for', Math.round((this.tokenExpiry - Date.now()) / 1000 / 60), 'more minutes)');
+            const minutesLeft = Math.round((this.tokenExpiry - Date.now()) / 1000 / 60);
+            console.log(`✅ Using cached token (${minutesLeft} min left)`);
             return this.token;
         }
         
@@ -176,549 +121,314 @@ class FlorinetAPI {
             return this.token;
         }
         
-        console.log('⚠️ Token expired or missing, re-authenticating...');
+        // Token expired or missing - re-authenticate
+        console.log('⚠️ Token expired or missing, authenticating...');
         return await this.authenticate();
     }
 
     /**
-     * Make authenticated API request - NO FALLBACK
-     * (This method is kept for backward compatibility but uses new auth methods)
+     * Make authenticated API request
      */
-    async request(endpoint, options = {}) {
-        try {
-            // Get valid token - throws if fails
-            const token = await this.getToken();
-            
-            if (!token) {
-                throw new Error('No authentication token available. Authentication failed.');
+    async fetchWithAuth(endpoint, params = {}) {
+        const token = await this.getToken();
+        
+        // Build URL
+        const url = new URL(
+            this.isLocalhost 
+                ? `${this.baseURL}${endpoint}`
+                : `${window.location.origin}${this.baseURL}${endpoint}`
+        );
+        
+        // Add query parameters
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                url.searchParams.append(key, value);
             }
-            
-            // Set default headers
-            const headers = {
+        });
+
+        console.log(`📤 GET ${url.toString()}`);
+
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
                 'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                ...options.headers
-            };
-
-            // Build full URL - always use absolute URL to avoid 404
-            let fullUrl;
-            if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
-                fullUrl = endpoint;
-            } else if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
-                fullUrl = `${this.baseURL}${endpoint}`;
-            } else {
-                fullUrl = `${window.location.origin}${this.baseURL}${endpoint}`;
+                'Accept': 'application/json'
             }
-            
-            console.log(`📤 Making request to: ${fullUrl}`);
-            
-            // Make request
-            const response = await fetch(fullUrl, {
-                ...options,
-                headers
-            });
+        });
 
-            console.log('📥 Response status:', response.status);
-
-            // Handle token expiry
-            if (response.status === 401) {
-                console.log('⚠️ Token expired (401), re-authenticating...');
-                const newToken = await this.authenticate();
-                headers['Authorization'] = `Bearer ${newToken}`;
-                
-                // Retry request
-                const retryResponse = await fetch(`${this.baseURL}${endpoint}`, {
-                    ...options,
-                    headers
-                });
-                
-                console.log('📥 Retry response status:', retryResponse.status);
-                
-                if (!retryResponse.ok) {
-                    const errorText = await retryResponse.text();
-                    throw new Error(`API request failed after retry: HTTP ${retryResponse.status} - ${errorText}`);
+        // Handle token expiry
+        if (response.status === 401) {
+            console.log('⚠️ Token expired (401), re-authenticating...');
+            await this.authenticate();
+            
+            // Retry with new token
+            const retryResponse = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Accept': 'application/json'
                 }
-                
-                const result = await retryResponse.json();
-                console.log('✅ Request successful after retry');
-                return result;
-            }
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`API request failed: HTTP ${response.status} - ${errorText}`);
-            }
-
-            const result = await response.json();
-            console.log('✅ Request successful');
-            return result;
+            });
             
-        } catch (error) {
-            console.error('=================================');
-            console.error('❌ API REQUEST FAILED');
-            console.error('Endpoint:', endpoint);
-            console.error('Error name:', error.name);
-            console.error('Error message:', error.message);
-            console.error('=================================');
-            throw error;
+            if (!retryResponse.ok) {
+                const errorText = await retryResponse.text();
+                throw new Error(`Retry failed: HTTP ${retryResponse.status} - ${errorText}`);
+            }
+            
+            return retryResponse.json();
         }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: HTTP ${response.status} - ${errorText}`);
+        }
+
+        return response.json();
     }
 
     /**
-     * Get orders for a specific date - NO FALLBACK
-     * @param {Date|string} deliveryDate - Date in Date object or YYYY-MM-DD format
+     * Load all lookup data (customers, locations, products)
+     * Call this ONCE at startup
      */
-    async getOrders(deliveryDate) {
+    async loadLookupData() {
+        console.log('=================================');
+        console.log('📋 LOADING LOOKUP DATA');
+        console.log('=================================');
+        
         try {
-            // Format date as DD-MM-YYYY for Florinet API
-            const dateStr = deliveryDate instanceof Date 
-                ? deliveryDate.toISOString().split('T')[0]
-                : deliveryDate;
+            // Fetch all in parallel
+            const [customers, locations, products] = await Promise.all([
+                this.fetchWithAuth('/external/customers'),
+                this.fetchWithAuth('/external/locations'),
+                this.fetchWithAuth('/external/composite-products')
+            ]);
             
-            const florinetDate = this.toFlorinetDate(dateStr);
-            console.log(`[FlorinetAPI] Fetching orders for date: ${florinetDate} (${dateStr})`);
+            // Build customer map: id → customer object
+            this.customerMap.clear();
+            customers.forEach(customer => {
+                this.customerMap.set(customer.id, customer);
+            });
+            console.log(`✅ Loaded ${this.customerMap.size} customers`);
+            if (customers[0]) {
+                console.log('   Sample customer:', {
+                    id: customers[0].id,
+                    name: customers[0].name,
+                    fields: Object.keys(customers[0])
+                });
+            }
             
-            const data = await this.getOrdersRange(florinetDate, florinetDate);
+            // Build location map: id → location object
+            this.locationMap.clear();
+            locations.forEach(location => {
+                this.locationMap.set(location.id, location);
+            });
+            console.log(`✅ Loaded ${this.locationMap.size} locations`);
+            if (locations[0]) {
+                console.log('   Sample location:', {
+                    id: locations[0].id,
+                    name: locations[0].name,
+                    fields: Object.keys(locations[0])
+                });
+            }
             
-            console.log(`[FlorinetAPI] ✅ Received ${data.length} orders`);
-            return data || [];
+            // Build product map: id → product object
+            this.productMap.clear();
+            products.forEach(product => {
+                this.productMap.set(product.id, product);
+            });
+            console.log(`✅ Loaded ${this.productMap.size} products`);
+            if (products[0]) {
+                console.log('   Sample product:', {
+                    id: products[0].id,
+                    name: products[0].name,
+                    fields: Object.keys(products[0])
+                });
+            }
+            
+            console.log('=================================');
+            
+            return {
+                customers: this.customerMap,
+                locations: this.locationMap,
+                products: this.productMap
+            };
+            
         } catch (error) {
-            console.error('[FlorinetAPI] Error fetching orders:', error);
-            throw error; // Throw instead of returning empty array
+            console.error('❌ Failed to load lookup data:', error);
+            // Don't throw - app can still work with orderrow data
+            return {
+                customers: this.customerMap,
+                locations: this.locationMap,
+                products: this.productMap
+            };
         }
     }
 
     /**
-     * Get orders for a date range - NO FALLBACK
-     * Fetches both orderrows and full orders, then joins them to get customer/location
-     * @param {string} startDate - Start date in DD-MM-YYYY format
-     * @param {string} endDate - End date in DD-MM-YYYY format
+     * Fetch orders for a date range
+     * @param {string} startDate - dd-mm-YYYY format
+     * @param {string} endDate - dd-mm-YYYY format
      */
     async getOrdersRange(startDate, endDate) {
         console.log('=================================');
-        console.log('🔍 GET ORDERS RANGE (with customer/location)');
-        console.log('Start date:', startDate);
-        console.log('End date:', endDate);
+        console.log('📦 FETCHING ORDERROWS');
+        console.log(`   Date range: ${startDate} to ${endDate}`);
         console.log('=================================');
         
         try {
-            const token = await this.getToken();
-            
-            // Fetch orderrows (has quantity, product info) via proxy
-            // CRITICAL: Use correct endpoint path based on environment
-            let orderrowsUrl;
-            if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
-                // Localhost proxy - use /api/external/orderrows
-                orderrowsUrl = `${this.baseURL.replace('/api', '/api/external')}/orderrows?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}&slim=1`;
-            } else {
-                // Vercel serverless - use /api/orderrows (serverless function, NOT /api/external/orderrows)
-                orderrowsUrl = `${window.location.origin}${this.baseURL}/orderrows?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}&slim=1`;
-            }
-            
-            console.log('📤 Fetching orderrows from:', orderrowsUrl);
-            
-            const orderrowsResponse = await fetch(orderrowsUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (orderrowsResponse.status === 401) {
-                console.log('⚠️ Token expired (401), re-authenticating...');
-                const newToken = await this.authenticate();
-                
-                const retryResponse = await fetch(orderrowsUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${newToken}`,
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (!retryResponse.ok) {
-                    const errorText = await retryResponse.text();
-                    throw new Error(`Retry failed: HTTP ${retryResponse.status} - ${errorText}`);
-                }
-                
-                const orderrows = await retryResponse.json();
-                return await this.joinWithFullOrders(orderrows, startDate, endDate, newToken);
-            }
-
-            if (!orderrowsResponse.ok) {
-                const errorText = await orderrowsResponse.text();
-                throw new Error(`HTTP ${orderrowsResponse.status}: ${errorText}`);
-            }
-
-            const orderrows = await orderrowsResponse.json();
-            console.log('✅ Received', orderrows.length, 'orderrows');
-            
-            // Fetch full orders (has customer/location) and join
-            return await this.joinWithFullOrders(orderrows, startDate, endDate, token);
-            
-        } catch (error) {
-            console.error('=================================');
-            console.error('❌ GET ORDERS FAILED');
-            console.error('Error:', error);
-            console.error('=================================');
-            throw error;
-        }
-    }
-    
-    /**
-     * Join orderrows with full orders to get customer/location info
-     */
-    async joinWithFullOrders(orderrows, startDate, endDate, token) {
-        console.log('=================================');
-        console.log('🔗 JOINING ORDERROWS WITH FULL ORDERS');
-        console.log(`Orderrows: ${orderrows.length}`);
-        console.log('=================================');
-        
-        try {
-            // Fetch full orders via proxy
-            // CRITICAL: Use correct endpoint path based on environment
-            let ordersUrl;
-            if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
-                // Localhost proxy - use /api/external/orders
-                ordersUrl = `${this.baseURL.replace('/api', '/api/external')}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
-            } else {
-                // Vercel serverless - use /api/orders (serverless function, NOT /api/external/orders)
-                ordersUrl = `${window.location.origin}${this.baseURL}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
-            }
-            
-            console.log('📤 Fetching full orders from:', ordersUrl);
-            
-            const ordersResponse = await fetch(ordersUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
+            // Fetch orderrows
+            const orderrows = await this.fetchWithAuth('/external/orderrows', {
+                deliveryStartDate: startDate,
+                deliveryEndDate: endDate,
+                slim: 1
             });
             
-            let fullOrders = [];
-            if (ordersResponse.ok) {
-                fullOrders = await ordersResponse.json() || [];
-                console.log('✅ Received', fullOrders.length, 'full orders');
-                
-                // Log first full order structure to debug
-                if (fullOrders.length > 0) {
-                    console.log('📋 First full order structure:', JSON.stringify(fullOrders[0], null, 2).substring(0, 500));
-                    console.log('📋 Full order fields:', Object.keys(fullOrders[0]));
-                }
-            } else {
-                const errorText = await ordersResponse.text();
-                console.log('⚠️ Full orders endpoint failed (status:', ordersResponse.status, ')');
-                console.log('   Response:', errorText.substring(0, 200));
-            }
+            console.log(`✅ Received ${orderrows.length} orderrows`);
             
-            // Create a map of order_id -> full order for quick lookup
-            const ordersMap = {};
-            fullOrders.forEach(order => {
-                // Try multiple ID fields
-                const orderId = order.id || order.order_id || order.orderId;
-                if (orderId) {
-                    ordersMap[orderId] = order;
-                }
-            });
+            // Enrich each orderrow with customer/location/product data
+            const enrichedOrders = orderrows.map(row => this.enrichOrderrow(row));
             
-            console.log(`📊 Created orders map with ${Object.keys(ordersMap).length} orders`);
-            
-            // Join orderrows with full orders
-            let joinedCount = 0;
-            let sampleJoined = null;
-            
-            const joinedOrders = orderrows.map(orderrow => {
-                const orderId = orderrow.order_id;
-                const fullOrder = ordersMap[orderId];
-                
-                if (fullOrder) {
-                    joinedCount++;
-                    if (!sampleJoined) {
-                        sampleJoined = { orderrow, fullOrder };
-                    }
-                    
-                    // Extract customer from full order - TRY EVERY POSSIBLE FIELD
-                    // Check nested structures too (order.customer, order.client, etc.)
-                    let customer = '';
-                    const customerFields = [
-                        // Direct fields
-                        fullOrder.customer,
-                        fullOrder.customer_name,
-                        fullOrder.customerName,
-                        fullOrder.client,
-                        fullOrder.client_name,
-                        fullOrder.clientName,
-                        fullOrder.company,
-                        fullOrder.company_name,
-                        fullOrder.companyName,
-                        fullOrder.name,
-                        fullOrder.buyer,
-                        fullOrder.buyer_name,
-                        // Nested structures
-                        fullOrder.customer?.name,
-                        fullOrder.customer?.customerName,
-                        fullOrder.customer?.clientName,
-                        fullOrder.client?.name,
-                        fullOrder.client?.customerName,
-                        fullOrder.order?.customer,
-                        fullOrder.order?.customer_name,
-                        fullOrder.order?.client,
-                        fullOrder.order?.client_name,
-                    ];
-                    
-                    for (const field of customerFields) {
-                        if (field && typeof field === 'string' && field.trim() !== '') {
-                            customer = field.trim();
-                            break;
-                        } else if (field && typeof field === 'object' && field.name) {
-                            customer = field.name.trim();
-                            break;
-                        }
-                    }
-                    
-                    // Extract location from full order - TRY EVERY POSSIBLE FIELD
-                    let location = '';
-                    const locationFields = [
-                        // Direct fields
-                        fullOrder.delivery_location,
-                        fullOrder.location,
-                        fullOrder.delivery_address,
-                        fullOrder.deliveryAddress,
-                        fullOrder.hub,
-                        fullOrder.delivery_hub,
-                        fullOrder.address,
-                        fullOrder.deliveryAddress,
-                        fullOrder.destination,
-                        fullOrder.delivery_destination,
-                        // Nested structures
-                        fullOrder.delivery?.location,
-                        fullOrder.delivery?.address,
-                        fullOrder.delivery?.hub,
-                        fullOrder.order?.delivery_location,
-                        fullOrder.order?.location,
-                        fullOrder.order?.hub,
-                    ];
-                    
-                    for (const field of locationFields) {
-                        if (field && typeof field === 'string' && field.trim() !== '') {
-                            location = field.trim();
-                            break;
-                        }
-                    }
-                    
-                    // Merge: use orderrow data but add customer/location from full order
-                    return {
-                        ...orderrow,
-                        // Add customer/location from full order
-                        customer: customer,
-                        customer_name: customer,
-                        delivery_location: location,
-                        location: location,
-                        // Keep orderrow data for quantity, product, etc.
-                        _joined: true,
-                        _fullOrderId: orderId
-                    };
-                } else {
-                    // No matching full order - use orderrow as-is
-                    return {
-                        ...orderrow,
-                        _joined: false
-                    };
-                }
-            });
-            
-            console.log(`✅ Joined ${joinedCount} of ${orderrows.length} orderrows with full orders`);
-            
-            if (sampleJoined) {
-                console.log('📋 Sample joined order:', {
-                    orderrow_id: sampleJoined.orderrow.id,
-                    order_id: sampleJoined.orderrow.order_id,
-                    fullOrder_id: sampleJoined.fullOrder.id,
-                    customer: sampleJoined.fullOrder.customer || sampleJoined.fullOrder.customer_name || 'NOT FOUND',
-                    location: sampleJoined.fullOrder.delivery_location || sampleJoined.fullOrder.location || 'NOT FOUND'
-                });
-            }
-            
-            if (joinedCount === 0 && orderrows.length > 0) {
-                console.error('❌ ERROR: No orderrows were joined with full orders!');
-                console.error('   This means customer/location data will be missing.');
-                console.error('   Sample orderrow order_id:', orderrows[0].order_id);
-                console.error('   Available order IDs in map:', Object.keys(ordersMap).slice(0, 10));
+            // Show sample
+            if (enrichedOrders.length > 0) {
+                console.log('📋 SAMPLE ENRICHED ORDERROW:');
+                console.log('   ', JSON.stringify(enrichedOrders[0], null, 2).substring(0, 800));
             }
             
             console.log('=================================');
-            return joinedOrders;
+            return enrichedOrders;
             
         } catch (error) {
-            console.error('❌ Failed to join with full orders:', error.message);
-            console.error('   Stack:', error.stack);
-            console.error('   Returning orderrows without customer/location data');
-            // Return orderrows as-is if join fails
-            return orderrows;
-        }
-    }
-
-    /**
-     * Fetch full orders (not just orderrows) to get customer/location info
-     * @param {string} startDate - Start date in DD-MM-YYYY format
-     * @param {string} endDate - End date in DD-MM-YYYY format
-     */
-    async getFullOrders(startDate, endDate) {
-        console.log('=================================');
-        console.log('🔍 GET FULL ORDERS (with customer/location)');
-        console.log('Start date:', startDate);
-        console.log('End date:', endDate);
-        console.log('=================================');
-        
-        try {
-            const token = await this.getToken();
-            
-            // Try /external/orders endpoint - Use correct path based on environment
-            let url;
-            if (this.baseURL.startsWith('http://') || this.baseURL.startsWith('https://')) {
-                // Localhost proxy - use /api/external/orders
-                url = `${this.baseURL.replace('/api', '/api/external')}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
-            } else {
-                // Vercel serverless - use /api/orders (serverless function, NOT /api/external/orders)
-                url = `${window.location.origin}${this.baseURL}/orders?deliveryStartDate=${encodeURIComponent(startDate)}&deliveryEndDate=${encodeURIComponent(endDate)}`;
-            }
-            
-            console.log('📤 Request URL (full orders):', url);
-            
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const orders = await response.json();
-                console.log('✅ Received', orders.length, 'full orders');
-                return orders || [];
-            } else {
-                console.log('⚠️ Full orders endpoint not available, will use orderrows only');
-                return null; // Indicate we need to use orderrows
-            }
-        } catch (error) {
-            console.log('⚠️ Full orders fetch failed:', error.message);
-            return null; // Will fall back to orderrows
-        }
-    }
-
-    /**
-     * Fetch orders for a specific date
-     * @param {Date|string} targetDate - Date to fetch orders for (optional, defaults to today)
-     */
-    async fetchOrdersForDate(targetDate = null) {
-        console.log('=================================');
-        console.log('📦 FETCHING ORDERS FOR DATE');
-        console.log('=================================');
-        
-        try {
-            let dateToFetch;
-            
-            if (targetDate) {
-                // Use provided date
-                dateToFetch = targetDate instanceof Date 
-                    ? targetDate 
-                    : new Date(targetDate);
-            } else {
-                // Default to today
-                dateToFetch = new Date();
-            }
-            
-            // Normalize to start of day
-            const fetchDate = new Date(dateToFetch.getFullYear(), dateToFetch.getMonth(), dateToFetch.getDate());
-            const dateISO = fetchDate.toISOString().split('T')[0];
-            const florinetDate = this.toFlorinetDate(dateISO);
-            
-            console.log('Target date (ISO):', dateISO);
-            console.log('Target date (Florinet):', florinetDate);
-            
-            // Fetch orders for this specific date
-            const orders = await this.getOrdersRange(florinetDate, florinetDate);
-            
-            console.log('✅ RECEIVED', orders.length, 'ORDERS');
-            if (orders.length > 0) {
-                console.log('First order sample:', JSON.stringify(orders[0], null, 2));
-            } else {
-                console.log('ℹ️ Empty array [] - No orders for this date (this is normal)');
-            }
-            console.log('=================================');
-            
-            return orders;
-            
-        } catch (error) {
-            console.error('=================================');
-            console.error('❌ FETCH ORDERS FAILED');
-            console.error('Error:', error);
-            console.error('=================================');
+            console.error('❌ Failed to fetch orderrows:', error);
             throw error;
         }
     }
 
     /**
-     * Fetch orders from previous day until 7 AM today
-     * This is the main function for daily planning
-     * @param {Date|string} targetDate - Optional date to use instead of today
+     * Enrich orderrow with customer/location/product names
+     * Following the manual exactly
      */
-    async fetchOrdersForPlanning(targetDate = null) {
-        console.log('=================================');
-        console.log('📦 FETCHING ORDERS FOR PLANNING');
-        console.log('=================================');
+    enrichOrderrow(row) {
+        // Get nested order data
+        const order = row.order || {};
         
-        try {
-            let today;
-            
-            if (targetDate) {
-                // Use provided date as "today"
-                today = targetDate instanceof Date 
-                    ? new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate())
-                    : new Date(targetDate);
-            } else {
-                // Default to actual today
-                const now = new Date();
-                today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            }
-            
-            // Get yesterday's date
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            // Convert to ISO format first, then to Florinet format
-            const yesterdayISO = yesterday.toISOString().split('T')[0];
-            const todayISO = today.toISOString().split('T')[0];
-            
-            const startDate = this.toFlorinetDate(yesterdayISO);
-            const endDate = this.toFlorinetDate(todayISO);
-            
-            console.log('Date range (ISO):', yesterdayISO, 'to', todayISO);
-            console.log('Date range (Florinet):', startDate, 'to', endDate);
-            
-            const orders = await this.getOrdersRange(startDate, endDate);
-            
-            console.log('✅ RECEIVED', orders.length, 'ORDERS');
-            if (orders.length > 0) {
-                console.log('First order sample:', JSON.stringify(orders[0], null, 2));
-            } else {
-                console.log('ℹ️ Empty array [] - No orders for this date range (this is normal)');
-            }
-            console.log('=================================');
-            
-            return orders;
-            
-        } catch (error) {
-            console.error('=================================');
-            console.error('❌ FETCH ORDERS FAILED');
-            console.error('Error:', error);
-            console.error('=================================');
-            throw error;
+        // Get customer from map
+        const customer = this.customerMap.get(order.customer_id);
+        if (customer) {
+            row.customer_name = customer.name;
+            row.customer_code = customer.code;
+            row.customer_address = customer.address;
+            row.customer_city = customer.city;
+            row.customer_postal_code = customer.postal_code;
+        } else {
+            row.customer_name = `Customer ${order.customer_id || 'Unknown'}`;
         }
+        
+        // Get delivery location from map
+        const location = this.locationMap.get(order.delivery_location_id);
+        if (location) {
+            row.location_name = location.name;
+            row.location_address = location.address;
+            row.location_city = location.city;
+            row.location_latitude = location.latitude;
+            row.location_longitude = location.longitude;
+        } else {
+            row.location_name = `Location ${order.delivery_location_id || 'Unknown'}`;
+        }
+        
+        // Get product from map
+        const product = this.productMap.get(row.composite_product_id);
+        if (product) {
+            row.product_name = product.name;
+            row.product_code = product.code;
+            row.vbn_code = product.vbn_code;
+            row.flower_color = product.color;
+            row.flower_variety = product.variety;
+            row.stem_length = product.stem_length;
+        } else {
+            row.product_name = `Product ${row.composite_product_id || 'Unknown'}`;
+        }
+        
+        // Extract packaging properties
+        const props = this.extractProperties(row);
+        row.stems_per_bundle = props.stemsPerBundle;
+        row.stems_per_container = props.stemsPerContainer;
+        row.bundles_per_container = props.bundlesPerContainer;
+        row.container_code = props.containerCode;
+        row.quality_group = props.qualityGroup;
+        row.country_of_origin = props.countryOfOrigin;
+        
+        // Calculate total stems (following manual priority)
+        row.total_stems = this.calculateTotalStems(row, props);
+        
+        // Delivery info
+        row.delivery_date = order.delivery_date;
+        row.transport_date = order.transport_date;
+        
+        return row;
+    }
+
+    /**
+     * Extract properties from orderrow.properties array
+     * Property codes from VBN standard
+     */
+    extractProperties(row) {
+        const props = {};
+        
+        for (const prop of row.properties || []) {
+            const code = prop.code;
+            const value = prop.pivot?.value;
+            
+            switch (code) {
+                case 'L11': props.stemsPerBundle = parseInt(value, 10); break;
+                case 'L13': props.stemsPerContainer = parseInt(value, 10); break;
+                case 'L14': props.bundlesPerContainer = parseInt(value, 10); break;
+                case 'S20': props.stemLength = parseInt(value, 10); break;
+                case '901': props.containerCode = value; break;
+                case 'S98': props.qualityGroup = value; break;
+                case 'S62': props.countryOfOrigin = value; break;
+            }
+        }
+        
+        return props;
+    }
+
+    /**
+     * Calculate total stems for an orderrow
+     * Following manual priority order
+     */
+    calculateTotalStems(row, props) {
+        // Priority 1: stems per bundle × assembly amount (bundles)
+        if (props.stemsPerBundle && row.assembly_amount) {
+            return props.stemsPerBundle * row.assembly_amount;
+        }
+        
+        // Priority 2: nr_base_product (stems per container) × plates
+        if (row.nr_base_product && row.amount_of_plates) {
+            return parseInt(row.nr_base_product, 10) * row.amount_of_plates;
+        }
+        
+        // Priority 3: stems per container × plates
+        if (props.stemsPerContainer && row.amount_of_plates) {
+            return props.stemsPerContainer * row.amount_of_plates;
+        }
+        
+        // Fallback: assembly_amount (bundles)
+        return row.assembly_amount || 0;
+    }
+
+    /**
+     * Get orders for a specific date
+     * @param {Date|string} deliveryDate - Date object or YYYY-MM-DD string
+     */
+    async getOrders(deliveryDate) {
+        const dateStr = deliveryDate instanceof Date 
+            ? deliveryDate.toISOString().split('T')[0]
+            : deliveryDate;
+        
+        const florinetDate = this.toFlorinetDate(dateStr);
+        console.log(`📅 Fetching orders for ${dateStr} (${florinetDate})`);
+        
+        return await this.getOrdersRange(florinetDate, florinetDate);
     }
 
     /**
@@ -728,109 +438,7 @@ class FlorinetAPI {
         const today = new Date();
         return await this.getOrders(today);
     }
-
-    /**
-     * Start auto-refresh
-     * Automatically fetches orders every X minutes
-     */
-    startAutoRefresh(callback) {
-        console.log(`[FlorinetAPI] Starting auto-refresh (every ${this.refreshIntervalMs / 1000}s)`);
-        
-        // Clear existing interval if any
-        this.stopAutoRefresh();
-        
-        // Set up new interval
-        this.autoRefreshInterval = setInterval(async () => {
-            console.log('[FlorinetAPI] 🔄 Auto-refresh triggered');
-            try {
-                await callback();
-            } catch (error) {
-                console.error('[FlorinetAPI] Auto-refresh failed:', error);
-            }
-        }, this.refreshIntervalMs);
-    }
-
-    /**
-     * Stop auto-refresh
-     */
-    stopAutoRefresh() {
-        if (this.autoRefreshInterval) {
-            clearInterval(this.autoRefreshInterval);
-            this.autoRefreshInterval = null;
-            console.log('[FlorinetAPI] Auto-refresh stopped');
-        }
-    }
-
-    /**
-     * Set refresh interval
-     * @param {number} minutes - Interval in minutes
-     */
-    setRefreshInterval(minutes) {
-        this.refreshIntervalMs = minutes * 60 * 1000;
-        console.log(`[FlorinetAPI] Refresh interval set to ${minutes} minutes`);
-    }
-
-    /**
-     * Get all contracts
-     */
-    async getContracts() {
-        try {
-            return await this.request('/external/contracts');
-        } catch (error) {
-            console.error('Error fetching contracts:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Get composite products
-     */
-    async getCompositeProducts() {
-        try {
-            return await this.request('/external/compositeproducts');
-        } catch (error) {
-            console.error('Error fetching composite products:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Get base products
-     */
-    async getBaseProducts() {
-        try {
-            return await this.request('/external/base-products');
-        } catch (error) {
-            console.error('Error fetching base products:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Get product groups
-     */
-    async getProductGroups() {
-        try {
-            return await this.request('/external/product-groups');
-        } catch (error) {
-            console.error('Error fetching product groups:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Get growers (includes m² data)
-     */
-    async getGrowers() {
-        try {
-            return await this.request('/external/growers');
-        } catch (error) {
-            console.error('Error fetching growers:', error);
-            throw error;
-        }
-    }
 }
 
 // Global instance
 const florinetAPI = new FlorinetAPI();
-

@@ -1,14 +1,14 @@
 /**
- * Vercel Serverless Function - Fetch Order Rows from Florinet API
- * Proxies requests to Florinet API with authentication
+ * Vercel Serverless Function - Fetch Orderrows
+ * Base URL: https://app.2growsoftware.com/api/v1 (NOT summit.florinet.nl)
  */
 
-const FLORINET_BASE_URL = 'https://summit.florinet.nl/api/v1';
+const FLORINET_BASE_URL = 'https://app.2growsoftware.com/api/v1';
 
 module.exports = async function handler(req, res) {
-    // Set CORS headers
+    // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     // Handle preflight
@@ -16,10 +16,10 @@ module.exports = async function handler(req, res) {
         return res.status(200).end();
     }
 
-    console.log('[OrderRows API] Fetching order rows...');
+    console.log('[Orderrows API] Fetching orderrows...');
 
     try {
-        // Get token from request header
+        // Get token from Authorization header
         const authHeader = req.headers.authorization;
         
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -37,9 +37,9 @@ module.exports = async function handler(req, res) {
         if (deliveryEndDate) url.searchParams.append('deliveryEndDate', deliveryEndDate);
         if (slim) url.searchParams.append('slim', slim);
 
-        console.log('[OrderRows API] Fetching from:', url.toString());
+        console.log('[Orderrows API] Fetching from:', url.toString());
 
-        // Fetch order rows from Florinet
+        // Fetch from Florinet
         const orderrowsResponse = await fetch(url.toString(), {
             method: 'GET',
             headers: {
@@ -50,28 +50,26 @@ module.exports = async function handler(req, res) {
 
         if (!orderrowsResponse.ok) {
             const errorText = await orderrowsResponse.text();
-            console.error('[OrderRows API] Fetch failed:', orderrowsResponse.status, errorText);
+            console.error('[Orderrows API] Fetch failed:', orderrowsResponse.status, errorText);
             
-            // If 401, token might be expired
             if (orderrowsResponse.status === 401) {
                 return res.status(401).json({ error: 'Token expired', needsRefresh: true });
             }
             
-            throw new Error(`Failed to fetch order rows: ${orderrowsResponse.status} - ${errorText}`);
+            throw new Error(`Failed to fetch orderrows: ${orderrowsResponse.status} - ${errorText}`);
         }
 
         const orderrows = await orderrowsResponse.json();
 
-        console.log('[OrderRows API] Successfully fetched', Array.isArray(orderrows) ? orderrows.length : 'unknown', 'order rows');
+        console.log('[Orderrows API] ✅ Fetched', Array.isArray(orderrows) ? orderrows.length : 'unknown', 'orderrows');
 
         return res.status(200).json(orderrows);
 
     } catch (error) {
-        console.error('[OrderRows API] Error:', error);
+        console.error('[Orderrows API] Error:', error);
         return res.status(500).json({
-            error: 'Failed to fetch order rows',
+            error: 'Failed to fetch orderrows',
             message: error.message
         });
     }
-}
-
+};

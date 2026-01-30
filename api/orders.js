@@ -3,7 +3,7 @@
  * Proxies requests to Florinet API with authentication
  */
 
-const FLORINET_BASE_URL = 'https://summit.florinet.nl/api/v1';
+const FLORINET_BASE_URL = 'https://app.2growsoftware.com/api/v1';
 
 module.exports = async function handler(req, res) {
     // Set CORS headers

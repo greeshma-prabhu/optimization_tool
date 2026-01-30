@@ -10,8 +10,61 @@ class OrderManager {
         this.currentDate = new Date();
         this.api = florinetAPI;
         
+        // Dynamic mappings (fetched from API, NOT hardcoded!)
+        this.locationMap = new Map(); // location_id → location name
+        this.companyMap = new Map();  // company_id → company name
+        this.contractsMap = new Map(); // contract_id → customer details
+        
         // Try to load orders from localStorage on initialization
         this.loadOrdersFromStorage();
+        
+        // Fetch reference data on initialization
+        this.initializeReferenceMaps();
+    }
+    
+    /**
+     * Fetch all reference data from API (customers, locations, products)
+     * This MUST be called before processing orders!
+     */
+    async initializeReferenceMaps() {
+        console.log('🔄 Initializing reference data...');
+        
+        try {
+            // Load lookup data from API (customers, locations, products)
+            const { customers, locations, products } = await this.api.loadLookupData();
+            
+            // Store maps for easy access
+            this.locationMap = locations;
+            this.companyMap = customers;
+            this.productMap = products;
+            
+            console.log('✅ Reference data loaded:');
+            console.log(`   - ${this.companyMap.size} customers`);
+            console.log(`   - ${this.locationMap.size} locations`);
+            console.log(`   - ${this.productMap.size} products`);
+            
+        } catch (error) {
+            console.error('❌ Failed to load reference data:', error);
+            console.warn('⚠️  Orders may not show customer/location names correctly');
+        }
+    }
+    
+    /**
+     * Fetch locations from Florinet API
+     * NOTE: /external/locations endpoint doesn't exist - skipping
+     */
+    async fetchLocations() {
+        console.log('ℹ️  Skipping locations API (endpoint not available)');
+        // Locations will be determined from business rules instead
+    }
+    
+    /**
+     * Fetch contracts from Florinet API (contains company/customer data)
+     * NOTE: /external/contracts endpoint doesn't exist - skipping
+     */
+    async fetchContracts() {
+        console.log('ℹ️  Skipping contracts API (endpoint not available)');
+        // Customer names are directly in orderrows.customer_reference field
     }
 
     /**
@@ -232,338 +285,308 @@ class OrderManager {
             return [];
         }
 
-        console.log(`Processing ${rawOrders.length} orders`);
+        console.log(`🔍 PROCESSING ${rawOrders.length} ORDERROWS (RAW DATA)`);
+        console.log('=================================');
         
-        // Log first order structure to debug API field mapping
-        if (rawOrders.length > 0) {
-            console.log('=================================');
-            console.log('📋 RAW API ORDER STRUCTURE (FIRST ORDER):');
-            console.log(JSON.stringify(rawOrders[0], null, 2));
-            console.log('=================================');
-            console.log('📋 ALL AVAILABLE FIELDS IN FIRST ORDER:');
-            console.log(Object.keys(rawOrders[0]));
-            console.log('=================================');
-            
-            // Log key fields for debugging (console only, no alerts in production)
-            const firstOrderKeys = Object.keys(rawOrders[0]);
-            const firstOrder = rawOrders[0];
-            
-            // Check actual API fields (console only)
-            const qtyField = firstOrder.amount_of_transport_carriers !== undefined ? `amount_of_transport_carriers: ${firstOrder.amount_of_transport_carriers}` :
-                           firstOrder.amount_of_plates !== undefined ? `amount_of_plates: ${firstOrder.amount_of_plates}` :
-                           firstOrder.assembly_amount !== undefined ? `assembly_amount: ${firstOrder.assembly_amount}` :
-                           firstOrder.quantity !== undefined ? `quantity: ${firstOrder.quantity}` :
-                           'NOT FOUND (will use fallback)';
-            
-            const customerField = firstOrder.customer || firstOrder.customer_name || firstOrder.client || 
-                                 (firstOrder.order_id ? `order_id: ${firstOrder.order_id} (will use as fallback)` : 'NOT FOUND');
-            
-            const locationField = firstOrder.delivery_location || firstOrder.location || firstOrder.hub || 'NOT FOUND';
-            
-            // Log to console only (no alert popup in production)
-            console.log('📋 Key API fields:', { qtyField, customerField, locationField });
-            
-            // Log first 3 orders to see patterns
-            if (rawOrders.length >= 3) {
-                console.log('📋 FIRST 3 ORDERS - KEY FIELDS:');
-                rawOrders.slice(0, 3).forEach((order, idx) => {
-                    console.log(`Order ${idx}:`, {
-                        id: order.id,
-                        order_id: order.order_id,
-                        customer: order.customer,
-                        customer_name: order.customer_name,
-                        client: order.client,
-                        delivery_location: order.delivery_location,
-                        location: order.location,
-                        quantity: order.quantity,
-                        amount: order.amount,
-                        qty: order.qty,
-                        product_code: order.product_code,
-                        composite_product_id: order.composite_product_id,
-                        hasOrder: !!order.order,
-                        hasCustomer: !!order.customer
-                    });
-                });
-            }
-        }
+        // CRITICAL FIX: Group orderrows by order_id
+        // Each order has multiple rows (line items), we need to group them!
+        const orderGroupsMap = new Map();
         
-        const processedOrders = rawOrders.map((order, index) => {
-            // Map API fields to our format
-            // The API returns orderrows which may have nested structures
-            // Check for order.order, order.customer, order.composite_product, etc.
+        rawOrders.forEach((row, index) => {
+            // Get order_id - try multiple possible fields
+            const orderId = row.order_id || row.orderId || row.id || `order_${index}`;
             
-            // Extract customer - AGGRESSIVE search through ALL possible paths
-            let customerName = '';
-            
-            // Function to safely extract string from any value
-            const extractString = (val) => {
-                if (!val) return '';
-                if (typeof val === 'string') return val.trim();
-                if (typeof val === 'object' && val !== null) {
-                    return val.name || val.customerName || val.clientName || val.client || val.companyName || val.title || '';
-                }
-                return String(val).trim();
-            };
-            
-            // ALL possible customer field paths (in order of likelihood)
-            const customerPaths = [
-                // Direct fields
-                () => order.customer,
-                () => order.customer_name,
-                () => order.customerName,
-                () => order.client,
-                () => order.client_name,
-                () => order.clientName,
-                () => order.company,
-                () => order.company_name,
-                () => order.companyName,
-                // Nested order.order fields
-                () => order.order?.customer,
-                () => order.order?.customer_name,
-                () => order.order?.customerName,
-                () => order.order?.client,
-                () => order.order?.client_name,
-                () => order.order?.clientName,
-                // Nested order.order.customer object
-                () => order.order?.customer?.name,
-                () => order.order?.customer?.customerName,
-                () => order.order?.customer?.clientName,
-                () => order.order?.customer?.client,
-                () => order.order?.customer?.companyName,
-                // Nested order.client object
-                () => order.order?.client?.name,
-                () => order.order?.client?.customerName,
-                () => order.order?.client?.clientName,
-                // Deep nested paths
-                () => order.order?.order?.customer,
-                () => order.order?.order?.customer?.name,
-                () => order.order?.order?.client,
-                () => order.order?.order?.client?.name,
-            ];
-            
-            // Try all paths
-            for (const path of customerPaths) {
-                try {
-                    const val = path();
-                    if (val) {
-                        customerName = extractString(val);
-                        if (customerName) break;
-                    }
-                } catch (e) {
-                    // Path doesn't exist, continue
-                }
+            if (!orderGroupsMap.has(orderId)) {
+                orderGroupsMap.set(orderId, []);
             }
-            
-            // If still not found, check if this was joined with full order
-            if (!customerName && order._joined && order.customer) {
-                customerName = order.customer;
-            }
-            
-            // If still not found, use order_id as fallback
-            if (!customerName) {
-                if (order.order_id) {
-                    customerName = `Order ${order.order_id}`;
-                } else if (order.id) {
-                    customerName = `Order ${order.id}`;
-                } else {
-                    customerName = `Order ${index}`;
-                }
-                
-                // Log warning for first few orders
-                if (index < 3) {
-                    console.warn(`⚠️ Customer not found for order ${index}, using fallback:`, {
-                        customerName: customerName,
-                        order_id: order.order_id,
-                        id: order.id,
-                        hasJoined: order._joined,
-                        availableFields: Object.keys(order)
-                    });
-                }
-            }
-            
-            // Extract location - check order.order first (most likely)
-            let location = '';
-            if (order.order) {
-                if (order.order.delivery_location) location = order.order.delivery_location;
-                else if (order.order.deliveryLocation) location = order.order.deliveryLocation;
-                else if (order.order.location) location = order.order.location;
-                else if (order.order.delivery_address) location = order.order.delivery_address;
-                else if (order.order.hub) location = order.order.hub;
-                else if (order.order.delivery_hub) location = order.order.delivery_hub;
-            }
-            
-            // Try direct fields
-            if (!location) {
-                if (order.deliveryLocation) location = order.deliveryLocation;
-                else if (order.delivery_location) location = order.delivery_location;
-                else if (order.location) location = order.location;
-                else if (order.delivery_address) location = order.delivery_address;
-                else if (order.deliveryAddress) location = order.deliveryAddress;
-                else if (order.hub) location = order.hub;
-            }
-            
-            // Extract product/crate info - check composite_product_id first
-            let productCode = '';
-            
-            // API likely has composite_product_id - we need to extract code from it
-            if (order.composite_product_id) {
-                // If it's a number, we might need to look it up, but try to use it as-is
-                productCode = order.composite_product_id.toString();
-            } else if (order.composite_product) {
-                if (typeof order.composite_product === 'string') {
-                    productCode = order.composite_product;
-                } else if (order.composite_product.code) {
-                    productCode = order.composite_product.code;
-                } else if (order.composite_product.productCode) {
-                    productCode = order.composite_product.productCode;
-                } else if (order.composite_product.id) {
-                    productCode = order.composite_product.id.toString();
-                }
-            }
-            
-            // Try direct fields
-            if (!productCode) {
-                if (order.productCode) productCode = order.productCode;
-                else if (order.product_code) productCode = order.product_code;
-                else if (order.code) productCode = order.code;
-            }
-            
-            // Extract quantity - API uses amount_of_transport_carriers or amount_of_plates
-            // Based on actual API structure: id, composite_product_id, amount_of_transport_carriers, amount_of_plates, etc.
-            let quantity = 0;
-            
-            // Try Florinet API specific fields first
-            // Note: amount_of_transport_carriers might be 0, so we check if it exists (even if 0)
-            if (order.amount_of_transport_carriers !== undefined && order.amount_of_transport_carriers !== null) {
-                const val = parseInt(order.amount_of_transport_carriers, 10);
-                if (!isNaN(val)) {
-                    quantity = val; // Use even if 0 - it's a valid value from API
-                }
-            } else if (order.amount_of_plates !== undefined && order.amount_of_plates !== null) {
-                const val = parseInt(order.amount_of_plates, 10);
-                if (!isNaN(val)) {
-                    quantity = val;
-                }
-            } else if (order.assembly_amount !== undefined && order.assembly_amount !== null) {
-                const val = parseInt(order.assembly_amount, 10);
-                if (!isNaN(val)) {
-                    quantity = val;
-                }
-            }
-            
-            // Fallback to standard quantity fields only if we haven't found anything
-            if (quantity === 0 && order.amount_of_transport_carriers === undefined && order.amount_of_plates === undefined && order.assembly_amount === undefined) {
-                const quantityFields = [
-                    'quantity', 'amount', 'qty', 'ordered_quantity', 'amount_ordered',
-                    'qty_ordered', 'ordered_qty', 'total_quantity', 'total_amount',
-                    'pieces', 'units', 'count', 'number'
-                ];
-                
-                for (const field of quantityFields) {
-                    if (order[field] !== undefined && order[field] !== null) {
-                        const val = parseInt(order[field], 10);
-                        if (!isNaN(val) && val > 0) {
-                            quantity = val;
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // Try nested order.order.quantity
-            if (quantity === 0 && order.order) {
-                if (order.order.amount_of_transport_carriers !== undefined && order.order.amount_of_transport_carriers !== null) {
-                    const val = parseInt(order.order.amount_of_transport_carriers, 10);
-                    if (!isNaN(val)) quantity = val;
-                } else if (order.order.amount_of_plates !== undefined && order.order.amount_of_plates !== null) {
-                    const val = parseInt(order.order.amount_of_plates, 10);
-                    if (!isNaN(val)) quantity = val;
-                }
-            }
-            
-            // If still 0 after all checks, use minimum 1 for cart calculation
-            // (0 quantity would result in 0 carts, which breaks optimization)
-            if (quantity === 0) {
-                if (index < 3) { // Log first 3 to debug
-                    const qtyFields = Object.keys(order).filter(k => {
-                        const lower = k.toLowerCase();
-                        return lower.includes('qty') || lower.includes('amount') || lower.includes('quant') || lower.includes('piece') || lower.includes('unit') || lower.includes('carrier') || lower.includes('plate');
-                    });
-                    console.warn(`⚠️ Order ${order.id || index} has quantity 0 after all checks. Available qty fields:`, qtyFields);
-                    console.warn(`   amount_of_transport_carriers: ${order.amount_of_transport_carriers}, amount_of_plates: ${order.amount_of_plates}, assembly_amount: ${order.assembly_amount}`);
-                }
-                // Use minimum 1 for cart calculation (0 would = 0 carts)
-                quantity = 1; // Minimum quantity for cart calculation
-            }
-            
-            // Use order_id as fallback identifier
-            const orderId = order.order_id || order.orderId || order.id || `order-${index}`;
-            
-            const processed = {
-                id: order.id || orderId,
-                orderId: orderId,
-                // Store order_id for potential lookup
-                orderRowId: order.id,
-                customer: customerName || `Order ${orderId}`,
-                customerName: customerName || `Order ${orderId}`,
-                deliveryLocation: location || '',
-                productType: order.productType || order.product_type || order.product || '',
-                productCode: productCode || '',
-                crateType: order.crateType || order.crate_type || this.extractCrateType(order) || '612',
-                quantity: quantity,
-                date: order.deliveryDate || order.delivery_date || order.date || this.currentDate.toISOString().split('T')[0],
-                status: order.status || order.state || 'pending',
-                // Will be assigned by cart manager
-                cartType: null,
-                cartsNeeded: null,
-                // Store raw order for debugging
-                _raw: order
-            };
-            
-            // Log first few orders to debug field mapping
-            if (index < 5) {
-                // Find all quantity-related fields
-                const quantityFields = {};
-                Object.keys(order).forEach(k => {
-                    const lower = k.toLowerCase();
-                    if (lower.includes('qty') || lower.includes('amount') || lower.includes('quant') || lower.includes('piece') || lower.includes('unit')) {
-                        quantityFields[k] = order[k];
-                    }
-                });
-                
-                // Find all customer-related fields
-                const customerFields = {};
-                Object.keys(order).forEach(k => {
-                    const lower = k.toLowerCase();
-                    if (lower.includes('customer') || lower.includes('client') || lower.includes('company')) {
-                        customerFields[k] = order[k];
-                    }
-                });
-                
-                console.log(`📋 Order ${index} mapping:`, {
-                    rawKeys: Object.keys(order).slice(0, 20),
-                    customer: processed.customer,
-                    location: processed.deliveryLocation,
-                    quantity: processed.quantity,
-                    crateType: processed.crateType,
-                    hasNestedOrder: !!order.order,
-                    hasNestedCustomer: !!(order.customer && typeof order.customer === 'object'),
-                    quantityFields: quantityFields,
-                    customerFields: customerFields,
-                    // Show raw values for common fields
-                    rawQuantity: order.quantity,
-                    rawAmount: order.amount,
-                    rawQty: order.qty,
-                    rawOrderId: order.order_id,
-                    rawCompositeProductId: order.composite_product_id
-                });
-            }
-            
-            return processed;
+            orderGroupsMap.get(orderId).push(row);
         });
         
-        console.log(`✅ Processed ${processedOrders.length} orders`);
+        console.log(`✅ GROUPED INTO ${orderGroupsMap.size} UNIQUE ORDERS`);
+        console.log(`   (was ${rawOrders.length} orderrows, reduced duplicates)`);
+        console.log('=================================');
+        
+        // Now process each GROUP as one order
+        const processedOrders = [];
+        let processedCount = 0;
+
+        for (const [orderId, orderRows] of orderGroupsMap) {
+            processedCount++;
+            
+            // Use first row as base (has customer, location, etc.)
+            const baseRow = orderRows[0];
+            
+            // Sum quantities across all rows for this order
+            let totalQuantity = 0;
+            const productCodes = [];
+            
+            orderRows.forEach((row, rowIdx) => {
+                // PRIORITY 1: Use total_stems calculated by API (from VBN properties)
+                let rowQty = row.total_stems || 0;
+                let qtySource = 'total_stems (calculated by API)';
+                
+                // FALLBACK: If total_stems is 0 or missing, use assembly_amount
+                if (rowQty === 0) {
+                    rowQty = row.assembly_amount || 0;
+                    qtySource = 'assembly_amount';
+                }
+                
+                // LAST RESORT: Try other fields
+                if (rowQty === 0) {
+                    if (row.amount_of_plates) {
+                        rowQty = row.amount_of_plates;
+                        qtySource = 'amount_of_plates';
+                    } else if (row.quantity) {
+                        rowQty = row.quantity;
+                        qtySource = 'quantity';
+                    }
+                }
+                
+                // Log quantity extraction for first order
+                if (processedCount === 1 && rowIdx === 0) {
+                    console.log('   🔢 QUANTITY EXTRACTION:');
+                    console.log('      total_stems (from API):', row.total_stems);
+                    console.log('      assembly_amount:', row.assembly_amount);
+                    console.log('      amount_of_plates:', row.amount_of_plates);
+                    console.log('      stems_per_bundle:', row.stems_per_bundle);
+                    console.log('      stems_per_container:', row.stems_per_container);
+                    console.log(`      → Using: ${qtySource} = ${rowQty}`);
+                }
+                
+                totalQuantity += rowQty;
+                
+                // Collect product codes
+                const productCode = row.composite_product_id || row.product_code || row.productCode || '';
+                if (productCode && !productCodes.includes(productCode)) {
+                    productCodes.push(productCode);
+                }
+            });
+            
+            // Log first 3 order groups to debug field names
+            if (processedCount <= 3 && orderRows.length > 0) {
+                console.log(`\n📋 ORDER ${processedCount}: ${orderId}`);
+                console.log(`   Rows in group: ${orderRows.length}`);
+                console.log(`   Total quantity: ${totalQuantity}`);
+                console.log('\n   🔍 RAW DATA INSPECTION:');
+                console.log('   =======================');
+                
+                // Show COMPLETE first row to see ALL fields
+                console.log('   COMPLETE baseRow object:', JSON.stringify(baseRow, null, 2));
+                
+                console.log('\n   📝 CRITICAL FIELDS:');
+                console.log('      customer_reference:', baseRow.customer_reference);
+                console.log('      customer:', baseRow.customer);
+                console.log('      customer_name:', baseRow.customer_name);
+                console.log('      customer_code:', baseRow.customer_code);
+                console.log('      company_id:', baseRow.company_id, '← KEY for customer lookup!');
+                console.log('      label_info:', baseRow.label_info);
+                console.log('      external_id:', baseRow.external_id);
+                console.log('      delivery_location_id (base):', baseRow.delivery_location_id);
+                console.log('      delivery_location_id (order):', baseRow.order?.delivery_location_id, '← KEY!');
+                console.log('      location_description:', baseRow.location_description);
+                console.log('      location:', baseRow.location);
+                console.log('      location_name:', baseRow.location_name);
+                console.log('      location_id:', baseRow.location_id);
+                console.log('      link_location_id:', baseRow.link_location_id);
+                console.log('      delivery_location:', baseRow.delivery_location);
+                console.log('\n   📦 ORDER OBJECT:');
+                if (baseRow.order) {
+                    console.log('      order exists:', JSON.stringify(baseRow.order, null, 2));
+                } else {
+                    console.log('      order: null/undefined');
+                }
+                console.log('\n   ALL AVAILABLE FIELDS:', Object.keys(baseRow).join(', '));
+                console.log('=================================\n');
+            }
+            
+            // Extract customer - API has already enriched this data!
+            // The baseRow.customer_name was set by api.js enrichOrderrow() method
+            let customerName = baseRow.customer_name || `Customer ${baseRow.order?.customer_id || 'Unknown'}`;
+            
+            if (processedCount <= 3) {
+                console.log(`   ✅ Customer: "${customerName}"`);
+            }
+            
+            // Extract location - API has already enriched this data!
+            // The baseRow.location_name was set by api.js enrichOrderrow() method
+            let location = baseRow.location_name || baseRow.location_city || `Location ${baseRow.order?.delivery_location_id || 'Unknown'}`;
+            
+            if (processedCount <= 3) {
+                console.log(`   ✅ Location: "${location}"`);
+            }
+            
+            // Extract delivery date
+            let deliveryDate = null;
+            if (baseRow.order?.delivery_date) {
+                deliveryDate = new Date(baseRow.order.delivery_date);
+            } else if (baseRow.delivery_date) {
+                deliveryDate = new Date(baseRow.delivery_date);
+            } else if (baseRow.order?.deliveryDate) {
+                deliveryDate = new Date(baseRow.order.deliveryDate);
+            } else if (baseRow.deliveryDate) {
+                deliveryDate = new Date(baseRow.deliveryDate);
+            }
+            
+            // Determine route based on location
+            const route = this.getRouteFromLocation(location);
+            
+            // If location is empty/unknown, use route name as location
+            if (!location || location === 'Unknown') {
+                // Map route to proper location name
+                const routeLocationMap = {
+                    'rijnsburg': 'Rijnsburg',
+                    'aalsmeer': 'Aalsmeer',
+                    'naaldwijk': 'Naaldwijk'
+                };
+                location = routeLocationMap[route] || 'Rijnsburg'; // Default to Rijnsburg
+                
+                if (processedCount <= 3) {
+                    console.log(`   ℹ️  No location found, using route as location: ${location}`);
+                }
+            }
+            
+            // Determine cart type and calculate carts needed
+            const cartType = this.getCartType(productCodes[0] || '', location);
+            const cartsNeeded = this.calculateCartsNeeded(totalQuantity, cartType);
+            
+            // Create processed order
+            const processedOrder = {
+                id: orderId,
+                customer: customerName,
+                deliveryLocation: location,
+                deliveryDate: deliveryDate,
+                quantity: totalQuantity,
+                productCode: productCodes.join(', '),
+                productCodes: productCodes,
+                route: route,
+                cartType: cartType,
+                cartsNeeded: cartsNeeded,
+                status: baseRow.status || 'In Afwachting',
+                numberOfRows: orderRows.length, // Track how many rows were grouped
+                _rawRows: orderRows // Keep raw data for debugging
+            };
+            
+            processedOrders.push(processedOrder);
+        }
+        
+        console.log('=================================');
+        console.log(`✅ PROCESSED ${processedOrders.length} UNIQUE ORDERS`);
+        console.log(`   Total carts needed: ${processedOrders.reduce((sum, o) => sum + o.cartsNeeded, 0)}`);
+        console.log('=================================');
+        
+        // Collect unique IDs found for mapping purposes
+        const companyIds = new Set();
+        const deliveryLocationIds = new Set();
+        rawOrders.forEach(row => {
+            if (row.company_id) companyIds.add(row.company_id);
+            if (row.delivery_location_id) deliveryLocationIds.add(row.delivery_location_id);
+        });
+        
+        if (companyIds.size > 0 || deliveryLocationIds.size > 0) {
+            console.log('\n🔍 UNIQUE IDS FOUND (for mapping):');
+            if (companyIds.size > 0) {
+                console.log(`   company_id values: ${Array.from(companyIds).sort((a,b) => a-b).join(', ')}`);
+                console.log('   → Need to fetch /external/contracts to map these to customer names');
+            }
+            if (deliveryLocationIds.size > 0) {
+                console.log(`   delivery_location_id values: ${Array.from(deliveryLocationIds).sort((a,b) => a-b).join(', ')}`);
+                console.log('   → Need to map these to actual locations (Rijnsburg, Aalsmeer, Naaldwijk)');
+            }
+            console.log('=================================\n');
+        }
+        
+        if (processedOrders.length > 0) {
+            console.log('📋 FIRST 3 PROCESSED ORDERS:');
+            processedOrders.slice(0, 3).forEach((order, idx) => {
+                console.log(`${idx + 1}.`, {
+                    customer: order.customer,
+                    location: order.deliveryLocation,
+                    route: order.route,
+                    qty: order.quantity,
+                    carts: order.cartsNeeded,
+                    rows: order.numberOfRows
+                });
+            });
+            console.log('=================================');
+        }
+        
         return processedOrders;
+    }
+
+
+    /**
+     * Extract crate type from product code or name
+     */
+    extractCrateType(order) {
+        // Check various product fields for crate type
+        const product = order.productCode || order.product_code || order.composite_product_id || '';
+        const productStr = product.toString().trim();
+        
+        // Common crate types: 612, 575, 902, 588, 996, 856
+        if (productStr.match(/612|FCC/i)) return '612';
+        if (productStr.match(/575|Bloemenkar|bloem/i)) return '575';
+        if (productStr.match(/902|Hangplant|hang/i)) return '902';
+        if (productStr.match(/588|Dendro/i)) return '588';
+        if (productStr.match(/996/i)) return '996';
+        if (productStr.match(/856/i)) return '856';
+        
+        return '612'; // Default to most common type
+    }
+    
+    /**
+     * Determine route from delivery location
+     */
+    getRouteFromLocation(location) {
+        if (!location) return 'rijnsburg'; // Default route
+        
+        const locationLower = location.toLowerCase().trim();
+        
+        // Route 1: Rijnsburg
+        if (locationLower.includes('rijnsburg') || locationLower.includes('rjnsburg')) {
+            return 'rijnsburg';
+        }
+        
+        // Route 2: Aalsmeer
+        if (locationLower.includes('aalsmeer') || locationLower.includes('alsmeer')) {
+            return 'aalsmeer';
+        }
+        
+        // Route 3: Naaldwijk
+        if (locationLower.includes('naaldwijk') || locationLower.includes('nldwijk')) {
+            return 'naaldwijk';
+        }
+        
+        // Default to Rijnsburg (most common)
+        return 'rijnsburg';
+    }
+    
+    /**
+     * Determine cart type (Danish or Standard) based on customer
+     */
+    getCartType(productCode, location) {
+        // Danish cart customers - these are specific customers that require Danish carts
+        // (we don't have customer name at this point, so we'll use default 'standard')
+        // This will be refined by CartManager.assignCartType() later
+        return 'standard';
+    }
+    
+    /**
+     * Calculate carts needed based on quantity and cart type
+     */
+    calculateCartsNeeded(quantity, cartType) {
+        // Standard capacities by crate type
+        const capacities = {
+            standard: { '612': 72, '575': 32, '902': 40, '588': 40, '996': 32, '856': 20 },
+            danish: 17
+        };
+        
+        // For now, assume default crate type '612' (most common)
+        const capacity = cartType === 'danish' ? 17 : 72;
+        
+        // Calculate carts needed (round up)
+        const cartsNeeded = Math.ceil(quantity / capacity);
+        
+        return cartsNeeded;
     }
 
     /**

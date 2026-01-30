@@ -127,48 +127,173 @@
     <script>
         function loadTruckStatus() {
             const container = document.getElementById('truck-status-board');
+            if (!container) {
+                console.error('Truck status board container not found');
+                return;
+            }
+            
+            console.log('🚚 Loading truck status...');
+            
+            // Use TRUCKS from window or global scope, or create default
+            let trucksData = typeof TRUCKS !== 'undefined' ? TRUCKS : (typeof window.TRUCKS !== 'undefined' ? window.TRUCKS : null);
+            
+            // Fallback: Create default trucks if none available
+            if (!trucksData) {
+                console.warn('⚠️ TRUCKS not found, using default trucks');
+                trucksData = {
+                    own: [
+                        { id: 'own-truck-1', name: 'Own Truck #1', type: 'own', capacity: 17, costPerRoute: 150, available: true },
+                        { id: 'own-truck-2', name: 'Own Truck #2', type: 'own', capacity: 17, costPerRoute: 150, available: true }
+                    ],
+                    neighbor: [
+                        { id: 'neighbor-truck', name: "Neighbor's Truck", type: 'neighbor', capacity: 17, costPerRoute: 0, available: null, requiresAction: '📞 Call neighbor to confirm' }
+                    ],
+                    external: [
+                        { id: 'external-truck', name: 'External Truck', type: 'external', capacity: 17, costPerRoute: 250, available: true }
+                    ]
+                };
+                // Set it globally for future use
+                window.TRUCKS = trucksData;
+            }
+
+            console.log('✅ TRUCKS data:', trucksData);
             container.innerHTML = '';
 
+            let cardsCreated = 0;
+
             // Own Trucks
-            TRUCKS.own.forEach(truck => {
-                const card = createTruckCard(truck, 'own');
-                container.appendChild(card);
-            });
+            if (trucksData.own && Array.isArray(trucksData.own) && trucksData.own.length > 0) {
+                console.log('📦 Loading own trucks:', trucksData.own.length);
+                trucksData.own.forEach(truck => {
+                    try {
+                        const card = createTruckCard(truck, 'own');
+                        container.appendChild(card);
+                        cardsCreated++;
+                        console.log('✅ Created card for:', truck.name);
+                    } catch (e) {
+                        console.error('❌ Error creating card for', truck.name, ':', e);
+                    }
+                });
+            } else {
+                console.warn('⚠️ No own trucks found');
+            }
 
             // Neighbor's Truck
-            TRUCKS.neighbor.forEach(truck => {
-                const card = createTruckCard(truck, 'neighbor');
-                container.appendChild(card);
-            });
+            if (trucksData.neighbor && Array.isArray(trucksData.neighbor) && trucksData.neighbor.length > 0) {
+                console.log('🤝 Loading neighbor trucks:', trucksData.neighbor.length);
+                trucksData.neighbor.forEach(truck => {
+                    try {
+                        const card = createTruckCard(truck, 'neighbor');
+                        container.appendChild(card);
+                        cardsCreated++;
+                        console.log('✅ Created card for:', truck.name);
+                    } catch (e) {
+                        console.error('❌ Error creating card for', truck.name, ':', e);
+                    }
+                });
+            } else {
+                console.warn('⚠️ No neighbor trucks found');
+            }
 
             // External Trucks
-            TRUCKS.external.forEach(truck => {
-                const card = createTruckCard(truck, 'external');
-                container.appendChild(card);
-            });
+            if (trucksData.external && Array.isArray(trucksData.external) && trucksData.external.length > 0) {
+                console.log('🚚 Loading external trucks:', trucksData.external.length);
+                trucksData.external.forEach(truck => {
+                    try {
+                        const card = createTruckCard(truck, 'external');
+                        container.appendChild(card);
+                        cardsCreated++;
+                        console.log('✅ Created card for:', truck.name);
+                    } catch (e) {
+                        console.error('❌ Error creating card for', truck.name, ':', e);
+                    }
+                });
+            } else {
+                console.warn('⚠️ No external trucks found');
+            }
+            
+            // If no trucks were loaded, show message
+            if (cardsCreated === 0) {
+                console.error('❌ No truck cards were created');
+                container.innerHTML = '<div class="card"><p style="color: var(--danger); padding: 20px;">Error: Could not create truck cards. Check browser console for errors.</p></div>';
+            } else {
+                console.log('✅ Successfully loaded', cardsCreated, 'truck cards');
+            }
         }
 
         function createTruckCard(truck, type) {
             const card = document.createElement('div');
             card.className = 'card';
+            card.style.marginBottom = '20px';
             
-            const statusColor = truck.available ? 'var(--success)' : 'var(--warning)';
-            const statusText = truck.available 
-                ? (typeof i18n !== 'undefined' ? i18n.t('trucks.available', 'Available') : 'Available')
-                : (typeof i18n !== 'undefined' ? i18n.t('trucks.inUse', 'In Use') : 'In Use');
+            // Determine truck status based on assignments
+            const savedAssignments = localStorage.getItem('zuidplas_route_truck_assignments');
+            let routeAssignments = {};
+            if (savedAssignments) {
+                try {
+                    routeAssignments = JSON.parse(savedAssignments);
+                } catch (e) {
+                    console.warn('Failed to load route assignments:', e);
+                }
+            }
+            
+            const truckRouteMap = {
+                'own-truck-1': 'truck1',
+                'own-truck-2': 'truck2',
+                'neighbor-truck': 'neighbor',
+                'external-truck': 'external'
+            };
+            
+            const currentTruckId = truckRouteMap[truck.id] || truck.id;
+            let hasAssignments = false;
+            let totalCartsAssigned = 0;
+            let assignedRoutesCount = 0;
+            
+            Object.keys(routeAssignments).forEach(routeKey => {
+                const assignment = routeAssignments[routeKey];
+                if (assignment && typeof assignment === 'string') {
+                    const assignedTrucks = assignment.includes('+') 
+                        ? assignment.split('+').map(t => t.trim())
+                        : [assignment];
+                    if (assignedTrucks.includes(currentTruckId)) {
+                        hasAssignments = true;
+                        assignedRoutesCount++;
+                    }
+                }
+            });
+            
+            const statusColor = hasAssignments ? 'var(--primary)' : (truck.available ? 'var(--success)' : 'var(--warning)');
+            const statusText = hasAssignments 
+                ? `${assignedRoutesCount} ${assignedRoutesCount === 1 ? 'Route' : 'Routes'} Assigned`
+                : (truck.available 
+                    ? (typeof i18n !== 'undefined' ? i18n.t('trucks.available', 'Available') : 'Available')
+                    : (typeof i18n !== 'undefined' ? i18n.t('trucks.inUse', 'In Use') : 'In Use'));
+            
+            // Truck type icon and color
+            const typeConfig = {
+                'own': { icon: '🚛', color: '#3b82f6', bgColor: '#eff6ff' },
+                'neighbor': { icon: '🤝', color: '#10b981', bgColor: '#f0fdf4' },
+                'external': { icon: '🚚', color: '#f59e0b', bgColor: '#fffbeb' }
+            };
+            const config = typeConfig[type] || typeConfig['own'];
             
             card.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
-                    <div>
-                        <h2 style="margin: 0;">${truck.name}</h2>
-                        <div style="margin-top: 10px;">
-                            <span class="badge" style="background: ${statusColor};">${statusText}</span>
-                            <span class="badge info" style="margin-left: 10px;">${typeof i18n !== 'undefined' ? i18n.t('trucks.capacity', 'Capacity') : 'Capacity'}: ${truck.capacity} ${typeof i18n !== 'undefined' ? i18n.t('trucks.carts', 'carts') : 'carts'}</span>
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid ${config.bgColor};">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="font-size: 2.5rem;">${config.icon}</div>
+                        <div>
+                            <h2 style="margin: 0; color: ${config.color}; font-size: 1.5rem;">${truck.name}</h2>
+                            <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                <span class="badge" style="background: ${statusColor}; color: white; font-weight: 600;">${statusText}</span>
+                                <span class="badge info" style="background: ${config.bgColor}; color: ${config.color}; border: 1px solid ${config.color};">
+                                    📦 ${truck.capacity} ${typeof i18n !== 'undefined' ? i18n.t('trucks.carts', 'carts') : 'carts'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 1.2rem; font-weight: 600;">€${truck.costPerRoute}</div>
-                        <div style="font-size: 0.9rem; color: var(--text-secondary);">${typeof i18n !== 'undefined' ? i18n.t('trucks.perRoute', 'per route') : 'per route'}</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: ${config.color};">€${truck.costPerRoute}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">${typeof i18n !== 'undefined' ? i18n.t('trucks.perRoute', 'per route') : 'per route'}</div>
                     </div>
                 </div>
                 
@@ -230,77 +355,116 @@
                             
                             Object.keys(routeAssignments).forEach(routeKey => {
                                 const assignment = routeAssignments[routeKey];
-                                // Parse assignment (can be "truck1", "truck1+truck2", etc.)
-                                const assignedTrucks = assignment.includes('+') 
-                                    ? assignment.split('+').map(t => t.trim())
-                                    : [assignment];
-                                
-                                if (assignedTrucks.includes(currentTruckId)) {
-                                    const routeInfo = routeAnalysis[routeKey] || {};
-                                    assignedRoutes.push({
-                                        route: routeKey,
-                                        name: routeNames[routeKey] || routeKey,
-                                        time: routeTimes[routeKey] || '',
-                                        isShared: assignedTrucks.length > 1,
-                                        totalCarts: routeInfo.totalCarts || 0,
-                                        maxCapacity: routeInfo.maxCapacity || 17,
-                                        fits: routeInfo.fits !== undefined ? routeInfo.fits : true,
-                                        overflow: routeInfo.overflow || 0
-                                    });
+                                if (assignment && typeof assignment === 'string') {
+                                    // Parse assignment (can be "truck1", "truck1+truck2", etc.)
+                                    const assignedTrucks = assignment.includes('+') 
+                                        ? assignment.split('+').map(t => t.trim())
+                                        : [assignment];
+                                    
+                                    if (assignedTrucks.includes(currentTruckId)) {
+                                        const routeInfo = routeAnalysis[routeKey] || {};
+                                        assignedRoutes.push({
+                                            route: routeKey,
+                                            name: routeNames[routeKey] || routeKey,
+                                            time: routeTimes[routeKey] || '',
+                                            isShared: assignedTrucks.length > 1,
+                                            totalCarts: routeInfo.totalCarts || 0,
+                                            maxCapacity: routeInfo.maxCapacity || 17,
+                                            fits: routeInfo.fits !== undefined ? routeInfo.fits : true,
+                                            overflow: routeInfo.overflow || 0
+                                        });
+                                    }
                                 }
                             });
                             
                             if (assignedRoutes.length === 0) {
-                                return `<div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-                                    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; color: var(--text-primary);">
-                                        ${typeof i18n !== 'undefined' ? i18n.t('trucks.noAllocation', 'No allocation yet') : 'No allocation yet'}
+                                return `<div style="text-align: center; color: var(--text-secondary); padding: 30px 20px;">
+                                    <div style="font-size: 2rem; margin-bottom: 15px;">📋</div>
+                                    <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; color: var(--text-primary);">
+                                        ${typeof i18n !== 'undefined' ? i18n.t('trucks.noAllocation', 'No Allocation Yet') : 'No Allocation Yet'}
                                     </div>
-                                    <div style="font-size: 0.9rem; margin-top: 15px; margin-bottom: 20px; color: var(--text-secondary); line-height: 1.6;">
-                                        ${typeof i18n !== 'undefined' ? i18n.t('trucks.goToCartOptimization', 'Go to Cart Optimization to assign routes') : 'Go to Cart Optimization to assign routes'}
+                                    <div style="font-size: 0.95rem; margin-bottom: 25px; color: var(--text-secondary); line-height: 1.8; max-width: 400px; margin-left: auto; margin-right: auto;">
+                                        ${typeof i18n !== 'undefined' ? i18n.t('trucks.assignmentInstructions', 'This truck is available but not assigned to any route yet.<br><br>Go to <strong>Cart Optimization</strong> to assign trucks to routes with overflow.') : 'This truck is available but not assigned to any route yet.<br><br>Go to <strong>Cart Optimization</strong> to assign trucks to routes with overflow.'}
                                     </div>
-                                    <a href="cart-loading.html" class="btn btn-primary" style="display: inline-block; padding: 10px 20px; text-decoration: none;">
-                                        ${typeof i18n !== 'undefined' ? i18n.t('trucks.goToCartOptimizationButton', 'Go to Cart Optimization') : 'Go to Cart Optimization'} →
+                                    <a href="cart-loading.html" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; text-decoration: none; font-weight: 600; border-radius: 6px;">
+                                        🚛 ${typeof i18n !== 'undefined' ? i18n.t('trucks.goToCartOptimizationButton', 'Go to Cart Optimization') : 'Go to Cart Optimization'} →
                                     </a>
+                                    <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                                        <div style="font-size: 0.85rem; color: #92400e; text-align: left;">
+                                            <strong>💡 Quick Guide:</strong><br>
+                                            1. Sync orders from Dashboard first<br>
+                                            2. Go to Cart Optimization page<br>
+                                            3. Select trucks for routes with overflow<br>
+                                            4. Come back here to see assignments
+                                        </div>
+                                    </div>
                                 </div>`;
                             }
                             
-                            return assignedRoutes.map(route => {
+                            // Sort routes by departure time
+                            assignedRoutes.sort((a, b) => {
+                                const timeA = parseInt(a.time.replace(':', ''));
+                                const timeB = parseInt(b.time.replace(':', ''));
+                                return timeA - timeB;
+                            });
+                            
+                            return assignedRoutes.map((route, index) => {
                                 const departureText = typeof i18n !== 'undefined' ? i18n.t('trucks.departure', 'Departure') : 'Departure';
                                 const scheduledText = typeof i18n !== 'undefined' ? i18n.t('trucks.scheduled', 'Scheduled') : 'Scheduled';
                                 const sharedText = typeof i18n !== 'undefined' ? i18n.t('trucks.sharedWithOtherTrucks', 'Shared with other trucks') : 'Shared with other trucks';
                                 const cartsText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts';
-                                const capacityText = typeof i18n !== 'undefined' ? i18n.t('status.capacity', 'capacity') : 'capacity';
+                                
+                                // Route color based on route name
+                                const routeColors = {
+                                    'Rijnsburg': '#3b82f6',
+                                    'Aalsmeer': '#10b981',
+                                    'Naaldwijk': '#f59e0b'
+                                };
+                                const routeColor = routeColors[route.name] || '#6b7280';
                                 
                                 return `
-                                <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--primary);">
-                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                                        <div>
-                                            <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 5px;">${route.name}</div>
-                                            <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                                                ${departureText}: ${route.time}
+                                <div style="padding: 18px; background: linear-gradient(135deg, #ffffff 0%, ${routeColor}08 100%); border-radius: 10px; margin-bottom: 12px; border-left: 5px solid ${routeColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                        <div style="flex: 1;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                                                <div style="font-size: 1.5rem;">📍</div>
+                                                <div>
+                                                    <div style="font-weight: 700; font-size: 1.2rem; color: ${routeColor}; margin-bottom: 4px;">${route.name}</div>
+                                                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--text-secondary);">
+                                                        <span style="font-size: 1.1rem;">🕐</span>
+                                                        <strong>${departureText}:</strong> <span style="font-weight: 600; color: ${routeColor};">${route.time}</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div style="text-align: right;">
-                                            <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">
+                                        <div style="text-align: right; background: ${routeColor}15; padding: 10px 15px; border-radius: 8px; min-width: 100px;">
+                                            <div style="font-size: 1.3rem; font-weight: 700; color: ${routeColor};">
                                                 ${route.totalCarts} / ${route.maxCapacity}
                                             </div>
-                                            <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                                                ${cartsText} (${capacityText})
+                                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
+                                                ${cartsText}
                                             </div>
                                         </div>
                                     </div>
                                     ${route.isShared ? `
-                                    <div style="font-size: 0.85rem; color: var(--warning); margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 6px;">
-                                        ⚠️ ${sharedText}
+                                    <div style="font-size: 0.85rem; color: #92400e; margin-top: 10px; padding: 10px; background: #fef3c7; border-radius: 6px; border-left: 3px solid #f59e0b;">
+                                        <strong>⚠️ ${sharedText}</strong>
                                     </div>
                                     ` : ''}
                                     ${!route.fits && route.overflow > 0 ? `
-                                    <div style="font-size: 0.85rem; color: var(--danger); margin-top: 8px; padding: 8px; background: #fee2e2; border-radius: 6px;">
-                                        ⚠️ ${typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow'}: ${route.overflow} ${cartsText}
+                                    <div style="font-size: 0.85rem; color: #991b1b; margin-top: 10px; padding: 10px; background: #fee2e2; border-radius: 6px; border-left: 3px solid #ef4444;">
+                                        <strong>⚠️ ${typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow'}:</strong> ${route.overflow} ${cartsText} ${typeof i18n !== 'undefined' ? i18n.t('trucks.needMoreTrucks', 'need more trucks') : 'need more trucks'}
                                     </div>
                                     ` : ''}
-                                    <div style="margin-top: 10px;">
-                                        <span class="badge ${route.fits ? 'success' : 'danger'}">${scheduledText}</span>
+                                    <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center;">
+                                        <span class="badge ${route.fits ? 'success' : 'danger'}" style="font-weight: 600; padding: 6px 12px;">
+                                            ${route.fits ? '✅' : '⚠️'} ${scheduledText}
+                                        </span>
+                                        ${route.fits ? `
+                                        <span style="font-size: 0.85rem; color: var(--success); font-weight: 600;">
+                                            ✓ Ready to go!
+                                        </span>
+                                        ` : ''}
                                     </div>
                                 </div>
                             `;
@@ -423,7 +587,71 @@
         }
         
         document.addEventListener('DOMContentLoaded', () => {
-            loadTruckStatus();
+            console.log('🚚 Trucks page DOM loaded');
+            
+            // Try to load immediately
+            if (typeof TRUCKS !== 'undefined' && TRUCKS.own) {
+                console.log('✅ TRUCKS already loaded');
+                loadTruckStatus();
+            } else {
+                console.log('⏳ TRUCKS not loaded yet, waiting...');
+                
+                // Wait for TRUCKS data to be loaded
+                function waitForTrucksData(retries = 100) {
+                    console.log(`Checking for TRUCKS data... (retries left: ${retries})`);
+                    
+                    if (typeof TRUCKS !== 'undefined') {
+                        console.log('✅ TRUCKS found!', TRUCKS);
+                        console.log('TRUCKS.own:', TRUCKS.own);
+                        console.log('TRUCKS.neighbor:', TRUCKS.neighbor);
+                        console.log('TRUCKS.external:', TRUCKS.external);
+                        
+                        if (TRUCKS.own && Array.isArray(TRUCKS.own)) {
+                            console.log('✅ TRUCKS data loaded, rendering trucks...');
+                            loadTruckStatus();
+                            return;
+                        }
+                    }
+                    
+                    if (retries > 0) {
+                        // Retry after a short delay
+                        setTimeout(() => waitForTrucksData(retries - 1), 100);
+                    } else {
+                        console.error('❌ TRUCKS data not loaded after 10 seconds');
+                        console.error('TRUCKS value:', typeof TRUCKS !== 'undefined' ? TRUCKS : 'undefined');
+                        console.error('window.TRUCKS:', typeof window.TRUCKS !== 'undefined' ? window.TRUCKS : 'undefined');
+                        
+                        // Try to load with default trucks as fallback
+                        console.log('🔄 Trying fallback: Creating default trucks...');
+                        const container = document.getElementById('truck-status-board');
+                        if (container) {
+                            // Create default trucks if data.js didn't load
+                            const defaultTrucks = {
+                                own: [
+                                    { id: 'own-truck-1', name: 'Own Truck #1', capacity: 17, costPerRoute: 150, available: true },
+                                    { id: 'own-truck-2', name: 'Own Truck #2', capacity: 17, costPerRoute: 150, available: true }
+                                ],
+                                neighbor: [
+                                    { id: 'neighbor-truck', name: "Neighbor's Truck", capacity: 17, costPerRoute: 0, available: null, requiresAction: '📞 Call neighbor to confirm' }
+                                ],
+                                external: [
+                                    { id: 'external-truck', name: 'External Truck', capacity: 17, costPerRoute: 250, available: true }
+                                ]
+                            };
+                            
+                            // Temporarily set TRUCKS
+                            window.TRUCKS = defaultTrucks;
+                            loadTruckStatus();
+                            
+                            container.innerHTML += '<div class="card" style="margin-top: 20px; background: #fef3c7; border-left: 4px solid #f59e0b;"><p style="color: #92400e; padding: 15px;">⚠️ Using default truck data. Please refresh the page to load from data.js</p></div>';
+                        }
+                    }
+                }
+                
+                // Start checking
+                waitForTrucksData();
+            }
+            
             if (currentOptimizer) {
                 updateTruckAllocations();
                 updateCartLoadingViz();

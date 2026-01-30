@@ -17,6 +17,7 @@ Professional route optimization system with Florinet API integration for automat
    ```bash
    ./start-all.sh
    ```
+   
    This starts both the proxy server (port 3001) and HTTP server (port 8080) automatically.
 
    **Option B: Start servers manually (2 terminals)**
