@@ -430,6 +430,22 @@ class FlorinetAPI {
         
         return await this.getOrdersRange(florinetDate, florinetDate);
     }
+    
+    /**
+     * Alias for getOrders - for backward compatibility
+     * @param {Date|string} deliveryDate - Date object or YYYY-MM-DD string
+     */
+    async fetchOrdersForDate(deliveryDate) {
+        return await this.getOrders(deliveryDate);
+    }
+    
+    /**
+     * Alias for getOrders - for backward compatibility
+     * @param {Date|string} date - Date object or YYYY-MM-DD string
+     */
+    async getOrdersForDate(date) {
+        return await this.getOrders(date);
+    }
 
     /**
      * Get today's orders
