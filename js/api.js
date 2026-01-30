@@ -6,22 +6,27 @@
 
 class FlorinetAPI {
     constructor() {
-        // Environment detection
+        // UNIVERSAL Environment Detection - Works on ANY server!
         const hostname = window.location.hostname;
         const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
         const isVercel = hostname.includes('vercel.app') || hostname.includes('vercel.com');
         
-        // PROXY ROUTING
-        if (isLocalhost && !isVercel) {
-            // Local: use proxy server
+        // SMART ROUTING - Auto-detects the right API endpoint
+        if (isLocalhost) {
+            // Local development: try proxy on port 3001
             this.baseURL = 'http://localhost:3001/api';
-            this.isLocalhost = true;
+            this.mode = 'LOCAL';
             console.log('🔧 LOCAL MODE - Using proxy: http://localhost:3001/api');
-        } else {
-            // Production: use Vercel serverless functions
+        } else if (isVercel) {
+            // Vercel deployment: use serverless functions
             this.baseURL = '/api';
-            this.isLocalhost = false;
-            console.log('🌐 PRODUCTION MODE - Using serverless: /api');
+            this.mode = 'VERCEL';
+            console.log('🌐 VERCEL MODE - Using serverless: /api');
+        } else {
+            // Any other server (dev231, etc): try relative /api path first
+            this.baseURL = '/api';
+            this.mode = 'PRODUCTION';
+            console.log('🚀 PRODUCTION MODE - Using relative API: /api');
         }
         
         this.token = null;
@@ -33,6 +38,9 @@ class FlorinetAPI {
         this.productMap = new Map();
         
         console.log('✅ FlorinetAPI initialized');
+        console.log(`   Hostname: ${hostname}`);
+        console.log(`   Mode: ${this.mode}`);
+        console.log(`   Base URL: ${this.baseURL}`);
     }
 
     /**
@@ -55,22 +63,27 @@ class FlorinetAPI {
         console.log('🔐 Authenticating with Florinet...');
         
         try {
-            const authUrl = this.isLocalhost 
+            // Build auth URL - works on any server!
+            const authUrl = this.mode === 'LOCAL'
                 ? `${this.baseURL}/authenticate`
                 : `${window.location.origin}${this.baseURL}/authenticate`;
             
             console.log('📤 Auth URL:', authUrl);
+            console.log('📤 Mode:', this.mode);
             
             const response = await fetch(authUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
-                }
+                },
+                credentials: 'same-origin' // Include cookies if needed
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error(`❌ Auth failed: HTTP ${response.status}`);
+                console.error(`❌ Response: ${errorText}`);
                 throw new Error(`Authentication failed: HTTP ${response.status} - ${errorText}`);
             }
 
@@ -89,6 +102,7 @@ class FlorinetAPI {
             localStorage.setItem('florinet_token_expiry', this.tokenExpiry);
             
             console.log('✅ Authentication successful');
+            console.log(`   Token length: ${this.token.length} chars`);
             console.log('   Token expires in 50 minutes');
             
             return this.token;
@@ -132,9 +146,9 @@ class FlorinetAPI {
     async fetchWithAuth(endpoint, params = {}) {
         const token = await this.getToken();
         
-        // Build URL
+        // Build URL - UNIVERSAL (works on ANY server!)
         const url = new URL(
-            this.isLocalhost 
+            this.mode === 'LOCAL'
                 ? `${this.baseURL}${endpoint}`
                 : `${window.location.origin}${this.baseURL}${endpoint}`
         );
@@ -147,14 +161,17 @@ class FlorinetAPI {
         });
 
         console.log(`📤 GET ${url.toString()}`);
+        console.log(`   Mode: ${this.mode}`);
         console.log(`   Token: ${token.substring(0, 20)}...`);
 
         const response = await fetch(url.toString(), {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
         });
 
         console.log(`📥 Response: ${response.status} ${response.statusText}`);
@@ -170,8 +187,10 @@ class FlorinetAPI {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${this.token}`,
-                    'Accept': 'application/json'
-                }
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'
             });
             
             console.log(`📥 Retry response: ${retryResponse.status} ${retryResponse.statusText}`);
