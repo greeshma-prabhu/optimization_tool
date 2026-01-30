@@ -5,7 +5,7 @@
   "main": "index.html",
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo 'Static site - no build needed'",
+    "build": "mkdir -p public && cp *.html public/ && cp -r js public/ && cp -r css public/ 2>/dev/null || true",
     "start": "node proxy-server.js"
   },
   "dependencies": {
