@@ -2,31 +2,31 @@
   "rewrites": [
     {
       "source": "/api/authenticate",
-      "destination": "/api/authenticate.js"
+      "destination": "/api/authenticate"
     },
     {
       "source": "/api/external/orderrows",
-      "destination": "/api/orderrows.js"
+      "destination": "/api/orderrows"
     },
     {
       "source": "/api/external/customers",
-      "destination": "/api/customers.js"
+      "destination": "/api/customers"
     },
     {
       "source": "/api/external/locations",
-      "destination": "/api/locations.js"
+      "destination": "/api/locations"
     },
     {
       "source": "/api/external/compositeproducts",
-      "destination": "/api/composite-products.js"
+      "destination": "/api/composite-products"
     },
     {
       "source": "/api/external/contracts",
-      "destination": "/api/contracts.js"
+      "destination": "/api/contracts"
     },
     {
       "source": "/api/external/orders",
-      "destination": "/api/orders.js"
+      "destination": "/api/orders"
     }
   ],
   "headers": [
