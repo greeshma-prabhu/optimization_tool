@@ -122,12 +122,13 @@ class CartManager {
         let unknownCount = 0;
         
         orders.forEach((order, idx) => {
-            const clientName = order.customer || order.customerName || 'Unknown';
+            const clientName = order.customer_name || order.customer || order.customerName || 'Unknown';
             
             // Debug first few orders
             if (idx < 5) {
                 console.log(`Order ${idx} client extraction:`, {
                     id: order.id,
+                    customer_name: order.customer_name,
                     customer: order.customer,
                     customerName: order.customerName,
                     client: order.client,
