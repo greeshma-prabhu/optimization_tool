@@ -316,9 +316,13 @@ function calculateTrucks(totalCarts) {
 /**
  * Single source of truth function
  * ALL pages must use this to get orders and cart calculation
+ * @param {boolean} forceRefresh - If true, ignore cache and calculate fresh (Dashboard only!)
  */
-function getGlobalOrdersAndCarts() {
+function getGlobalOrdersAndCarts(forceRefresh = false) {
     console.log('🔍 getGlobalOrdersAndCarts: Getting orders from single source...');
+    if (forceRefresh) {
+        console.log('   🔄 FORCE REFRESH requested - will calculate fresh (ignoring cache)!');
+    }
     
     // Priority 1: Global memory (most reliable, shared across all pages)
     let orders = null;
@@ -374,7 +378,8 @@ function getGlobalOrdersAndCarts() {
     }
     console.log(`   Current hash: ${ordersHash}`);
     
-    if (window.__zuidplas_cart_cache && 
+    // Skip cache if forceRefresh is true (Dashboard only!)
+    if (!forceRefresh && window.__zuidplas_cart_cache && 
         window.__zuidplas_cart_cache.ordersHash === ordersHash &&
         window.__zuidplas_cart_cache.orders.length === orders.length) {
         console.log('✅ getGlobalOrdersAndCarts: Using CACHED cart result (orders unchanged)');
@@ -386,7 +391,9 @@ function getGlobalOrdersAndCarts() {
             cartResult: window.__zuidplas_cart_cache.cartResult
         };
     } else {
-        if (window.__zuidplas_cart_cache) {
+        if (forceRefresh) {
+            console.log('🔄 getGlobalOrdersAndCarts: FORCE REFRESH - calculating fresh (cache ignored)');
+        } else if (window.__zuidplas_cart_cache) {
             console.log('🔄 getGlobalOrdersAndCarts: Cache mismatch - recalculating...');
             console.log(`   Cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
             console.log(`   Hash match: ${window.__zuidplas_cart_cache.ordersHash === ordersHash}`);
