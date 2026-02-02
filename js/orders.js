@@ -690,9 +690,12 @@ class OrderManager {
 
     /**
      * Assign carts to all orders
-     * CRITICAL: Group orders by customer first, then calculate carts per customer group
+     * DISABLED - Using new cart-calculation.js instead
      */
     assignCarts() {
+        console.log('ℹ️ assignCarts() is DISABLED - using cart-calculation.js instead');
+        return; // DO NOTHING - new calculation happens in dashboard
+    }
         console.log('🔧 Assigning carts to', this.orders.length, 'orders...');
         console.log('📊 Grouping by customer first (same customer = same cart group)...');
         
