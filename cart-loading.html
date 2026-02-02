@@ -654,54 +654,76 @@
             /**
              * Get all carts that need to be loaded
              * MUST MATCH DASHBOARD LOGIC EXACTLY!
+             * Uses the CORRECT cart-calculation.js method
              */
             getAllCarts() {
-                // Group by customer (same as Dashboard)
-                const ordersByCustomer = {};
-                this.orders.forEach(order => {
-                    const customerName = order.customer_name || order.customer || order.customerName || 'Unknown';
-                    if (!ordersByCustomer[customerName]) {
-                        ordersByCustomer[customerName] = [];
-                    }
-                    ordersByCustomer[customerName].push(order);
-                });
-
-                const allCarts = [];
+                console.log('═══════════════════════════════════════════════════════════════════');
+                console.log('📦 CART CALCULATION (matches Dashboard - using cart-calculation.js)');
+                console.log('═══════════════════════════════════════════════════════════════════');
                 
-                // For each customer, count cartsNeeded ONCE (from first order)
-                // This MATCHES the Dashboard getCartSummary() logic!
-                Object.keys(ordersByCustomer).forEach(customerName => {
-                    const customerOrders = ordersByCustomer[customerName];
-                    const firstOrder = customerOrders[0];
+                // Use the CORRECT calculation from cart-calculation.js
+                if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
+                    const cartResult = window.CartCalculation.calculateTotalCarts(this.orders);
                     
-                    // CRITICAL: All orders from same customer have SAME cartsNeeded value
-                    // So we only count it ONCE (from first order)
-                    const cartsNeeded = firstOrder.cartsNeeded || 1;
-                    const cartType = firstOrder.cartType || 'standard';
-                    const route = this.cartManager.determineRoute(firstOrder);
-
-                    // Create the exact number of carts for this customer
-                    for (let i = 0; i < cartsNeeded; i++) {
-                        allCarts.push({
-                            id: `cart-${customerName}-${i + 1}`,
-                            client: customerName,  // Use 'client' field (not 'customer')
-                            customer: customerName, // Keep for backwards compatibility
-                            route: route,
-                            type: cartType,
-                            orders: customerOrders, // All orders for this customer
-                            cartNumber: i + 1,
-                            totalCarts: cartsNeeded
+                    console.log('✅ Using CORRECT calculation:');
+                    console.log(`   Total carts: ${cartResult.total}`);
+                    console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
+                    console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
+                    console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
+                    console.log(`   Trucks: ${cartResult.trucks}`);
+                    
+                    // Convert breakdown to cart objects for the UI
+                    const allCarts = [];
+                    let cartIdCounter = 1;
+                    
+                    // Group orders by customer for cart assignment
+                    const ordersByCustomer = {};
+                    this.orders.forEach(order => {
+                        const customerName = order.customer_name || order.customer || order.customerName || 'Unknown';
+                        if (!ordersByCustomer[customerName]) {
+                            ordersByCustomer[customerName] = [];
+                        }
+                        ordersByCustomer[customerName].push(order);
+                    });
+                    
+                    // Create cart objects based on the breakdown
+                    cartResult.breakdown.forEach(routeData => {
+                        const route = routeData.route.toLowerCase();
+                        routeData.fustBreakdown.forEach(fustData => {
+                            // Create carts for this fust type
+                            for (let i = 0; i < fustData.carts; i++) {
+                                // Find a customer for this route
+                                const customerName = Object.keys(ordersByCustomer).find(cust => {
+                                    const order = ordersByCustomer[cust][0];
+                                    const orderRoute = this.cartManager.determineRoute(order).toLowerCase();
+                                    return orderRoute === route;
+                                }) || 'Unknown';
+                                
+                                allCarts.push({
+                                    id: `cart-${cartIdCounter++}`,
+                                    client: customerName,
+                                    customer: customerName,
+                                    route: route,
+                                    type: 'standard', // TODO: Determine Danish vs Standard
+                                    orders: ordersByCustomer[customerName] || [],
+                                    cartNumber: i + 1,
+                                    totalCarts: fustData.carts,
+                                    fustType: fustData.fustType
+                                });
+                            }
                         });
-                    }
-                });
-
-                console.log(`📦 CART CALCULATION (matches Dashboard):`);
-                console.log(`   Total carts: ${allCarts.length}`);
-                console.log(`   Unique customers: ${Object.keys(ordersByCustomer).length}`);
-                console.log(`   Standard: ${allCarts.filter(c => c.type === 'standard').length}`);
-                console.log(`   Danish: ${allCarts.filter(c => c.type === 'danish').length}`);
-
-                return allCarts;
+                    });
+                    
+                    console.log(`   Standard: ${allCarts.filter(c => c.type === 'standard').length}`);
+                    console.log(`   Danish: ${allCarts.filter(c => c.type === 'danish').length}`);
+                    console.log('═══════════════════════════════════════════════════════════════════');
+                    
+                    return allCarts;
+                } else {
+                    console.error('❌ CartCalculation not available! Using fallback...');
+                    // Fallback to old method if needed
+                    return [];
+                }
             }
 
             /**
