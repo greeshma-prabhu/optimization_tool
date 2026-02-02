@@ -681,28 +681,7 @@
                     localStorage.setItem('zuidplas_using_demo_data', 'false');
                 }
                 
-                // Ensure cartManager is initialized
-                if (typeof cartManager === 'undefined') {
-                    throw new Error('CartManager not initialized. Please refresh the page.');
-                }
-                
-                // CRITICAL: Assign carts BEFORE creating optimizer
-                console.log('🔧 Assigning carts to orders...');
-                console.log('   Orders before assignCarts:', orders.length);
-                // DISABLED OLD BUGGY METHOD: orderManager.assignCarts();
-                console.log('✅ Skipped old assignCarts(). Using NEW cart calculation instead.');
-                console.log('✅ Orders count:', orderManager.orders.length);
-                
-                // CRITICAL: Use orderManager.orders (which has carts assigned) instead of local orders variable
-                orders = orderManager.orders;
-                console.log('   Using orders with carts:', orders.length);
-                console.log('   Sample order with cart:', orders[0] ? {
-                    id: orders[0].id,
-                    cartType: orders[0].cartType,
-                    cartsNeeded: orders[0].cartsNeeded
-                } : 'No orders');
-                
-                // Initialize optimizer with orders that have carts assigned
+                // Initialize optimizer with orders
                 console.log('🔧 Initializing optimizer with', orders.length, 'orders...');
                 const optimizer = initializeOptimizer(orders);
                 
@@ -813,8 +792,8 @@
             
             // Update routes status
             try {
-                // Use orderManager.orders which has carts assigned
-                const ordersWithCarts = orderManager.orders.length > 0 ? orderManager.orders : orders;
+                // Use orders directly (they already have all data)
+                const ordersWithCarts = orders || [];
                 console.log('📊 Updating routes status with', ordersWithCarts.length, 'orders');
                 const optimizer = initializeOptimizer(ordersWithCarts);
                 const routeAnalysis = optimizer.processOrders();
@@ -849,8 +828,8 @@
             container.innerHTML = '';
             
             try {
-                // Use orderManager.orders which has carts assigned
-                const ordersWithCarts = orderManager.orders.length > 0 ? orderManager.orders : orders;
+                // Use orders directly (they already have all data)
+                const ordersWithCarts = orders || [];
                 console.log('📊 Updating route overview with', ordersWithCarts.length, 'orders');
                 const optimizer = initializeOptimizer(ordersWithCarts);
                 const routeAnalysis = optimizer.processOrders();
