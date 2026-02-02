@@ -21,23 +21,28 @@ window.appState = {
         this.currentDate = date;
         
         // COMPRESS: Remove heavy fields before saving to localStorage
+        // BUT KEEP CRITICAL FIELDS for cart calculation!
         const compressedOrders = this.orders.map(order => ({
             id: order.id,
             customer: order.customer || order.customer_name,
             customer_name: order.customer_name,
+            customer_id: order.customer_id || order.order?.customer_id, // CRITICAL for validation
             location: order.location || order.location_name,
             location_name: order.location_name,
             route: order.route,
-            delivery_location_id: order.delivery_location_id, // CRITICAL for route detection
+            delivery_location_id: order.delivery_location_id || order.order?.delivery_location_id, // CRITICAL for route detection
+            assembly_amount: order.assembly_amount, // CRITICAL for cart calculation - MUST KEEP!
             fust_count: order.fust_count, // CRITICAL for cart calculation
             fust_code: order.fust_code || order.container_code, // CRITICAL for capacity lookup
-            bundles_per_fust: order.bundles_per_fust,
+            bundles_per_fust: order.bundles_per_fust, // CRITICAL for cart calculation
+            properties: order.properties, // CRITICAL for fust type detection (code 901)
+            nr_base_product: order.nr_base_product, // CRITICAL for bundles_per_container calculation
             quantity: order.quantity || order.fust_count, // Use fust_count as quantity
             crateType: order.crateType || order.fust_code,
             cartType: order.cartType,
             cartsNeeded: order.cartsNeeded,
             deliveryDate: order.deliveryDate || order.delivery_date
-            // Removed: properties, order object, VBN data, etc.
+            // Removed: order object (nested), VBN data, etc.
         }));
         
         const ordersJson = JSON.stringify(compressedOrders);
