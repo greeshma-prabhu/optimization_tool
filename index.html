@@ -255,6 +255,7 @@
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/cart-calculation.js"></script> <!-- NEW CORRECT CALCULATION -->
     <script src="js/carts.js"></script>
     <script src="js/orders.js"></script>
     <script src="js/optimizer.js"></script>
@@ -780,14 +781,28 @@
             // Update stats
             document.getElementById('total-orders-count').textContent = orders.length;
             
-            // CRITICAL: Calculate carts grouped by customer (not per order!)
-            // Use getCartSummary() which properly groups by customer
-            const cartSummary = orderManager.getCartSummary();
-            const totalCarts = cartSummary.standard + cartSummary.danish;
-            document.getElementById('total-carts-needed').textContent = totalCarts;
-            console.log(`📊 Dashboard: ${orders.length} orders → ${totalCarts} carts`);
-            console.log(`   Standard carts: ${cartSummary.standard}`);
-            console.log(`   Danish carts: ${cartSummary.danish}`);
+            // ═══════════════════════════════════════════════════════════════════
+            // CRITICAL: Use NEW CORRECT CART CALCULATION (FUST-BASED)
+            // ═══════════════════════════════════════════════════════════════════
+            if (typeof window.CartCalculation !== 'undefined') {
+                console.log('🛒 Using NEW CORRECT cart calculation (fust-based)...');
+                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
+                
+                const totalCarts = cartResult.totalCarts;
+                document.getElementById('total-carts-needed').textContent = totalCarts;
+                
+                console.log(`✅ Dashboard: ${orders.length} orders → ${totalCarts} carts (CORRECT)`);
+                console.log(`   Rijnsburg: ${cartResult.cartsByRoute.rijnsburg} carts`);
+                console.log(`   Aalsmeer: ${cartResult.cartsByRoute.aalsmeer} carts`);
+                console.log(`   Naaldwijk: ${cartResult.cartsByRoute.naaldwijk} carts`);
+            } else {
+                console.error('❌ CartCalculation not loaded! Using fallback...');
+                // Fallback to old method
+                const cartSummary = orderManager.getCartSummary();
+                const totalCarts = cartSummary.standard + cartSummary.danish;
+                document.getElementById('total-carts-needed').textContent = totalCarts;
+                console.log(`⚠️ Dashboard (fallback): ${orders.length} orders → ${totalCarts} carts`);
+            }
             
             // Update routes status
             try {
