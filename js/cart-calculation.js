@@ -72,6 +72,18 @@ function extractFustInfo(orderrow) {
     let bundlesPerContainer = 1;
     let calculationMethod = 'unknown';
     
+    // Debug first 3 orders to see what data we have
+    if (Math.random() < 0.002) { // Log ~0.2% of orders (about 4 out of 2065)
+        console.log('DEBUG order sample:', {
+            id: orderrow.id,
+            assembly_amount: assemblyAmount,
+            L11: L11Property?.pivot?.value,
+            L13: L13Property?.pivot?.value,
+            nr_base_product: orderrow.nr_base_product,
+            bundles_per_fust: orderrow.bundles_per_fust
+        });
+    }
+    
     // Priority 1: Use L11 and L13 from properties (MOST ACCURATE)
     if (L11Property && L13Property) {
         const stemsPerBundle = parseInt(L11Property.pivot?.value || '10');
