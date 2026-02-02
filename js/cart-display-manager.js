@@ -17,33 +17,35 @@ class CartDisplayManager {
     }
     
     /**
-     * Calculate carts using the correct FUST-based method
+     * Calculate carts using SINGLE SOURCE OF TRUTH
+     * CRITICAL: Use getGlobalOrdersAndCarts() to get CACHED result, not calculate fresh!
      */
     calculate() {
-        if (!this.orders || this.orders.length === 0) {
-            console.log('📦 CartDisplayManager: No orders, returning empty data');
-            this.cartData = {
-                total: 0,
-                byRoute: { Aalsmeer: 0, Naaldwijk: 0, Rijnsburg: 0 },
-                trucks: 0,
-                breakdown: []
-            };
-            return this.cartData;
-        }
+        console.log('📦 CartDisplayManager: Getting cart data from SINGLE SOURCE...');
         
-        console.log('🧮 CartDisplayManager: Calculating carts for', this.orders.length, 'orders...');
-        
-        // Use the CORRECT calculation from cart-calculation.js
-        if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
-            this.cartData = window.CartCalculation.calculateTotalCarts(this.orders);
-            console.log('✅ CartDisplayManager: Calculation complete');
+        // CRITICAL: Use getGlobalOrdersAndCarts() to get CACHED result
+        // DO NOT call calculateTotalCarts() directly - that would calculate fresh and overwrite cache!
+        if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+            const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+            this.cartData = globalData.cartResult;
+            this.orders = globalData.orders; // Use orders from single source
+            
+            console.log('✅ CartDisplayManager: Using CACHED result from SINGLE SOURCE');
             console.log('   Total carts:', this.cartData.total);
             console.log('   Total trucks:', this.cartData.trucks);
             console.log('   Aalsmeer:', this.cartData.byRoute.Aalsmeer || 0);
             console.log('   Naaldwijk:', this.cartData.byRoute.Naaldwijk || 0);
             console.log('   Rijnsburg:', this.cartData.byRoute.Rijnsburg || 0);
+            console.log('   Orders:', this.orders.length);
+        } else if (this.orders && this.orders.length > 0 && window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
+            // Fallback: Only calculate if no cache exists and we have orders
+            console.warn('⚠️ CartDisplayManager: No cache found, calculating fresh (this should only happen on Dashboard!)');
+            this.cartData = window.CartCalculation.calculateTotalCarts(this.orders);
+            console.log('✅ CartDisplayManager: Calculation complete');
+            console.log('   Total carts:', this.cartData.total);
+            console.log('   Total trucks:', this.cartData.trucks);
         } else {
-            console.error('❌ CartDisplayManager: CartCalculation not available!');
+            console.log('📦 CartDisplayManager: No orders, returning empty data');
             this.cartData = {
                 total: 0,
                 byRoute: { Aalsmeer: 0, Naaldwijk: 0, Rijnsburg: 0 },
