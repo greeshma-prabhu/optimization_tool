@@ -551,21 +551,6 @@
 
         // Sync orders from API or use dummy data - make it global
         window.syncOrders = async function(useDummy = false) {
-            // CRITICAL: Initialize OrderManager if not already done
-            if (!orderManager) {
-                try {
-                    orderManager = new OrderManager();
-                    console.log('✅ OrderManager initialized');
-                } catch (error) {
-                    console.error('❌ Failed to initialize OrderManager:', error);
-                    // Try to use demo data if OrderManager fails
-                    if (!useDummy) {
-                        console.log('⚠️ Falling back to demo data...');
-                        useDummy = true;
-                    }
-                }
-            }
-            
             const syncBtn = document.getElementById('sync-btn');
             const originalText = syncBtn ? syncBtn.innerHTML : '';
             const statusMsg = document.getElementById('api-status-message');
@@ -608,10 +593,27 @@
                 
                 if (useDummy) {
                     // Use dummy data - initialize OrderManager ONLY for demo
-                    if (!orderManager) {
-                        orderManager = new OrderManager();
+                    try {
+                        if (!orderManager && typeof OrderManager !== 'undefined') {
+                            orderManager = new OrderManager();
+                            console.log('✅ OrderManager initialized for demo data');
+                        }
+                        
+                        if (orderManager) {
+                            orders = await orderManager.fetchOrders(selectedDate, true);
+                            console.log('✅ Loaded demo data:', orders.length, 'orders');
+                        } else {
+                            throw new Error('OrderManager not available');
+                        }
+                    } catch (demoError) {
+                        console.error('❌ Demo data failed:', demoError);
+                        // Show error message
+                        if (statusMsg) {
+                            statusMsg.innerHTML = `<div style="color: #ef4444; padding: 16px;">Demo data failed to load. OrderManager not available.</div>`;
+                            statusMsg.classList.add('show', 'error');
+                        }
+                        orders = [];
                     }
-                    orders = await orderManager.fetchOrders(selectedDate, true);
                 } else {
                     // Fetch orders from API for the selected date
                     try {
