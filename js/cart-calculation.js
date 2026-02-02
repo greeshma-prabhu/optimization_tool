@@ -460,20 +460,20 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
             window.__zuidplas_cart_cache.ordersHash === ordersHash &&
             window.__zuidplas_cart_cache.orders.length === orders.length &&
             cacheDate === currentDate) {
-        console.log('═══════════════════════════════════════════════════════════════════');
-        console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result');
-        console.log('═══════════════════════════════════════════════════════════════════');
-        console.log(`   🔵 This result was calculated using FUST (not stems!)`);
-        console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
-        console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
-        console.log(`   Cached date: ${cacheDate || 'unknown'}`);
-        console.log(`   Current date: ${currentDate}`);
-        console.log(`   Cached result: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
-        console.log(`   Cached breakdown: Aalsmeer=${window.__zuidplas_cart_cache.cartResult.byRoute.Aalsmeer}, Naaldwijk=${window.__zuidplas_cart_cache.cartResult.byRoute.Naaldwijk}, Rijnsburg=${window.__zuidplas_cart_cache.cartResult.byRoute.Rijnsburg}`);
-        console.log(`   ✅ Formula used: fust = assembly_amount ÷ bundles_per_fust`);
-        console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
-        console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
-        console.log('═══════════════════════════════════════════════════════════════════');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log(`   🔵 This result was calculated using FUST (not stems!)`);
+            console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+            console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
+            console.log(`   Cached date: ${cacheDate || 'unknown'}`);
+            console.log(`   Current date: ${currentDate}`);
+            console.log(`   Cached result: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
+            console.log(`   Cached breakdown: Aalsmeer=${window.__zuidplas_cart_cache.cartResult.byRoute.Aalsmeer}, Naaldwijk=${window.__zuidplas_cart_cache.cartResult.byRoute.Naaldwijk}, Rijnsburg=${window.__zuidplas_cart_cache.cartResult.byRoute.Rijnsburg}`);
+            console.log(`   ✅ Formula used: fust = assembly_amount ÷ bundles_per_fust`);
+            console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
+            console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
+            console.log('═══════════════════════════════════════════════════════════════════');
             return {
                 orders: orders,
                 cartResult: window.__zuidplas_cart_cache.cartResult
@@ -489,9 +489,11 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
             console.log(`   Count match: ${window.__zuidplas_cart_cache.orders.length === orders.length}`);
             console.log(`   Cache had: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
         }
-    } else {
-        // No cache exists - need to calculate
-        console.log('🔄 getGlobalOrdersAndCarts: No cache found - calculating fresh...');
+        
+        // If no cache exists, log it
+        if (!window.__zuidplas_cart_cache) {
+            console.log('🔄 getGlobalOrdersAndCarts: No cache found - calculating fresh...');
+        }
     }
     
     // Calculate carts using the SAME function
