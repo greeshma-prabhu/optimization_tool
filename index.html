@@ -393,6 +393,15 @@
         // Use dummy data flag
         let useDummyData = false;
         window.isRefreshing = false;
+        
+        // Initialize orderManager (CRITICAL!)
+        let orderManager;
+        try {
+            orderManager = new OrderManager();
+            console.log('✅ OrderManager initialized');
+        } catch (error) {
+            console.error('❌ Failed to initialize OrderManager:', error);
+        }
 
         // Sync data for selected date - uses date picker
         window.syncDataForDate = async function() {
