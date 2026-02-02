@@ -44,26 +44,64 @@ function getRouteFromLocationId(locationId) {
 
 /**
  * Extract fust information from orderrow
+ * FIXED: Properly calculate bundles per container using L11/L13 properties
  */
 function extractFustInfo(orderrow) {
     // Get fust type from properties array (property code '901')
     const fustProperty = orderrow.properties?.find(p => p.code === '901');
     const fustCode = fustProperty?.pivot?.value || '612'; // Default to 612
     
-    // Get bundles per fust (property code 'L14' or from field)
-    let bundlesPerFust = orderrow.bundles_per_fust || orderrow.bundles_per_container;
+    // Get assembly amount
+    const assemblyAmount = orderrow.assembly_amount || 0;
     
-    if (!bundlesPerFust) {
-        // Try to extract from properties
-        const bundlesProperty = orderrow.properties?.find(p => p.code === 'L14');
-        bundlesPerFust = bundlesProperty ? parseInt(bundlesProperty.pivot?.value) : null;
+    if (assemblyAmount === 0) {
+        return {
+            fustCode: fustCode,
+            totalFust: 0,
+            customerId: orderrow.order?.customer_id || orderrow.customer_id,
+            locationId: orderrow.order?.delivery_location_id || orderrow.delivery_location_id,
+            customerName: orderrow.customer_name || `Customer ${orderrow.order?.customer_id}`
+        };
     }
     
-    bundlesPerFust = bundlesPerFust || 1; // Default to 1 if not found
+    // Extract properties
+    const properties = orderrow.properties || [];
+    const L11Property = properties.find(p => p.code === 'L11'); // Stems per bundle
+    const L13Property = properties.find(p => p.code === 'L13'); // Stems per container
     
-    // Calculate total fust for this orderrow
-    const assemblyAmount = orderrow.assembly_amount || 0;
-    const totalFust = assemblyAmount / bundlesPerFust;
+    let bundlesPerContainer = 1;
+    let calculationMethod = 'unknown';
+    
+    // Priority 1: Use L11 and L13 from properties (MOST ACCURATE)
+    if (L11Property && L13Property) {
+        const stemsPerBundle = parseInt(L11Property.pivot?.value || '10');
+        const stemsPerContainer = parseInt(L13Property.pivot?.value || '100');
+        
+        if (stemsPerBundle > 0 && stemsPerContainer > 0) {
+            bundlesPerContainer = stemsPerContainer / stemsPerBundle;
+            calculationMethod = `L11/L13: ${stemsPerContainer}÷${stemsPerBundle}`;
+        }
+    }
+    // Priority 2: Use nr_base_product (stems per container)
+    else if (orderrow.nr_base_product && parseInt(orderrow.nr_base_product) > 0) {
+        const stemsPerContainer = parseInt(orderrow.nr_base_product);
+        const stemsPerBundle = 10; // Default assumption
+        bundlesPerContainer = stemsPerContainer / stemsPerBundle;
+        calculationMethod = `nr_base_product: ${stemsPerContainer}÷${stemsPerBundle}`;
+    }
+    // Priority 3: Use bundles_per_fust only if > 1
+    else if (orderrow.bundles_per_fust && parseInt(orderrow.bundles_per_fust) > 1) {
+        bundlesPerContainer = parseInt(orderrow.bundles_per_fust);
+        calculationMethod = `bundles_per_fust: ${bundlesPerContainer}`;
+    }
+    // Priority 4: Default assumption (5 bundles per container is industry standard)
+    else {
+        bundlesPerContainer = 5;
+        calculationMethod = 'default: 5 bundles/container';
+    }
+    
+    // Calculate total fust
+    const totalFust = assemblyAmount / bundlesPerContainer;
     
     // Get customer and location info
     const order = orderrow.order || {};
@@ -74,6 +112,9 @@ function extractFustInfo(orderrow) {
     return {
         fustCode: fustCode,
         totalFust: totalFust,
+        bundlesPerContainer: bundlesPerContainer,
+        assemblyAmount: assemblyAmount,
+        calculationMethod: calculationMethod,
         customerId: customerId,
         locationId: locationId,
         customerName: customerName
@@ -97,7 +138,8 @@ function groupOrdersByCustomerAndRoute(enrichedOrderrows) {
                 customerId: fustInfo.customerId,
                 customerName: fustInfo.customerName,
                 route: route,
-                fustByType: {}
+                fustByType: {},
+                calculationMethods: [] // Track how fust was calculated
             };
         }
         
@@ -105,6 +147,11 @@ function groupOrdersByCustomerAndRoute(enrichedOrderrows) {
         const fustCode = fustInfo.fustCode;
         groups[key].fustByType[fustCode] = 
             (groups[key].fustByType[fustCode] || 0) + fustInfo.totalFust;
+        
+        // Track calculation method (for debugging)
+        if (fustInfo.calculationMethod && groups[key].calculationMethods.length < 3) {
+            groups[key].calculationMethods.push(fustInfo.calculationMethod);
+        }
     });
     
     return Object.values(groups);
@@ -129,7 +176,8 @@ function calculateCartsForGroup(group) {
             carts: carts
         });
         
-        console.log(`  ${group.customerName} - ${group.route}: ${totalFust.toFixed(1)} fust of type ${fustCode} = ${carts} carts (capacity: ${capacity})`);
+        console.log(`  ${group.customerName} - ${group.route}:`);
+        console.log(`    Fust ${fustCode}: ${totalFust.toFixed(2)} fust ÷ ${capacity} capacity = ${carts} carts`);
     });
     
     return {
@@ -158,8 +206,12 @@ function calculateTotalCarts(enrichedOrderrows) {
     const groupDetails = [];
     
     groups.forEach((group, idx) => {
-        if (idx < 10) { // Log first 10 groups
-            console.log(`Group ${idx + 1}: ${group.customerName} → ${group.route}`);
+        if (idx < 10) { // Log first 10 groups with calculation details
+            console.log(`\nGroup ${idx + 1}: ${group.customerName} → ${group.route}`);
+            // Show calculation method for first orderrow in group
+            if (group.calculationMethods && group.calculationMethods.length > 0) {
+                console.log(`  Calculation method: ${group.calculationMethods[0]}`);
+            }
         }
         
         const result = calculateCartsForGroup(group);
@@ -174,7 +226,6 @@ function calculateTotalCarts(enrichedOrderrows) {
         
         if (idx < 10) {
             console.log(`  → Total carts for this group: ${result.totalCarts}`);
-            console.log('');
         }
     });
     
