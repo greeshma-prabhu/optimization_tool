@@ -249,6 +249,7 @@ function calculateTrucks(totalCarts) {
 /**
  * GLOBAL SINGLE SOURCE OF TRUTH
  * ALL pages must use this to get the SAME orders and calculate the SAME carts
+ * CACHED: Returns same result if orders haven't changed
  */
 function getGlobalOrdersAndCarts() {
     console.log('🔍 getGlobalOrdersAndCarts: Getting orders from single source...');
@@ -296,9 +297,28 @@ function getGlobalOrdersAndCarts() {
         };
     }
     
+    // CACHE: Check if we already calculated for these orders
+    const ordersHash = orders.length + '_' + (orders[0]?.id || '0') + '_' + (orders[orders.length - 1]?.id || '0');
+    if (window.__zuidplas_cart_cache && 
+        window.__zuidplas_cart_cache.ordersHash === ordersHash &&
+        window.__zuidplas_cart_cache.orders.length === orders.length) {
+        console.log('✅ getGlobalOrdersAndCarts: Using CACHED cart result (orders unchanged)');
+        return {
+            orders: orders,
+            cartResult: window.__zuidplas_cart_cache.cartResult
+        };
+    }
+    
     // Calculate carts using the SAME function
     console.log(`🧮 getGlobalOrdersAndCarts: Calculating carts for ${orders.length} orders...`);
     const cartResult = calculateCarts(orders);
+    
+    // CACHE the result
+    window.__zuidplas_cart_cache = {
+        ordersHash: ordersHash,
+        orders: orders,
+        cartResult: cartResult
+    };
     
     console.log(`✅ getGlobalOrdersAndCarts: Result - ${cartResult.total} carts, ${cartResult.trucks} trucks`);
     console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);

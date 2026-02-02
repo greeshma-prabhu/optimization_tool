@@ -2267,7 +2267,20 @@
             const timelineContainer = document.querySelector('#route-timeline .timeline-container');
             const timelineDiv = document.getElementById('route-timeline');
             
-            if (!timelineContainer || !result.routeAnalysis) {
+            if (!timelineContainer) {
+                if (timelineDiv) timelineDiv.style.display = 'none';
+                return;
+            }
+            
+            // CRITICAL: Get cart counts from SINGLE SOURCE OF TRUTH
+            let cartResult = null;
+            if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                cartResult = globalData.cartResult;
+                console.log('✅ Route Timeline: Using cart counts from SINGLE SOURCE');
+            }
+            
+            if (!cartResult) {
                 if (timelineDiv) timelineDiv.style.display = 'none';
                 return;
             }
@@ -2275,28 +2288,33 @@
             timelineDiv.style.display = 'block';
             
             const routes = [
-                { key: 'rijnsburg', time: '09:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', class: 'route1' },
-                { key: 'aalsmeer', time: '10:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', class: 'route2' },
-                { key: 'naaldwijk', time: '11:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', class: 'route3' }
+                { key: 'rijnsburg', time: '09:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', class: 'route1', routeName: 'Rijnsburg' },
+                { key: 'aalsmeer', time: '10:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', class: 'route2', routeName: 'Aalsmeer' },
+                { key: 'naaldwijk', time: '11:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', class: 'route3', routeName: 'Naaldwijk' }
             ];
             
             // Determine which truck handles which route
-            const truck1Routes = Array.from(result.truck1.routes);
-            const truck2Routes = Array.from(result.truck2.routes);
+            const truck1Routes = result.truck1 ? Array.from(result.truck1.routes) : [];
+            const truck2Routes = result.truck2 ? Array.from(result.truck2.routes) : [];
             
             timelineContainer.innerHTML = '<div class="timeline-connector"></div>';
             
             routes.forEach(route => {
-                const routeInfo = result.routeAnalysis[route.key];
-                if (!routeInfo) return;
+                // Get cart count from SINGLE SOURCE (cartResult)
+                const carts = cartResult.byRoute[route.routeName] || 0;
+                const maxCapacity = 17;
+                const fits = carts <= maxCapacity;
                 
+                // Determine truck assignment
                 const isTruck1 = truck1Routes.includes(route.key);
                 const truckName = isTruck1 
                     ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1')
-                    : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2');
+                    : (truck2Routes.includes(route.key) 
+                        ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2')
+                        : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.notAssigned', 'Not Assigned') : 'Not Assigned'));
                 
-                const statusIcon = routeInfo.fits ? '✅' : '⚠️';
-                const statusText = routeInfo.fits 
+                const statusIcon = fits ? '✅' : '⚠️';
+                const statusText = fits 
                     ? (typeof i18n !== 'undefined' ? i18n.t('status.fits', 'Fits') : 'Fits')
                     : (typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow');
                 
@@ -2310,7 +2328,7 @@
                         <div style="margin-top: 5px;">
                             <span>${statusIcon} ${statusText}</span>
                             <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
-                                ${routeInfo.totalCarts} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts'}
+                                ${carts} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.totalCarts', 'carts') : 'carts'}
                             </div>
                         </div>
                     </div>

@@ -68,6 +68,13 @@ window.appState = {
         window.__zuidplas_orders_memory = this.orders; // Store FULL orders in memory
         window.__zuidplas_orders_count = this.orders.length;
         window.__zuidplas_orders_date = date;
+        
+        // CRITICAL: Clear cart cache when orders change (forces recalculation)
+        if (window.__zuidplas_cart_cache) {
+            delete window.__zuidplas_cart_cache;
+            console.log('🔄 Cleared cart cache (orders updated)');
+        }
+        
         console.log(`✅ Orders stored in memory (${this.orders.length} orders, shared across pages)`);
         
         // Try localStorage first
