@@ -378,14 +378,27 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     
     // If date is not set, try to get from first order's delivery_date
     if (!currentDate && orders.length > 0) {
-        const firstOrderDate = orders[0].delivery_date || orders[0].order?.delivery_date;
+        // Check multiple possible date field names
+        const firstOrder = orders[0];
+        const firstOrderDate = firstOrder.delivery_date || 
+                              firstOrder.deliveryDate || 
+                              firstOrder.order?.delivery_date || 
+                              firstOrder.order?.deliveryDate;
         if (firstOrderDate) {
             try {
-                currentDate = new Date(firstOrderDate).toISOString().split('T')[0];
-                console.log(`   📅 Date not in memory, extracted from order: ${currentDate}`);
+                const dateObj = new Date(firstOrderDate);
+                if (!isNaN(dateObj.getTime())) {
+                    currentDate = dateObj.toISOString().split('T')[0];
+                    console.log(`   📅 Date not in memory, extracted from order: ${currentDate}`);
+                    console.log(`   📅 Original date value: ${firstOrderDate}`);
+                } else {
+                    console.warn(`   ⚠️ Invalid date value: ${firstOrderDate}`);
+                }
             } catch (e) {
-                console.warn(`   ⚠️ Could not parse date from order: ${firstOrderDate}`);
+                console.warn(`   ⚠️ Could not parse date from order: ${firstOrderDate}`, e);
             }
+        } else {
+            console.warn(`   ⚠️ No date field found in first order. Available fields: ${Object.keys(firstOrder).join(', ')}`);
         }
     }
     
@@ -406,34 +419,47 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     
     const ordersHash = orders.length + '_' + currentDate + '_' + orderIds;
     
-    console.log(`🔍 getGlobalOrdersAndCarts: Checking cache...`);
-    console.log(`   Orders count: ${orders.length}`);
-    console.log(`   Current date: ${currentDate}`);
-    console.log(`   Cache exists? ${!!window.__zuidplas_cart_cache}`);
-    if (window.__zuidplas_cart_cache) {
-        console.log(`   Cache hash: ${window.__zuidplas_cart_cache.ordersHash}`);
-        console.log(`   Cache date: ${window.__zuidplas_cart_cache.date || 'unknown'}`);
-        console.log(`   Cache orders count: ${window.__zuidplas_cart_cache.orders.length}`);
-    }
-    console.log(`   Current hash: ${ordersHash}`);
-    
-    // Normalize cache date for comparison
-    let cacheDate = window.__zuidplas_cart_cache?.date || '';
-    if (cacheDate instanceof Date) {
-        cacheDate = cacheDate.toISOString().split('T')[0];
-    } else if (typeof cacheDate === 'string' && cacheDate.includes('GMT')) {
-        try {
-            cacheDate = new Date(cacheDate).toISOString().split('T')[0];
-        } catch (e) {
-            cacheDate = String(cacheDate);
+    // CRITICAL: Check forceRefresh FIRST - Dashboard should ALWAYS calculate fresh!
+    if (forceRefresh) {
+        console.log('═══════════════════════════════════════════════════════════════════');
+        console.log('🔄 DASHBOARD: FORCE REFRESH - Calculating FRESH (ignoring cache)');
+        console.log('═══════════════════════════════════════════════════════════════════');
+        console.log(`   Orders count: ${orders.length}`);
+        console.log(`   Current date: ${currentDate}`);
+        if (window.__zuidplas_cart_cache) {
+            console.log(`   ⚠️ Old cache exists (${window.__zuidplas_cart_cache.cartResult?.total || 'unknown'} carts) - will be OVERWRITTEN`);
         }
-    }
-    
-    // Skip cache if forceRefresh is true (Dashboard only!)
-    if (!forceRefresh && window.__zuidplas_cart_cache && 
-        window.__zuidplas_cart_cache.ordersHash === ordersHash &&
-        window.__zuidplas_cart_cache.orders.length === orders.length &&
-        cacheDate === currentDate) {
+        // Skip to calculation - don't check cache at all!
+    } else {
+        // Only check cache if NOT forceRefresh (other pages)
+        console.log(`🔍 getGlobalOrdersAndCarts: Checking cache...`);
+        console.log(`   Orders count: ${orders.length}`);
+        console.log(`   Current date: ${currentDate}`);
+        console.log(`   Cache exists? ${!!window.__zuidplas_cart_cache}`);
+        if (window.__zuidplas_cart_cache) {
+            console.log(`   Cache hash: ${window.__zuidplas_cart_cache.ordersHash}`);
+            console.log(`   Cache date: ${window.__zuidplas_cart_cache.date || 'unknown'}`);
+            console.log(`   Cache orders count: ${window.__zuidplas_cart_cache.orders.length}`);
+        }
+        console.log(`   Current hash: ${ordersHash}`);
+        
+        // Normalize cache date for comparison
+        let cacheDate = window.__zuidplas_cart_cache?.date || '';
+        if (cacheDate instanceof Date) {
+            cacheDate = cacheDate.toISOString().split('T')[0];
+        } else if (typeof cacheDate === 'string' && cacheDate.includes('GMT')) {
+            try {
+                cacheDate = new Date(cacheDate).toISOString().split('T')[0];
+            } catch (e) {
+                cacheDate = String(cacheDate);
+            }
+        }
+        
+        // Use cache if it matches
+        if (window.__zuidplas_cart_cache && 
+            window.__zuidplas_cart_cache.ordersHash === ordersHash &&
+            window.__zuidplas_cart_cache.orders.length === orders.length &&
+            cacheDate === currentDate) {
         console.log('═══════════════════════════════════════════════════════════════════');
         console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result');
         console.log('═══════════════════════════════════════════════════════════════════');
@@ -448,14 +474,12 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
         console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
         console.log('═══════════════════════════════════════════════════════════════════');
-        return {
-            orders: orders,
-            cartResult: window.__zuidplas_cart_cache.cartResult
-        };
-    } else {
-        if (forceRefresh) {
-            console.log('🔄 getGlobalOrdersAndCarts: FORCE REFRESH - calculating fresh (cache ignored)');
-        } else if (window.__zuidplas_cart_cache) {
+            return {
+                orders: orders,
+                cartResult: window.__zuidplas_cart_cache.cartResult
+            };
+        } else {
+            // Cache exists but doesn't match - need to recalculate
             console.log('🔄 getGlobalOrdersAndCarts: Cache mismatch - recalculating...');
             console.log(`   Cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
             console.log(`   Cache date: ${cacheDate || 'unknown'}`);
@@ -464,9 +488,10 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
             console.log(`   Hash match: ${window.__zuidplas_cart_cache.ordersHash === ordersHash}`);
             console.log(`   Count match: ${window.__zuidplas_cart_cache.orders.length === orders.length}`);
             console.log(`   Cache had: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
-        } else {
-            console.log('🔄 getGlobalOrdersAndCarts: No cache found - calculating fresh...');
         }
+    } else {
+        // No cache exists - need to calculate
+        console.log('🔄 getGlobalOrdersAndCarts: No cache found - calculating fresh...');
     }
     
     // Calculate carts using the SAME function
