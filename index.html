@@ -480,7 +480,8 @@
                     orderManager.displayOrders();
                     
                     // Assign carts
-                    orderManager.assignCarts();
+                    // DISABLED OLD BUGGY METHOD: orderManager.assignCarts();
+                    console.log('✅ Skipped old assignCarts(). Using NEW cart calculation instead.');
                     
                     // Update orders array
                     const ordersWithCarts = orderManager.orders;
@@ -613,8 +614,9 @@
                             
                             // CRITICAL: Assign carts BEFORE displaying
                             console.log('🔧 Assigning carts to orders...');
-                            orderManager.assignCarts();
-                            console.log('✅ Carts assigned. Orders count:', orderManager.orders.length);
+                            // DISABLED OLD BUGGY METHOD: orderManager.assignCarts();
+                            console.log('✅ Skipped old assignCarts(). Using NEW cart calculation instead.');
+                            console.log('✅ Orders count:', orderManager.orders.length);
                             
                             // Update orders array to use the one with carts assigned
                             orders = orderManager.orders;
@@ -687,8 +689,9 @@
                 // CRITICAL: Assign carts BEFORE creating optimizer
                 console.log('🔧 Assigning carts to orders...');
                 console.log('   Orders before assignCarts:', orders.length);
-                orderManager.assignCarts();
-                console.log('✅ Carts assigned. Orders count:', orderManager.orders.length);
+                // DISABLED OLD BUGGY METHOD: orderManager.assignCarts();
+                console.log('✅ Skipped old assignCarts(). Using NEW cart calculation instead.');
+                console.log('✅ Orders count:', orderManager.orders.length);
                 
                 // CRITICAL: Use orderManager.orders (which has carts assigned) instead of local orders variable
                 orders = orderManager.orders;
