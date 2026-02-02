@@ -299,97 +299,37 @@
                 cartDisplayManager.setOrders(orders);
             }
             
-            // Use CartDisplayManager to display route cards
-            cartDisplayManager.displayRouteCards('route-breakdown');
-            
-            // Also update optimizer if available (for compatibility)
-            if (currentOptimizer) {
-                const routeAnalysis = currentOptimizer.processOrders();
-                // Use CartDisplayManager data instead of optimizer data for display
-            }
-            
+            // Get container
             const container = document.getElementById('route-breakdown');
-            
             if (!container) {
                 console.error('Route breakdown container not found');
                 return;
             }
             
-            // If container is empty, CartDisplayManager didn't find it, create cards manually
-            if (container.innerHTML === '') {
-                const routes = [
-                    { name: 'Rijnsburg', id: 36, time: '09:00' },
-                    { name: 'Aalsmeer', id: 32, time: '10:00' },
-                    { name: 'Naaldwijk', id: 34, time: '11:00' }
-                ];
-                
-                routes.forEach((route, index) => {
-                    const routeData = cartDisplayManager.getRouteData(route.name);
-                    const cartTypes = cartDisplayManager.getRouteCartTypes(route.name);
-                    const card = cartDisplayManager.createRouteCard(
-                        index + 1,
-                        route.name,
-                        route.time,
-                        routeData,
-                        cartTypes
-                    );
-                    container.appendChild(card);
-                });
-            }
+            // Clear container
+            container.innerHTML = '';
             
-            // Legacy optimizer code (keep for compatibility)
-            if (currentOptimizer) {
-                const routeAnalysis = currentOptimizer.processOrders();
-                
-                Object.keys(ROUTES).forEach(routeKey => {
-                    const route = ROUTES[routeKey];
-                    const analysis = routeAnalysis[routeKey];
-                    
-                    if (!analysis) {
-                        return; // Skip - already handled by CartDisplayManager
-                    }
-                
-                const capacity = analysis.capacity;
-                const statusIcon = capacity.fits ? '✓' : capacity.status === 'tight' ? '⚠️' : '❌';
-                const statusClass = capacity.fits ? 'success' : capacity.status === 'tight' ? 'warning' : 'danger';
-                
-                const card = document.createElement('div');
-                card.className = 'route-card';
-                card.innerHTML = `
-                    <div class="route-header">
-                        <div class="route-title">Route ${route.id}: ${route.name}</div>
-                        <div class="route-time">${route.departureTime}</div>
-                    </div>
-                    <div class="route-info">
-                        <div class="route-info-item">
-                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.orders', 'Orders') : 'Orders'}</div>
-                            <div class="route-info-value">${(analysis.orders && analysis.orders.length) || 0}</div>
-                        </div>
-                        <div class="route-info-item">
-                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartsNeeded', 'Carts Needed') : 'Carts Needed'}</div>
-                            <div class="route-info-value">${capacity.equivalentStandard || 0} / ${capacity.maxCapacity || 17}</div>
-                        </div>
-                        <div class="route-info-item">
-                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartTypes', 'Cart Types') : 'Cart Types'}</div>
-                            <div class="route-info-value">${analysis.danish || 0} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.danish', 'Danish') : 'Danish'}, ${analysis.standard || 0} ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.standard', 'Standard') : 'Standard'}</div>
-                        </div>
-                        <div class="route-info-item">
-                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.status', 'Status') : 'Status'}</div>
-                            <div class="route-info-value">
-                                <span class="badge ${statusClass}">${statusIcon} ${typeof i18n !== 'undefined' ? (capacity.fits ? i18n.t('optimization.fits', 'FITS') : capacity.status === 'tight' ? i18n.t('common.tight', 'TIGHT') : i18n.t('optimization.overflow', 'OVERFLOW')) : capacity.status.toUpperCase()}</span>
-                            </div>
-                        </div>
-                    </div>
-                    ${capacity.warning ? `<div class="info-box warning" style="margin-top: 15px;">${typeof i18n !== 'undefined' && capacity.warning.includes('Danish carts') ? i18n.t('carts.danishCapacityWarning', capacity.warning, BUSINESS_RULES.danishThreshold, capacity.maxCapacity) : capacity.warning}</div>` : ''}
-                    ${!capacity.fits ? `
-                    <div class="info-box danger" style="margin-top: 15px;">
-                        <strong>${typeof i18n !== 'undefined' ? i18n.t('optimization.overflow', 'Overflow') : 'Overflow'}:</strong> ${typeof i18n !== 'undefined' ? i18n.t('optimization.needsAdditionalCarts', 'Needs') : 'Needs'} ${capacity.overflow} ${typeof i18n !== 'undefined' ? i18n.t('optimization.additionalCarts', 'additional carts') : 'additional carts'} → ${typeof i18n !== 'undefined' ? i18n.t('optimization.suggestExternal', 'Suggest external carrier') : 'Suggest external carrier'}
-                    </div>
-                    ` : ''}
-                `;
-                
+            // Create route cards using CartDisplayManager
+            const routes = [
+                { name: 'Rijnsburg', id: 36, time: '09:00' },
+                { name: 'Aalsmeer', id: 32, time: '10:00' },
+                { name: 'Naaldwijk', id: 34, time: '11:00' }
+            ];
+            
+            routes.forEach((route, index) => {
+                const routeData = cartDisplayManager.getRouteData(route.name);
+                const cartTypes = cartDisplayManager.getRouteCartTypes(route.name);
+                const card = cartDisplayManager.createRouteCard(
+                    index + 1,
+                    route.name,
+                    route.time,
+                    routeData,
+                    cartTypes
+                );
                 container.appendChild(card);
             });
+            
+            console.log('✅ Route Breakdown updated');
         }
 
         function updateOptimizationOptions(options) {
