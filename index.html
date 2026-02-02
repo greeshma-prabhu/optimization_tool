@@ -661,17 +661,17 @@
                             
                             console.log('✅ Processing', orders.length, 'valid orders');
                             
+                            // ✅ CRITICAL: SAVE TO GLOBAL STATE FIRST (before calculating carts!)
+                            console.log(`🔄 Saving ${orders.length} orders to global state FIRST...`);
+                            window.appState.setOrders(orders, selectedDate);
+                            
                             // Initialize optimizer with orders that have carts assigned
                             console.log('🔧 Initializing optimizer with', orders.length, 'orders...');
                             const optimizer = initializeOptimizer(orders);
                             const options = optimizer.generateOptions();
                             
-                    // Update dashboard
-                    updateDashboard(orders, options);
-                    
-                    // STORE IN GLOBAL STATE (handles localStorage automatically)
-                    console.log(`🔄 Saving ${orders.length} orders to global state...`);
-                    window.appState.setOrders(orders, selectedDate);
+                            // Update dashboard (now uses getGlobalOrdersAndCarts which will use the orders we just saved)
+                            updateDashboard(orders, options);
                     
                     // Update debug panel
                     setTimeout(() => {
@@ -718,6 +718,11 @@
                     localStorage.setItem('zuidplas_using_demo_data', 'false');
                 }
                 
+                // ✅ CRITICAL: SAVE TO GLOBAL STATE FIRST (before calculating carts!)
+                // This ensures getGlobalOrdersAndCarts() uses the SAME orders
+                console.log(`🔄 Saving ${orders.length} orders to global state FIRST...`);
+                window.appState.setOrders(orders, selectedDate);
+                
                 // Initialize optimizer with orders
                 console.log('🔧 Initializing optimizer with', orders.length, 'orders...');
                 const optimizer = initializeOptimizer(orders);
@@ -725,12 +730,8 @@
                 // Generate options
                 const options = optimizer.generateOptions();
                 
-                // Update dashboard
+                // Update dashboard (now uses getGlobalOrdersAndCarts which will use the orders we just saved)
                 updateDashboard(orders, options);
-                
-                // ✅ SAVE TO GLOBAL STATE (for ALL data sources: API or Demo)
-                console.log(`🔄 Saving ${orders.length} orders to global state...`);
-                window.appState.setOrders(orders, selectedDate);
                 
                 // Update debug panel
                 setTimeout(() => {
@@ -805,10 +806,22 @@
             document.getElementById('total-orders-count').textContent = orders.length;
             console.log('═══════════════════════════════════════════════════════════════════');
             
-            // CRITICAL: Use SINGLE SOURCE OF TRUTH for orders and cart calculation
+            // CRITICAL: ALWAYS use SINGLE SOURCE OF TRUTH for orders and cart calculation
             // This ensures ALL pages show the SAME numbers!
+            // NO FALLBACKS - must use getGlobalOrdersAndCarts()!
             if (typeof window.CartCalculation !== 'undefined' && window.CartCalculation.getGlobalOrdersAndCarts) {
                 console.log('🛒 Dashboard: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
+                
+                // CRITICAL: Ensure orders are in global memory FIRST
+                if (orders && orders.length > 0 && (!window.__zuidplas_orders_memory || window.__zuidplas_orders_memory.length !== orders.length)) {
+                    console.log('🔄 Dashboard: Saving orders to global memory first...');
+                    window.__zuidplas_orders_memory = orders;
+                    // Clear cache to force fresh calculation
+                    if (window.__zuidplas_cart_cache) {
+                        delete window.__zuidplas_cart_cache;
+                    }
+                }
+                
                 const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
                 const cartResult = globalData.cartResult;
                 const totalCarts = cartResult.total || 0;
@@ -822,20 +835,12 @@
                 
                 document.getElementById('total-carts-needed').textContent = totalCarts;
                 console.log(`✅ Dashboard updated with SINGLE SOURCE calculation: ${totalCarts} carts`);
-            } else if (typeof window.CartCalculation !== 'undefined') {
-                // Fallback to direct calculation if getGlobalOrdersAndCarts not available
-                console.log('🛒 Dashboard: Using cart-calculation.js (FUST-BASED)...');
-                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
-                const totalCarts = cartResult.total || 0;
-                
-                document.getElementById('total-carts-needed').textContent = totalCarts;
-                console.log(`✅ Dashboard updated with calculation: ${totalCarts} carts`);
             } else {
-                console.error('❌ cart-calculation.js NOT LOADED! Using old buggy method...');
-                const cartSummary = orderManager.getCartSummary();
-                const totalCarts = (cartSummary.standard || 0) + (cartSummary.danish || 0);
-                document.getElementById('total-carts-needed').textContent = totalCarts;
-                console.log(`⚠️ Dashboard (OLD BUGGY METHOD): ${totalCarts} carts`);
+                console.error('❌ getGlobalOrdersAndCarts() NOT AVAILABLE! This should never happen!');
+                console.error('   CartCalculation available?', typeof window.CartCalculation !== 'undefined');
+                console.error('   getGlobalOrdersAndCarts available?', window.CartCalculation && typeof window.CartCalculation.getGlobalOrdersAndCarts === 'function');
+                // Don't use fallback - show error instead
+                document.getElementById('total-carts-needed').textContent = 'ERROR';
             }
             console.log('═══════════════════════════════════════════════════════════════════');
             
