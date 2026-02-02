@@ -781,57 +781,23 @@
             console.log('═══════════════════════════════════════════════════════════════════');
             console.log('📊 UPDATE DASHBOARD CALLED');
             console.log(`   Orders: ${orders.length}`);
-            console.log('═══════════════════════════════════════════════════════════════════');
             
             // Update stats
             document.getElementById('total-orders-count').textContent = orders.length;
             
-            // ═══════════════════════════════════════════════════════════════════
-            // CRITICAL: Use NEW CORRECT CART CALCULATION (FUST-BASED)
-            // ═══════════════════════════════════════════════════════════════════
-            if (typeof window.CartCalculation !== 'undefined') {
-                console.log('🛒 Using NEW CORRECT cart calculation (fust-based)...');
-                
-                try {
-                    const cartResult = window.CartCalculation.calculateTotalCarts(orders);
-                    
-                    console.log('📦 Cart calculation result:', cartResult);
-                    console.log('   totalCarts:', cartResult.totalCarts);
-                    console.log('   cartsByRoute:', cartResult.cartsByRoute);
-                    
-                    const totalCarts = cartResult.totalCarts || 0;
-                    
-                    // Update UI
-                    const cartsElement = document.getElementById('total-carts-needed');
-                    if (cartsElement) {
-                        cartsElement.textContent = totalCarts;
-                        console.log(`✅ Dashboard UI updated: ${totalCarts} carts`);
-                    } else {
-                        console.error('❌ Element "total-carts-needed" not found!');
-                    }
-                    
-                    console.log(`✅ Dashboard: ${orders.length} orders → ${totalCarts} carts (CORRECT)`);
-                    console.log(`   Rijnsburg: ${cartResult.cartsByRoute.rijnsburg} carts`);
-                    console.log(`   Aalsmeer: ${cartResult.cartsByRoute.aalsmeer} carts`);
-                    console.log(`   Naaldwijk: ${cartResult.cartsByRoute.naaldwijk} carts`);
-                } catch (error) {
-                    console.error('❌ Error in cart calculation:', error);
-                    console.error('Stack:', error.stack);
-                    document.getElementById('total-carts-needed').textContent = '0';
-                }
-            } else {
-                console.error('❌ CartCalculation not loaded! Using fallback...');
-                // Fallback to old method
-                try {
-                    const cartSummary = orderManager.getCartSummary();
-                    const totalCarts = cartSummary.standard + cartSummary.danish;
-                    document.getElementById('total-carts-needed').textContent = totalCarts;
-                    console.log(`⚠️ Dashboard (fallback): ${orders.length} orders → ${totalCarts} carts`);
-                } catch (error) {
-                    console.error('❌ Error in fallback cart calculation:', error);
-                    document.getElementById('total-carts-needed').textContent = '0';
-                }
-            }
+            // SIMPLE FIX: Just use the cart summary that's already calculated
+            console.log('🛒 Getting cart summary from orderManager...');
+            const cartSummary = orderManager.getCartSummary();
+            const totalCarts = (cartSummary.standard || 0) + (cartSummary.danish || 0);
+            
+            console.log(`   Standard carts: ${cartSummary.standard}`);
+            console.log(`   Danish carts: ${cartSummary.danish}`);
+            console.log(`   TOTAL: ${totalCarts}`);
+            
+            // Update UI
+            document.getElementById('total-carts-needed').textContent = totalCarts;
+            console.log(`✅ Dashboard UI updated: ${totalCarts} carts`);
+            console.log('═══════════════════════════════════════════════════════════════════');
             
             // Update routes status
             try {
