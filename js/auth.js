@@ -7,8 +7,27 @@ class AuthManager {
     constructor() {
         this.token = null;
         this.tokenExpiry = null;
-        // Use proxy server to bypass CORS
-        this.apiBase = 'http://localhost:3001/api';
+        
+        // SMART ROUTING: Auto-detect environment
+        const isVercel = window.location.hostname.includes('vercel.app') || 
+                         window.location.hostname.includes('optimization-tool');
+        const isLocalhost = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1';
+        
+        if (isVercel) {
+            // Vercel deployment: use serverless functions
+            this.apiBase = '/api';
+            console.log('🔵 AUTH: Vercel mode - using /api');
+        } else if (isLocalhost) {
+            // Local development: use proxy server
+            this.apiBase = 'http://localhost:3001/api';
+            console.log('🔧 AUTH: Local mode - using localhost:3001');
+        } else {
+            // Other deployment: use /api
+            this.apiBase = '/api';
+            console.log('🌐 AUTH: Production mode - using /api');
+        }
+        
         this.originalApiBase = 'https://summit.florinet.nl/api/v1';
         this.credentials = {
             username: 'JeroenMainfact',
