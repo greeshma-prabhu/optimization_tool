@@ -437,9 +437,17 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         console.log(`   Current date: ${currentDate}`);
         console.log(`   Cache exists? ${!!window.__zuidplas_cart_cache}`);
         if (window.__zuidplas_cart_cache) {
+            console.log(`   ✅ Cache found!`);
             console.log(`   Cache hash: ${window.__zuidplas_cart_cache.ordersHash}`);
             console.log(`   Cache date: ${window.__zuidplas_cart_cache.date || 'unknown'}`);
             console.log(`   Cache orders count: ${window.__zuidplas_cart_cache.orders.length}`);
+            console.log(`   Cache result: ${window.__zuidplas_cart_cache.cartResult?.total || 'unknown'} carts`);
+            console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
+            console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+        } else {
+            console.log(`   ❌ No cache found in window.__zuidplas_cart_cache`);
+            console.log(`   Checking if cache exists in other locations...`);
+            console.log(`   window.__zuidplas_cart_cache type: ${typeof window.__zuidplas_cart_cache}`);
         }
         console.log(`   Current hash: ${ordersHash}`);
         
@@ -509,27 +517,18 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 };
             }
         } else {
-            // No cache exists at all - NON-DASHBOARD PAGES SHOULD NOT CALCULATE!
-            console.error('❌ ERROR: No cache found and this is NOT Dashboard!');
-            console.error('❌ Non-Dashboard pages should ONLY use cache, never calculate fresh!');
-            console.error('❌ Please load Dashboard first and click "Sync" or "Refresh Data" to calculate carts!');
-            console.error('❌ Returning empty result - Dashboard must calculate first!');
-            
-            // Return empty result instead of calculating
-            return {
-                orders: orders,
-                cartResult: {
-                    total: 0,
-                    byRoute: {
-                        Aalsmeer: 0,
-                        Naaldwijk: 0,
-                        Rijnsburg: 0
-                    },
-                    trucks: 0,
-                    methodCounts: {},
-                    skippedOrdersCount: 0
-                }
-            };
+            // No cache exists at all
+            if (!forceRefresh) {
+                // Non-Dashboard page with no cache - calculate but warn
+                console.warn('⚠️ WARNING: No cache found and this is NOT Dashboard!');
+                console.warn('⚠️ Dashboard should calculate first, but calculating here as fallback...');
+                console.warn('⚠️ This result will NOT be cached - Dashboard should sync to cache properly!');
+                console.warn('⚠️ Please load Dashboard and click "Sync" or "Refresh Data" for proper caching!');
+                // Continue to calculation below (don't return empty)
+            } else {
+                // Dashboard with no cache - this is fine, calculate fresh
+                console.log('🔄 Dashboard: No cache found - calculating fresh...');
+            }
         }
     }
     
@@ -596,6 +595,11 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     
     console.log(`✅ getGlobalOrdersAndCarts: Result calculated and CACHED at ${new Date().toISOString()}`);
     console.log(`   Cached by: ${cacheSource}`);
+    console.log(`   Cache hash: ${ordersHash}`);
+    console.log(`   Cache date: ${normalizedDate}`);
+    console.log(`   Cache orders count: ${orders.length}`);
+    console.log(`   Cache result: ${cartResult.total} carts`);
+    console.log(`   ✅ Other pages can now use this cache!`);
     console.log(`   Date: ${currentDate}`);
     console.log(`   Total: ${cartResult.total} carts, ${cartResult.trucks} trucks`);
     console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
