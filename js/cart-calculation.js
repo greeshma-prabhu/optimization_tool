@@ -479,20 +479,21 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 cartResult: window.__zuidplas_cart_cache.cartResult
             };
         } else {
-            // Cache exists but doesn't match - need to recalculate
-            console.log('🔄 getGlobalOrdersAndCarts: Cache mismatch - recalculating...');
-            console.log(`   Cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
-            console.log(`   Cache date: ${cacheDate || 'unknown'}`);
-            console.log(`   Current date: ${currentDate}`);
-            console.log(`   Date match: ${cacheDate === currentDate}`);
-            console.log(`   Hash match: ${window.__zuidplas_cart_cache.ordersHash === ordersHash}`);
-            console.log(`   Count match: ${window.__zuidplas_cart_cache.orders.length === orders.length}`);
-            console.log(`   Cache had: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
-        }
-        
-        // If no cache exists, log it
-        if (!window.__zuidplas_cart_cache) {
-            console.log('🔄 getGlobalOrdersAndCarts: No cache found - calculating fresh...');
+            // Cache exists but doesn't match OR cache doesn't exist - need to recalculate
+            if (window.__zuidplas_cart_cache) {
+                // Cache exists but doesn't match
+                console.log('🔄 getGlobalOrdersAndCarts: Cache mismatch - recalculating...');
+                console.log(`   Cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+                console.log(`   Cache date: ${cacheDate || 'unknown'}`);
+                console.log(`   Current date: ${currentDate}`);
+                console.log(`   Date match: ${cacheDate === currentDate}`);
+                console.log(`   Hash match: ${window.__zuidplas_cart_cache.ordersHash === ordersHash}`);
+                console.log(`   Count match: ${window.__zuidplas_cart_cache.orders.length === orders.length}`);
+                console.log(`   Cache had: ${window.__zuidplas_cart_cache.cartResult?.total || 'unknown'} carts`);
+            } else {
+                // No cache exists at all
+                console.log('🔄 getGlobalOrdersAndCarts: No cache found - calculating fresh...');
+            }
         }
     }
     
