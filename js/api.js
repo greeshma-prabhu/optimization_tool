@@ -300,8 +300,8 @@ class FlorinetAPI {
         console.log('──────────────────────────────────────────────────────────');
         let products = [];
         try {
-            console.log('📤 Calling: GET /external/composite-products');
-            products = await this.fetchWithAuth('/external/composite-products');
+            console.log('📤 Calling: GET /external/compositeproducts');
+            products = await this.fetchWithAuth('/external/compositeproducts');
             console.log(`✅ Fetched ${products.length} products`);
         } catch (error) {
             console.log('⚠️  Could not fetch products:', error.message);
