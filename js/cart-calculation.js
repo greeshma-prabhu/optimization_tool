@@ -1,9 +1,10 @@
 /**
- * FUST-BASED CART CALCULATION
- * This is the ONLY correct way to calculate carts for Zuidplas logistics
+ * ZUIDPLAS CART CALCULATION - CORRECT FUST AGGREGATION
+ * CRITICAL: Must aggregate ALL fust by type per route FIRST, then calculate carts
  * 
- * CRITICAL: Must group by customer + route BEFORE calculating
- * DO NOT calculate per order row - this will ALWAYS give wrong results!
+ * The key difference:
+ * ❌ WRONG: Calculate carts per customer group → sum groups = 274 carts
+ * ✅ CORRECT: Sum ALL fust per type per route → calculate carts = ~62 carts
  */
 
 // ═══════════════════════════════════════════════════════════════════
@@ -58,9 +59,7 @@ function calculateBundlesPerContainer(order) {
         const stemsPerContainer = parseInt(L13Property.pivot?.value || L13Property.value || '100');
         
         if (stemsPerBundle > 0 && stemsPerContainer > 0) {
-            const bundlesPerContainer = stemsPerContainer / stemsPerBundle;
-            console.log(`  Order ${order.id}: Using L11/L13: ${stemsPerContainer}÷${stemsPerBundle} = ${bundlesPerContainer.toFixed(2)} bundles/container`);
-            return bundlesPerContainer;
+            return stemsPerContainer / stemsPerBundle;
         }
     }
     
@@ -68,30 +67,25 @@ function calculateBundlesPerContainer(order) {
     if (order.nr_base_product && parseInt(order.nr_base_product) > 0) {
         const stemsPerContainer = parseInt(order.nr_base_product);
         const stemsPerBundle = 10; // Default assumption
-        const bundlesPerContainer = stemsPerContainer / stemsPerBundle;
-        console.log(`  Order ${order.id}: Using nr_base_product: ${stemsPerContainer}÷${stemsPerBundle} = ${bundlesPerContainer.toFixed(2)} bundles/container`);
-        return bundlesPerContainer;
+        return stemsPerContainer / stemsPerBundle;
     }
     
     // Priority 3: Use bundles_per_fust only if > 1
     if (order.bundles_per_fust && parseInt(order.bundles_per_fust) > 1) {
-        const bundlesPerContainer = parseInt(order.bundles_per_fust);
-        console.log(`  Order ${order.id}: Using bundles_per_fust: ${bundlesPerContainer} bundles/container`);
-        return bundlesPerContainer;
+        return parseInt(order.bundles_per_fust);
     }
     
     // Priority 4: Default assumption (5 bundles per container is industry standard)
-    console.log(`  Order ${order.id}: Using default: 5 bundles/container`);
     return 5;
 }
 
 /**
  * Main calculation function
- * CRITICAL: Must group by customer + route BEFORE calculating
+ * CRITICAL: Aggregate ALL fust by type per route FIRST, then calculate carts
  */
 function calculateCarts(orders) {
     console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('🔵 Starting cart calculation for', orders.length, 'orderrows');
+    console.log('🔵 CORRECT CALCULATION: Starting for', orders.length, 'orderrows');
     console.log('═══════════════════════════════════════════════════════════════════');
     
     // Step 1: Filter valid orders only
@@ -101,125 +95,88 @@ function calculateCarts(orders) {
         const customerId = order.customer_id || order.order?.customer_id;
         
         const isValid = assemblyAmount > 0 && locationId && customerId;
-        
-        if (!isValid) {
-            console.log('⚠️ Skipping invalid order:', {
-                id: order.id,
-                assembly_amount: assemblyAmount,
-                location_id: locationId,
-                customer_id: customerId
-            });
-        }
         return isValid;
     });
     
     console.log('✅ Valid orders:', validOrders.length, 'out of', orders.length);
     console.log('');
 
-    // Step 2: Group by customer + route (THIS IS CRITICAL!)
-    const grouped = {};
-    
+    // Step 2: AGGREGATE FUST BY ROUTE AND TYPE
+    // THIS IS THE KEY - sum all fust per type per route FIRST
+    // DO NOT calculate carts per customer group!
+    const fustByRouteAndType = {
+        'Aalsmeer': {},
+        'Naaldwijk': {},
+        'Rijnsburg': {}
+    };
+
     validOrders.forEach((order, idx) => {
-        if (idx < 5) {
-            console.log(`Processing order ${idx + 1}/${validOrders.length}:`, {
-                id: order.id,
-                assembly_amount: order.assembly_amount,
-                customer_id: order.customer_id || order.order?.customer_id,
-                location_id: order.delivery_location_id || order.order?.delivery_location_id
-            });
-        }
-        
         const route = getRoute(order);
-        const customerId = order.customer_id || order.order?.customer_id || 'unknown';
-        const key = `${customerId}_${route}`;
-        
-        if (!grouped[key]) {
-            grouped[key] = {
-                route: route,
-                customer_id: customerId,
-                customer_name: order.customer_name || `Customer ${customerId}`,
-                fustByType: {} // Store fust count per fust type
-            };
-        }
-        
-        // Step 3: Calculate fust for this order
         const fustType = getFustType(order);
         const bundlesPerContainer = calculateBundlesPerContainer(order);
         const assemblyAmount = order.assembly_amount || 0;
         
+        // Calculate fust for this order
         const fustCount = assemblyAmount / bundlesPerContainer;
         
-        // Add to group's fust count for this type
-        if (!grouped[key].fustByType[fustType]) {
-            grouped[key].fustByType[fustType] = 0;
+        // ADD to route's fust total for this type (AGGREGATE FIRST!)
+        if (!fustByRouteAndType[route][fustType]) {
+            fustByRouteAndType[route][fustType] = 0;
         }
-        grouped[key].fustByType[fustType] += fustCount;
+        fustByRouteAndType[route][fustType] += fustCount;
         
+        // Log first 5 orders for debugging
         if (idx < 5) {
-            console.log(`  → ${assemblyAmount} bunches ÷ ${bundlesPerContainer.toFixed(2)} = ${fustCount.toFixed(2)} fust (type ${fustType})`);
+            console.log(`Order ${idx + 1}: ${assemblyAmount} bunches ÷ ${bundlesPerContainer.toFixed(2)} = ${fustCount.toFixed(2)} fust (type ${fustType}, route ${route})`);
         }
     });
 
+    // Step 3: Calculate carts from AGGREGATED fust (per route)
     console.log('');
-    console.log('📦 Customer groups created:', Object.keys(grouped).length);
+    console.log('🎯 AGGREGATED FUST BY ROUTE (THIS IS THE KEY!):');
     console.log('');
-
-    // Step 4: Calculate carts from fust (grouped by route)
+    
     const cartsByRoute = {
         'Aalsmeer': 0,
         'Naaldwijk': 0,
         'Rijnsburg': 0
     };
     
-    const detailedBreakdown = [];
+    const breakdown = [];
 
-    Object.entries(grouped).forEach(([key, group], idx) => {
-        if (idx < 5) {
-            console.log(`\nGroup ${idx + 1}: ${group.customer_name} (${group.route})`);
-        }
+    Object.entries(fustByRouteAndType).forEach(([route, fustTypes]) => {
+        console.log(`\n${route}:`);
         
-        let groupTotalCarts = 0;
-        const fustBreakdown = [];
+        let routeTotalCarts = 0;
+        const routeBreakdown = [];
         
-        // Calculate carts for each fust type in this group
-        Object.entries(group.fustByType).forEach(([fustType, fustCount]) => {
+        // Calculate carts for each fust type in this route
+        Object.entries(fustTypes).forEach(([fustType, totalFust]) => {
             const capacity = FUST_CAPACITY[fustType] || FUST_CAPACITY['default'];
-            const carts = Math.ceil(fustCount / capacity);
+            const carts = Math.ceil(totalFust / capacity);
             
-            groupTotalCarts += carts;
-            fustBreakdown.push({
+            routeTotalCarts += carts;
+            routeBreakdown.push({
                 fustType,
-                fustCount: parseFloat(fustCount.toFixed(2)),
+                totalFust: parseFloat(totalFust.toFixed(2)),
                 capacity,
                 carts
             });
             
-            if (idx < 5) {
-                console.log(`    Fust ${fustType}: ${fustCount.toFixed(2)} fust ÷ ${capacity} capacity = ${carts} carts`);
-            }
+            console.log(`  Fust ${fustType}: ${totalFust.toFixed(2)} total fust ÷ ${capacity} capacity = ${carts} carts`);
         });
         
-        // Map route names correctly
-        const routeKey = group.route.charAt(0).toUpperCase() + group.route.slice(1);
-        if (cartsByRoute.hasOwnProperty(routeKey)) {
-            cartsByRoute[routeKey] += groupTotalCarts;
-        } else {
-            cartsByRoute['Aalsmeer'] += groupTotalCarts; // fallback
-        }
-        
-        detailedBreakdown.push({
-            customer: group.customer_name,
-            route: group.route,
-            carts: groupTotalCarts,
-            fustBreakdown
+        cartsByRoute[route] = routeTotalCarts;
+        breakdown.push({
+            route,
+            carts: routeTotalCarts,
+            fustBreakdown: routeBreakdown
         });
         
-        if (idx < 5) {
-            console.log(`  ✅ Total: ${groupTotalCarts} carts`);
-        }
+        console.log(`  ✅ ${route} TOTAL: ${routeTotalCarts} carts`);
     });
 
-    // Step 5: Calculate total and trucks
+    // Step 4: Calculate total and trucks
     const totalCarts = Object.values(cartsByRoute).reduce((sum, carts) => sum + carts, 0);
     const totalTrucks = Math.ceil(totalCarts / 17); // 17 carts per truck
 
@@ -237,7 +194,7 @@ function calculateCarts(orders) {
         total: totalCarts,
         byRoute: cartsByRoute,
         trucks: totalTrucks,
-        breakdown: detailedBreakdown
+        breakdown: breakdown
     };
 }
 
