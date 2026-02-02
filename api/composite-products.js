@@ -25,8 +25,8 @@ export default async function handler(req, res) {
 
         const token = authHeader.replace('Bearer ', '');
 
-        // Build URL for composite products
-        const url = `${FLORINET_BASE_URL}/external/composite-products`;
+        // Build URL for composite products (NO HYPHEN!)
+        const url = `${FLORINET_BASE_URL}/external/compositeproducts`;
 
         console.log('[Products API] Fetching from:', url);
 
