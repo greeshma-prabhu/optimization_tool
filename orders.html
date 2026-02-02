@@ -620,16 +620,33 @@
                     return;
                 }
                 
-                // PRIORITY 1: Try loading from global state
-                const globalOrders = window.appState.getOrders();
+                // PRIORITY 1: Try loading from SINGLE SOURCE OF TRUTH
+                if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                    const globalOrders = globalData.orders;
+                    
+                    if (globalOrders && globalOrders.length > 0) {
+                        console.log(`✅ Orders page: Loaded ${globalOrders.length} orders from SINGLE SOURCE`);
+                        orderManager.orders = globalOrders;
+                        orderManager.filteredOrders = [...globalOrders];
+                        // DISABLED: orderManager.assignCarts() - using FUST-based calculation in updateSummary()
+                        orderManager.updateOrderCount();
+                        orderManager.displayOrders();
+                        updateSummary(); // This now uses getGlobalOrdersAndCarts()
+                        updateOrdersDate();
+                        return; // Exit early, don't fetch from API
+                    }
+                }
+                
+                // PRIORITY 2: Try appState (fallback)
+                const globalOrders = window.appState ? window.appState.getOrders() : [];
                 if (globalOrders && globalOrders.length > 0) {
-                    console.log(`✅ Orders page: Loaded ${globalOrders.length} orders from global state`);
+                    console.log(`✅ Orders page: Loaded ${globalOrders.length} orders from appState`);
                     orderManager.orders = globalOrders;
                     orderManager.filteredOrders = [...globalOrders];
-                    // DISABLED: orderManager.assignCarts() - using FUST-based calculation in updateSummary()
                     orderManager.updateOrderCount();
                     orderManager.displayOrders();
-                    updateSummary(); // This now uses CartCalculation.calculateTotalCarts()
+                    updateSummary();
                     updateOrdersDate();
                 } else {
                     // PRIORITY 2: Fetch from API

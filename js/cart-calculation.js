@@ -105,6 +105,7 @@ function calculateBundlesPerFust(orderrow) {
     // If bundles_per_fust = 1, SKIP IT (would cause inflation)!
     
     // Priority 4: Default assumption (5 bundles per container)
+    // WARNING: This means we don't have real data - will be tracked in summary
     return {
         bundlesPerFust: 5,
         method: 'default'
@@ -165,6 +166,15 @@ function calculateCarts(orders) {
     console.log(`✅ Valid orders: ${validOrders.length} out of ${orders.length}`);
     console.log('');
     
+    // Track which method is used for bundles_per_fust
+    const methodCounts = {
+        'L11_L13': 0,
+        'nr_base_product': 0,
+        'bundles_per_fust': 0,
+        'default': 0,
+        'zero': 0
+    };
+    
     // Step 2: Calculate FUST for each orderrow and aggregate by route + fust type
     // CRITICAL: Sum ALL fust of SAME TYPE in SAME ROUTE FIRST!
     const fustByRouteAndType = {
@@ -184,6 +194,9 @@ function calculateCarts(orders) {
         const fustCalc = calculateFustForOrderrow(order);
         const assemblyAmount = order.assembly_amount || 0;
         
+        // Track method usage
+        methodCounts[fustCalc.method] = (methodCounts[fustCalc.method] || 0) + 1;
+        
         // Aggregate: Sum ALL fust of SAME TYPE in SAME ROUTE
         if (!fustByRouteAndType[route][fustType]) {
             fustByRouteAndType[route][fustType] = 0;
@@ -195,6 +208,18 @@ function calculateCarts(orders) {
             console.log(`Order ${idx + 1}: ${assemblyAmount} bunches ÷ ${fustCalc.bundlesPerFust.toFixed(2)} bundles/fust = ${fustCalc.totalFust.toFixed(2)} FUST (type ${fustType}, route ${route}, method: ${fustCalc.method})`);
         }
     });
+    
+    // Show method usage summary
+    console.log('');
+    console.log('📊 BUNDLES_PER_FUST METHOD USAGE:');
+    console.log(`   L11/L13 (most accurate): ${methodCounts.L11_L13 || 0}`);
+    console.log(`   nr_base_product: ${methodCounts.nr_base_product || 0}`);
+    console.log(`   bundles_per_fust (>1): ${methodCounts.bundles_per_fust || 0}`);
+    console.log(`   ⚠️ DEFAULT (5) - NO DATA: ${methodCounts.default || 0}`);
+    if (methodCounts.default > 0) {
+        console.warn(`   ⚠️ WARNING: ${methodCounts.default} orders using DEFAULT bundles_per_fust=5 (missing data!)`);
+    }
+    console.log('');
     
     console.log('');
     console.log('═══════════════════════════════════════════════════════════════════');

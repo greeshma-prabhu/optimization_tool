@@ -808,6 +808,17 @@
                 console.log('🛒 Dashboard: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
                 console.log('   ⚠️ IGNORING orders parameter - using global memory instead!');
                 
+                // Force fresh calculation if cache is older than 1 minute (might be stale)
+                if (window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.timestamp) {
+                    const cacheAge = Date.now() - new Date(window.__zuidplas_cart_cache.timestamp).getTime();
+                    if (cacheAge > 60000) { // 1 minute
+                        console.log('🔄 Dashboard: Cache is older than 1 minute, forcing refresh...');
+                        if (window.CartCalculation.clearCartCache) {
+                            window.CartCalculation.clearCartCache();
+                        }
+                    }
+                }
+                
                 const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
                 const cartResult = globalData.cartResult;
                 const totalCarts = cartResult.total || 0;
