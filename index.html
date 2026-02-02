@@ -778,6 +778,11 @@
 
         // Update dashboard display
         function updateDashboard(orders, options) {
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log('📊 UPDATE DASHBOARD CALLED');
+            console.log(`   Orders: ${orders.length}`);
+            console.log('═══════════════════════════════════════════════════════════════════');
+            
             // Update stats
             document.getElementById('total-orders-count').textContent = orders.length;
             
@@ -786,22 +791,46 @@
             // ═══════════════════════════════════════════════════════════════════
             if (typeof window.CartCalculation !== 'undefined') {
                 console.log('🛒 Using NEW CORRECT cart calculation (fust-based)...');
-                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
                 
-                const totalCarts = cartResult.totalCarts;
-                document.getElementById('total-carts-needed').textContent = totalCarts;
-                
-                console.log(`✅ Dashboard: ${orders.length} orders → ${totalCarts} carts (CORRECT)`);
-                console.log(`   Rijnsburg: ${cartResult.cartsByRoute.rijnsburg} carts`);
-                console.log(`   Aalsmeer: ${cartResult.cartsByRoute.aalsmeer} carts`);
-                console.log(`   Naaldwijk: ${cartResult.cartsByRoute.naaldwijk} carts`);
+                try {
+                    const cartResult = window.CartCalculation.calculateTotalCarts(orders);
+                    
+                    console.log('📦 Cart calculation result:', cartResult);
+                    console.log('   totalCarts:', cartResult.totalCarts);
+                    console.log('   cartsByRoute:', cartResult.cartsByRoute);
+                    
+                    const totalCarts = cartResult.totalCarts || 0;
+                    
+                    // Update UI
+                    const cartsElement = document.getElementById('total-carts-needed');
+                    if (cartsElement) {
+                        cartsElement.textContent = totalCarts;
+                        console.log(`✅ Dashboard UI updated: ${totalCarts} carts`);
+                    } else {
+                        console.error('❌ Element "total-carts-needed" not found!');
+                    }
+                    
+                    console.log(`✅ Dashboard: ${orders.length} orders → ${totalCarts} carts (CORRECT)`);
+                    console.log(`   Rijnsburg: ${cartResult.cartsByRoute.rijnsburg} carts`);
+                    console.log(`   Aalsmeer: ${cartResult.cartsByRoute.aalsmeer} carts`);
+                    console.log(`   Naaldwijk: ${cartResult.cartsByRoute.naaldwijk} carts`);
+                } catch (error) {
+                    console.error('❌ Error in cart calculation:', error);
+                    console.error('Stack:', error.stack);
+                    document.getElementById('total-carts-needed').textContent = '0';
+                }
             } else {
                 console.error('❌ CartCalculation not loaded! Using fallback...');
                 // Fallback to old method
-                const cartSummary = orderManager.getCartSummary();
-                const totalCarts = cartSummary.standard + cartSummary.danish;
-                document.getElementById('total-carts-needed').textContent = totalCarts;
-                console.log(`⚠️ Dashboard (fallback): ${orders.length} orders → ${totalCarts} carts`);
+                try {
+                    const cartSummary = orderManager.getCartSummary();
+                    const totalCarts = cartSummary.standard + cartSummary.danish;
+                    document.getElementById('total-carts-needed').textContent = totalCarts;
+                    console.log(`⚠️ Dashboard (fallback): ${orders.length} orders → ${totalCarts} carts`);
+                } catch (error) {
+                    console.error('❌ Error in fallback cart calculation:', error);
+                    document.getElementById('total-carts-needed').textContent = '0';
+                }
             }
             
             // Update routes status
