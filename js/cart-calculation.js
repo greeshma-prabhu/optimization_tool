@@ -70,10 +70,12 @@ function calculateBundlesPerContainer(order) {
         return stemsPerContainer / stemsPerBundle;
     }
     
-    // Priority 3: Use bundles_per_fust only if > 1
-    if (order.bundles_per_fust && parseInt(order.bundles_per_fust) > 1) {
-        return parseInt(order.bundles_per_fust);
+    // Priority 3: Use bundles_per_fust ONLY if > 1 (CRITICAL - was causing inflation!)
+    const bundlesPerFust = order.bundles_per_fust ? parseInt(order.bundles_per_fust) : 0;
+    if (bundlesPerFust > 1) {
+        return bundlesPerFust;
     }
+    // If bundles_per_fust = 1, SKIP IT (would cause inflation) and use default
     
     // Priority 4: Default assumption (5 bundles per container is industry standard)
     return 5;
@@ -142,7 +144,18 @@ function calculateCarts(orders) {
     console.log('❌ Invalid breakdown:', invalidReasons);
     console.log('');
 
-    // Step 2: AGGREGATE FUST BY ROUTE AND TYPE
+    // ═══════════════════════════════════════════════════════════════════
+    // STEP 2: CALCULATE FUST (CONTAINERS) - NOT STEMS!
+    // ═══════════════════════════════════════════════════════════════════
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('🔵 STEP 2: CALCULATING FUST (CONTAINERS) FROM ORDERS');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('FORMULA: FUST = assembly_amount (bunches) ÷ bundles_per_container');
+    console.log('NOT: stems ÷ 72 (WRONG!)');
+    console.log('');
+    
+    // AGGREGATE FUST BY ROUTE AND TYPE
     // THIS IS THE KEY - sum all fust per type per route FIRST
     // DO NOT calculate carts per customer group!
     const fustByRouteAndType = {
@@ -157,7 +170,8 @@ function calculateCarts(orders) {
         const bundlesPerContainer = calculateBundlesPerContainer(order);
         const assemblyAmount = order.assembly_amount || 0;
         
-        // Calculate fust for this order
+        // CRITICAL: Calculate FUST (containers), not stems!
+        // FUST = assembly_amount (bunches) ÷ bundles_per_container
         const fustCount = assemblyAmount / bundlesPerContainer;
         
         // ADD to route's fust total for this type (AGGREGATE FIRST!)
@@ -166,15 +180,36 @@ function calculateCarts(orders) {
         }
         fustByRouteAndType[route][fustType] += fustCount;
         
-        // Log first 5 orders for debugging
+        // Log first 5 orders to show FUST calculation
         if (idx < 5) {
-            console.log(`Order ${idx + 1}: ${assemblyAmount} bunches ÷ ${bundlesPerContainer.toFixed(2)} = ${fustCount.toFixed(2)} fust (type ${fustType}, route ${route})`);
+            const method = getCalculationMethod(order);
+            console.log(`📦 Order ${idx + 1}: ${assemblyAmount} bunches ÷ ${bundlesPerContainer.toFixed(2)} bundles/container = ${fustCount.toFixed(2)} FUST (type ${fustType}, route ${route}, method: ${method})`);
         }
     });
+    
+    // Helper to show which calculation method was used
+    function getCalculationMethod(order) {
+        const properties = order.properties || [];
+        const L11Property = properties.find(p => p.code === 'L11');
+        const L13Property = properties.find(p => p.code === 'L13');
+        
+        if (L11Property && L13Property) return 'L11/L13';
+        if (order.nr_base_product) return 'nr_base_product';
+        if (order.bundles_per_fust && parseInt(order.bundles_per_fust) > 1) return 'bundles_per_fust';
+        return 'default(5)';
+    }
 
-    // Step 3: Calculate carts from AGGREGATED fust (per route)
+    // ═══════════════════════════════════════════════════════════════════
+    // STEP 3: CALCULATE CARTS FROM AGGREGATED FUST
+    // ═══════════════════════════════════════════════════════════════════
     console.log('');
-    console.log('🎯 AGGREGATED FUST BY ROUTE (THIS IS THE KEY!):');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('🔵 STEP 3: CALCULATING CARTS FROM AGGREGATED FUST');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('FORMULA: CARTS = total_fust (per type) ÷ fust_capacity');
+    console.log('NOT: stems ÷ 72 (WRONG!)');
+    console.log('');
+    console.log('🎯 AGGREGATED FUST BY ROUTE AND TYPE (THIS IS THE KEY!):');
     console.log('');
     
     const cartsByRoute = {
@@ -194,6 +229,7 @@ function calculateCarts(orders) {
         // Calculate carts for each fust type in this route
         Object.entries(fustTypes).forEach(([fustType, totalFust]) => {
             const capacity = FUST_CAPACITY[fustType] || FUST_CAPACITY['default'];
+            // CRITICAL: Carts = FUST ÷ capacity (NOT stems ÷ 72!)
             const carts = Math.ceil(totalFust / capacity);
             
             routeTotalCarts += carts;
@@ -204,7 +240,7 @@ function calculateCarts(orders) {
                 carts
             });
             
-            console.log(`  Fust ${fustType}: ${totalFust.toFixed(2)} total fust ÷ ${capacity} capacity = ${carts} carts`);
+            console.log(`  📦 Fust ${fustType}: ${totalFust.toFixed(2)} total FUST ÷ ${capacity} capacity = ${carts} carts`);
         });
         
         cartsByRoute[route] = routeTotalCarts;
