@@ -805,15 +805,21 @@
             console.log('📊 UPDATE DASHBOARD CALLED');
             console.log(`   Orders parameter: ${orders ? orders.length : 0}`);
             
-            // CRITICAL: ALWAYS use SINGLE SOURCE OF TRUTH - IGNORE orders parameter!
-            // This ensures ALL pages show the SAME numbers!
+            // CRITICAL: Dashboard loads data FIRST, so it should CALCULATE FRESH!
+            // Other pages will then use the cached result from Dashboard
             if (typeof window.CartCalculation !== 'undefined' && window.CartCalculation.getGlobalOrdersAndCarts) {
                 console.log('🛒 Dashboard: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
                 console.log('   ⚠️ IGNORING orders parameter - using global memory instead!');
-                console.log('   🔒 Dashboard will ALWAYS use cache if available (no fresh calculation!)');
+                console.log('   🔄 Dashboard loads data FIRST - will CALCULATE FRESH (not use old cache!)');
                 
-                // CRITICAL: Dashboard MUST use cache if it exists - never calculate fresh!
-                // This ensures Dashboard shows the SAME result as all other pages
+                // CRITICAL: Dashboard loads data first, so FORCE fresh calculation
+                // Clear any old cache to ensure fresh calculation
+                if (window.CartCalculation.clearCartCache) {
+                    console.log('   🗑️ Clearing old cache to force fresh calculation...');
+                    window.CartCalculation.clearCartCache();
+                }
+                
+                // Now get fresh calculation (will calculate and cache for other pages)
                 const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
                 const cartResult = globalData.cartResult;
                 const totalCarts = cartResult.total || 0;

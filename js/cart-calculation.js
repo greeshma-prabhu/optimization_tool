@@ -209,16 +209,33 @@ function calculateCarts(orders) {
         }
     });
     
-    // Show method usage summary
+    // Show method usage summary - CRITICAL FOR DEBUGGING!
     console.log('');
-    console.log('📊 BUNDLES_PER_FUST METHOD USAGE:');
-    console.log(`   L11/L13 (most accurate): ${methodCounts.L11_L13 || 0}`);
-    console.log(`   nr_base_product: ${methodCounts.nr_base_product || 0}`);
-    console.log(`   bundles_per_fust (>1): ${methodCounts.bundles_per_fust || 0}`);
-    console.log(`   ⚠️ DEFAULT (5) - NO DATA: ${methodCounts.default || 0}`);
-    if (methodCounts.default > 0) {
-        console.warn(`   ⚠️ WARNING: ${methodCounts.default} orders using DEFAULT bundles_per_fust=5 (missing data!)`);
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('📊 FUST CALCULATION METHOD USAGE (CRITICAL CHECK!)');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    const totalWithData = (methodCounts.L11_L13 || 0) + (methodCounts.nr_base_product || 0) + (methodCounts.bundles_per_fust || 0);
+    const totalDefault = methodCounts.default || 0;
+    const totalOrders = totalWithData + totalDefault;
+    
+    console.log(`   ✅ Using REAL DATA (L11/L13, nr_base_product, bundles_per_fust): ${totalWithData} orders`);
+    console.log(`   ❌ Using DEFAULT (5) - MISSING DATA: ${totalDefault} orders`);
+    console.log(`   Total: ${totalOrders} orders`);
+    console.log('');
+    console.log('   Breakdown:');
+    console.log(`      L11/L13 (most accurate): ${methodCounts.L11_L13 || 0}`);
+    console.log(`      nr_base_product: ${methodCounts.nr_base_product || 0}`);
+    console.log(`      bundles_per_fust (>1): ${methodCounts.bundles_per_fust || 0}`);
+    console.log(`      DEFAULT (5) - NO DATA: ${methodCounts.default || 0}`);
+    
+    if (totalDefault > 0) {
+        const percentage = ((totalDefault / totalOrders) * 100).toFixed(1);
+        console.warn(`   ⚠️ WARNING: ${totalDefault} orders (${percentage}%) using DEFAULT bundles_per_fust=5 (missing data!)`);
+        console.warn(`   ⚠️ This means FUST calculation is FALLING BACK for ${percentage}% of orders!`);
+    } else {
+        console.log('   ✅ ALL orders using REAL DATA - FUST calculation is working correctly!');
     }
+    console.log('═══════════════════════════════════════════════════════════════════');
     console.log('');
     
     console.log('');
