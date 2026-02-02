@@ -395,10 +395,14 @@
         let useDummyData = false;
         window.isRefreshing = false;
         
-        // OrderManager will be initialized AFTER scripts load
-        let orderManager = null;
+        // OrderManager is provided by ordermanager-shim.js - DO NOT DECLARE IT HERE!
 
         // Sync data for selected date - uses date picker
+        // Make it available globally immediately
+        function syncDataForDate() {
+            return window.syncDataForDate();
+        }
+        
         window.syncDataForDate = async function() {
             if (window.isRefreshing) {
                 console.log('Sync already in progress...');
