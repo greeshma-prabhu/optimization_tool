@@ -633,6 +633,8 @@
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/cart-calculation.js"></script> <!-- CRITICAL: Cart calculation -->
+    <script src="js/cart-display-manager.js"></script> <!-- Unified cart display -->
     <script src="js/carts.js"></script>
     <script src="js/ordermanager-shim.js"></script>
     <script src="js/orders.js"></script>
@@ -2522,24 +2524,44 @@
                     i18n.setLanguage(savedLang);
                 }
                 
-                // FORCE RELOAD from localStorage (don't trust memory)
-                console.log('🔄 Cart Optimization: Force loading from storage...');
-                const storedOrders = localStorage.getItem('zuidplas_orders') || localStorage.getItem('cachedOrders');
+                // Load orders - check multiple sources
+                console.log('🔄 Cart Optimization: Loading orders...');
                 let orders = [];
                 
-                if (storedOrders) {
-                    try {
-                        orders = JSON.parse(storedOrders);
-                        console.log(`✅ Loaded ${orders.length} orders from localStorage`);
-                        
-                        // Update appState memory
-                        window.appState.orders = orders;
-                        window.appState.ordersLoaded = orders.length > 0;
-                    } catch (e) {
-                        console.error('Failed to parse stored orders:', e);
+                // Priority 1: Check global memory (shared across pages)
+                if (window.__zuidplas_orders_memory && window.__zuidplas_orders_memory.length > 0) {
+                    orders = window.__zuidplas_orders_memory;
+                    console.log(`✅ Loaded ${orders.length} orders from global memory`);
+                } 
+                // Priority 2: Check appState
+                else if (window.appState && window.appState.getOrders) {
+                    orders = window.appState.getOrders();
+                    if (orders && orders.length > 0) {
+                        console.log(`✅ Loaded ${orders.length} orders from appState`);
                     }
-                } else {
-                    console.log('ℹ️ No orders in localStorage');
+                }
+                // Priority 3: Check localStorage
+                else {
+                    const storedOrders = localStorage.getItem('zuidplas_orders') || localStorage.getItem('cachedOrders');
+                    if (storedOrders) {
+                        try {
+                            orders = JSON.parse(storedOrders);
+                            console.log(`✅ Loaded ${orders.length} orders from localStorage`);
+                            
+                            // Update appState memory
+                            if (window.appState) {
+                                window.appState.orders = orders;
+                                window.appState.ordersLoaded = orders.length > 0;
+                            }
+                            
+                            // Store in global memory for sharing
+                            window.__zuidplas_orders_memory = orders;
+                        } catch (e) {
+                            console.error('Failed to parse stored orders:', e);
+                        }
+                    } else {
+                        console.log('ℹ️ No orders found in any storage');
+                    }
                 }
                 
                 if (!orders || orders.length === 0) {
@@ -2551,6 +2573,15 @@
                     console.log(`📦 Found ${orders.length} orders in global state, loading...`);
                     orderManager.orders = orders;
                     orderManager.filteredOrders = [...orders];
+                    
+                    // CRITICAL: Update cart counts using CartDisplayManager
+                    if (window.CartDisplayManager) {
+                        const cartManager = new CartDisplayManager(orders);
+                        cartManager.updateDOM();
+                        console.log('✅ Cart counts updated using CartDisplayManager');
+                    } else {
+                        console.warn('⚠️ CartDisplayManager not available');
+                    }
                     
                     // Ensure truck assignments are loaded before optimizing
                     loadTruckAssignments();
@@ -2566,8 +2597,18 @@
             // Listen for orders updates from other pages
             window.addEventListener('ordersUpdated', (event) => {
                 console.log(`📢 Orders updated (${event.detail.count} orders), reloading...`);
-                orderManager.orders = event.detail.orders;
-                orderManager.filteredOrders = [...event.detail.orders];
+                const orders = event.detail.orders || window.appState.getOrders();
+                
+                orderManager.orders = orders;
+                orderManager.filteredOrders = [...orders];
+                
+                // CRITICAL: Update cart counts using CartDisplayManager
+                if (window.CartDisplayManager) {
+                    const cartManager = new CartDisplayManager(orders);
+                    cartManager.updateDOM();
+                    console.log('✅ Cart counts updated using CartDisplayManager');
+                }
+                
                 optimizeCartLoading();
             });
         });
