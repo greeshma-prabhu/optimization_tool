@@ -777,12 +777,13 @@
             if (typeof window.CartCalculation !== 'undefined') {
                 console.log('🛒 Using NEW cart-calculation.js (FUST-BASED with L11/L13)...');
                 const cartResult = window.CartCalculation.calculateTotalCarts(orders);
-                const totalCarts = cartResult.totalCarts || 0;
+                const totalCarts = cartResult.total || 0;
                 
-                console.log(`   Rijnsburg: ${cartResult.cartsByRoute.rijnsburg} carts`);
-                console.log(`   Aalsmeer: ${cartResult.cartsByRoute.aalsmeer} carts`);
-                console.log(`   Naaldwijk: ${cartResult.cartsByRoute.naaldwijk} carts`);
+                console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
+                console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
+                console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
                 console.log(`   TOTAL: ${totalCarts} carts`);
+                console.log(`   TRUCKS: ${cartResult.trucks || 0}`);
                 
                 document.getElementById('total-carts-needed').textContent = totalCarts;
                 console.log(`✅ Dashboard updated with CORRECT calculation: ${totalCarts} carts`);
