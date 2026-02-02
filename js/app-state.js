@@ -22,54 +22,84 @@ window.appState = {
         
         // COMPRESS: Remove heavy fields before saving to localStorage
         // BUT KEEP CRITICAL FIELDS for cart calculation!
-        const compressedOrders = this.orders.map(order => ({
-            id: order.id,
-            customer: order.customer || order.customer_name,
-            customer_name: order.customer_name,
-            customer_id: order.customer_id || order.order?.customer_id, // CRITICAL for validation
-            location: order.location || order.location_name,
-            location_name: order.location_name,
-            route: order.route,
-            delivery_location_id: order.delivery_location_id || order.order?.delivery_location_id, // CRITICAL for route detection
-            assembly_amount: order.assembly_amount, // CRITICAL for cart calculation - MUST KEEP!
-            fust_count: order.fust_count, // CRITICAL for cart calculation
-            fust_code: order.fust_code || order.container_code, // CRITICAL for capacity lookup
-            bundles_per_fust: order.bundles_per_fust, // CRITICAL for cart calculation
-            properties: order.properties, // CRITICAL for fust type detection (code 901)
-            nr_base_product: order.nr_base_product, // CRITICAL for bundles_per_container calculation
-            quantity: order.quantity || order.fust_count, // Use fust_count as quantity
-            crateType: order.crateType || order.fust_code,
-            cartType: order.cartType,
-            cartsNeeded: order.cartsNeeded,
-            deliveryDate: order.deliveryDate || order.delivery_date
-            // Removed: order object (nested), VBN data, etc.
-        }));
+        // CRITICAL: Only save property code 901 (fust type), not entire properties array!
+        const compressedOrders = this.orders.map(order => {
+            // Extract ONLY property code 901 (fust type) from properties array
+            let fustTypeProperty = null;
+            if (order.properties && Array.isArray(order.properties)) {
+                const prop901 = order.properties.find(p => p.code === '901');
+                if (prop901) {
+                    fustTypeProperty = {
+                        code: '901',
+                        value: prop901.pivot?.value || prop901.value || '821'
+                    };
+                }
+            }
+            
+            return {
+                id: order.id,
+                customer: order.customer || order.customer_name,
+                customer_name: order.customer_name,
+                customer_id: order.customer_id || order.order?.customer_id, // CRITICAL for validation
+                location: order.location || order.location_name,
+                location_name: order.location_name,
+                route: order.route,
+                delivery_location_id: order.delivery_location_id || order.order?.delivery_location_id, // CRITICAL for route detection
+                assembly_amount: order.assembly_amount, // CRITICAL for cart calculation - MUST KEEP!
+                fust_count: order.fust_count, // CRITICAL for cart calculation
+                fust_code: order.fust_code || order.container_code, // CRITICAL for capacity lookup
+                bundles_per_fust: order.bundles_per_fust, // CRITICAL for cart calculation
+                properties: fustTypeProperty ? [fustTypeProperty] : [], // ONLY property 901, not entire array!
+                nr_base_product: order.nr_base_product, // CRITICAL for bundles_per_container calculation
+                quantity: order.quantity || order.fust_count, // Use fust_count as quantity
+                crateType: order.crateType || order.fust_code,
+                cartType: order.cartType,
+                cartsNeeded: order.cartsNeeded,
+                deliveryDate: order.deliveryDate || order.delivery_date
+                // Removed: order object (nested), VBN data, other properties, etc.
+            };
+        });
         
         const ordersJson = JSON.stringify(compressedOrders);
         const sizeInKB = (ordersJson.length / 1024).toFixed(2);
-        console.log(`📦 Saving ${compressedOrders.length} orders (${sizeInKB} KB, compressed) to localStorage...`);
+        console.log(`📦 Saving ${compressedOrders.length} orders (${sizeInKB} KB, compressed) to storage...`);
         
+        // CRITICAL: Store in memory FIRST (always works, shared across pages via window object)
+        window.__zuidplas_orders_memory = this.orders; // Store FULL orders in memory
+        window.__zuidplas_orders_count = this.orders.length;
+        window.__zuidplas_orders_date = date;
+        console.log(`✅ Orders stored in memory (${this.orders.length} orders, shared across pages)`);
+        
+        // Try localStorage first
+        let savedToLocalStorage = false;
         try {
-            // Save COMPRESSED data to BOTH keys
-            localStorage.setItem('zuidplas_orders', ordersJson);
-            localStorage.setItem('cachedOrders', ordersJson);
-            localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
-            localStorage.setItem('zuidplas_orders_date', date ? date.toString() : '');
-            localStorage.setItem('zuidplas_orders_loaded', 'true');
-            localStorage.setItem('lastSyncDate', this.lastSyncDate.toISOString());
-            
-            console.log(`✅ SUCCESS: ${compressedOrders.length} orders saved to localStorage`);
-        } catch (e) {
-            console.error('❌ localStorage save STILL failed after compression:', e.message);
-            console.error('   Data size:', sizeInKB, 'KB');
-            // Clear everything and try again with minimal data
-            try {
-                localStorage.clear();
+            if (ordersJson.length < 5 * 1024 * 1024) { // Only if < 5MB
                 localStorage.setItem('zuidplas_orders', ordersJson);
                 localStorage.setItem('cachedOrders', ordersJson);
-                console.log('✅ RETRY SUCCESS after clearing localStorage');
-            } catch (retryError) {
-                console.error('❌ Even retry failed. Using memory-only mode.');
+                localStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                localStorage.setItem('zuidplas_orders_date', date ? date.toString() : '');
+                localStorage.setItem('zuidplas_orders_loaded', 'true');
+                localStorage.setItem('lastSyncDate', this.lastSyncDate.toISOString());
+                savedToLocalStorage = true;
+                console.log(`✅ SUCCESS: Saved to localStorage`);
+            } else {
+                console.warn(`⚠️ Data too large (${sizeInKB} KB), skipping localStorage`);
+            }
+        } catch (e) {
+            console.warn('⚠️ localStorage failed:', e.message);
+            console.warn('   Using memory + sessionStorage instead');
+        }
+        
+        // Fallback to sessionStorage (cleared when tab closes, but works for same session)
+        if (!savedToLocalStorage) {
+            try {
+                sessionStorage.setItem('zuidplas_orders', ordersJson);
+                sessionStorage.setItem('zuidplas_orders_timestamp', Date.now().toString());
+                sessionStorage.setItem('zuidplas_orders_date', date ? date.toString() : '');
+                console.log(`✅ Saved to sessionStorage (works for this browser session)`);
+            } catch (sessionError) {
+                console.warn('⚠️ sessionStorage also failed:', sessionError.message);
+                console.log('✅ Using memory-only mode (orders available in this tab)');
             }
         }
         
@@ -86,16 +116,25 @@ window.appState = {
     },
     
     /**
-     * Get orders from state or localStorage
+     * Get orders from state or storage
+     * Priority: Memory > localStorage > sessionStorage
      */
     getOrders() {
-        // If already in memory, return
+        // Priority 1: Check memory (this.orders)
         if (this.orders.length > 0) {
             console.log(`✅ Returning ${this.orders.length} orders from memory`);
             return this.orders;
         }
         
-        // Try to load from localStorage (check BOTH new and old keys)
+        // Priority 2: Check global memory (shared across pages via window)
+        if (window.__zuidplas_orders_memory && window.__zuidplas_orders_memory.length > 0) {
+            console.log(`✅ Loading ${window.__zuidplas_orders_memory.length} orders from global memory (shared across pages)`);
+            this.orders = window.__zuidplas_orders_memory;
+            this.ordersLoaded = true;
+            return this.orders;
+        }
+        
+        // Priority 3: Try to load from localStorage
         try {
             // Try NEW keys first
             let storedOrders = localStorage.getItem('zuidplas_orders');
@@ -108,6 +147,16 @@ window.appState = {
                 timestamp = Date.now().toString(); // Use current time as timestamp
                 isLoaded = !!storedOrders;
                 console.log('ℹ️ Using OLD localStorage key (cachedOrders)');
+            }
+            
+            // Priority 4: Try sessionStorage if localStorage failed
+            if (!storedOrders) {
+                storedOrders = sessionStorage.getItem('zuidplas_orders');
+                timestamp = sessionStorage.getItem('zuidplas_orders_timestamp');
+                isLoaded = !!storedOrders;
+                if (storedOrders) {
+                    console.log('ℹ️ Using sessionStorage (localStorage unavailable)');
+                }
             }
             
             if (storedOrders && isLoaded) {
@@ -136,7 +185,13 @@ window.appState = {
                     
                     this.orders = parsed;
                     this.ordersLoaded = true;
-                    console.log(`✅ Loaded ${this.orders.length} orders from localStorage`);
+                    
+                    // CRITICAL: Also store in global memory for sharing across pages
+                    window.__zuidplas_orders_memory = this.orders;
+                    window.__zuidplas_orders_count = this.orders.length;
+                    
+                    console.log(`✅ Loaded ${this.orders.length} orders from storage`);
+                    console.log(`✅ Also stored in global memory for cross-page sharing`);
                     return this.orders;
                 } else {
                     console.warn('⚠️ Stored orders are too old, please refresh');

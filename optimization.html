@@ -468,7 +468,18 @@
                 }
                 
                 // CRITICAL: Load orders from global state
-                const orders = window.appState.getOrders();
+                let orders = window.appState.getOrders();
+                
+                // Fallback: Check global memory directly if appState is empty
+                if ((!orders || orders.length === 0) && window.__zuidplas_orders_memory) {
+                    console.log('🔄 appState empty, checking global memory...');
+                    orders = window.__zuidplas_orders_memory;
+                    if (orders && orders.length > 0) {
+                        console.log(`✅ Found ${orders.length} orders in global memory`);
+                        // Update appState with memory data
+                        window.appState.setOrders(orders);
+                    }
+                }
                 
                 if (orders && orders.length > 0) {
                     console.log(`✅ Loaded ${orders.length} orders from global state`);
