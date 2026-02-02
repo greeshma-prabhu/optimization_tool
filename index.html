@@ -617,7 +617,10 @@
                 let orders = [];
                 
                 if (useDummy) {
-                    // Use dummy data
+                    // Use dummy data - initialize OrderManager ONLY for demo
+                    if (!orderManager) {
+                        orderManager = new OrderManager();
+                    }
                     orders = await orderManager.fetchOrders(selectedDate, true);
                 } else {
                     // Fetch orders from API for the selected date
@@ -625,22 +628,9 @@
                         console.log('📅 Fetching orders for date:', selectedDate.toISOString().split('T')[0]);
                         const apiOrders = await florinetAPI.fetchOrdersForDate(selectedDate);
                         if (apiOrders && apiOrders.length > 0) {
-                            // Process API orders
-                            orders = orderManager.processOrders(apiOrders);
-                            orderManager.orders = orders;
-                            orderManager.filteredOrders = [...orders];
-                            
-                            // CRITICAL: Assign carts BEFORE displaying
-                            console.log('🔧 Assigning carts to orders...');
-                            // DISABLED OLD BUGGY METHOD: orderManager.assignCarts();
-                            console.log('✅ Skipped old assignCarts(). Using NEW cart calculation instead.');
-                            console.log('✅ Orders count:', orderManager.orders.length);
-                            
-                            // Update orders array to use the one with carts assigned
-                            orders = orderManager.orders;
-                            
-                            orderManager.updateOrderCount();
-                            orderManager.displayOrders();
+                            // Use API orders directly - they're already enriched!
+                            orders = apiOrders;
+                            console.log('✅ Loaded', orders.length, 'enriched orders from API');
                             
                             // Initialize optimizer with orders that have carts assigned
                             console.log('🔧 Initializing optimizer with', orders.length, 'orders...');
