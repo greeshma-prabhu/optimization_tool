@@ -394,14 +394,8 @@
         let useDummyData = false;
         window.isRefreshing = false;
         
-        // Initialize orderManager (CRITICAL!)
-        let orderManager;
-        try {
-            orderManager = new OrderManager();
-            console.log('✅ OrderManager initialized');
-        } catch (error) {
-            console.error('❌ Failed to initialize OrderManager:', error);
-        }
+        // OrderManager will be initialized AFTER scripts load
+        let orderManager = null;
 
         // Sync data for selected date - uses date picker
         window.syncDataForDate = async function() {
@@ -567,6 +561,21 @@
 
         // Sync orders from API or use dummy data - make it global
         window.syncOrders = async function(useDummy = false) {
+            // CRITICAL: Initialize OrderManager if not already done
+            if (!orderManager) {
+                try {
+                    orderManager = new OrderManager();
+                    console.log('✅ OrderManager initialized');
+                } catch (error) {
+                    console.error('❌ Failed to initialize OrderManager:', error);
+                    // Try to use demo data if OrderManager fails
+                    if (!useDummy) {
+                        console.log('⚠️ Falling back to demo data...');
+                        useDummy = true;
+                    }
+                }
+            }
+            
             const syncBtn = document.getElementById('sync-btn');
             const originalText = syncBtn ? syncBtn.innerHTML : '';
             const statusMsg = document.getElementById('api-status-message');
