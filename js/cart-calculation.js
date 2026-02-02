@@ -89,16 +89,57 @@ function calculateCarts(orders) {
     console.log('═══════════════════════════════════════════════════════════════════');
     
     // Step 1: Filter valid orders only
+    // DEBUG: Log first order structure
+    if (orders.length > 0) {
+        console.log('🔍 DEBUG: First order structure:', JSON.stringify(orders[0], null, 2));
+        console.log('🔍 DEBUG: First order keys:', Object.keys(orders[0]));
+        console.log('🔍 DEBUG: First order.assembly_amount:', orders[0].assembly_amount);
+        console.log('🔍 DEBUG: First order.delivery_location_id:', orders[0].delivery_location_id);
+        console.log('🔍 DEBUG: First order.order?.delivery_location_id:', orders[0].order?.delivery_location_id);
+        console.log('🔍 DEBUG: First order.customer_id:', orders[0].customer_id);
+        console.log('🔍 DEBUG: First order.order?.customer_id:', orders[0].order?.customer_id);
+    }
+    
+    let invalidCount = 0;
+    const invalidReasons = { noAssembly: 0, noLocation: 0, noCustomer: 0 };
+    
     const validOrders = orders.filter(order => {
         const assemblyAmount = order.assembly_amount || 0;
         const locationId = order.delivery_location_id || order.order?.delivery_location_id;
         const customerId = order.customer_id || order.order?.customer_id;
         
-        const isValid = assemblyAmount > 0 && locationId && customerId;
-        return isValid;
+        if (assemblyAmount <= 0) {
+            invalidReasons.noAssembly++;
+            if (invalidCount < 5) {
+                console.log('❌ Invalid order (no assembly_amount):', order.id || 'unknown');
+            }
+            invalidCount++;
+            return false;
+        }
+        
+        if (!locationId) {
+            invalidReasons.noLocation++;
+            if (invalidCount < 5) {
+                console.log('❌ Invalid order (no delivery_location_id):', order.id || 'unknown');
+            }
+            invalidCount++;
+            return false;
+        }
+        
+        if (!customerId) {
+            invalidReasons.noCustomer++;
+            if (invalidCount < 5) {
+                console.log('❌ Invalid order (no customer_id):', order.id || 'unknown');
+            }
+            invalidCount++;
+            return false;
+        }
+        
+        return true;
     });
     
     console.log('✅ Valid orders:', validOrders.length, 'out of', orders.length);
+    console.log('❌ Invalid breakdown:', invalidReasons);
     console.log('');
 
     // Step 2: AGGREGATE FUST BY ROUTE AND TYPE
