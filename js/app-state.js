@@ -67,7 +67,21 @@ window.appState = {
         // CRITICAL: Store in memory FIRST (always works, shared across pages via window object)
         window.__zuidplas_orders_memory = this.orders; // Store FULL orders in memory
         window.__zuidplas_orders_count = this.orders.length;
-        window.__zuidplas_orders_date = date;
+        
+        // Normalize date to YYYY-MM-DD format for consistent comparison
+        let normalizedDate = date;
+        if (date instanceof Date) {
+            normalizedDate = date.toISOString().split('T')[0];
+        } else if (date && typeof date === 'string' && date.includes('GMT')) {
+            try {
+                normalizedDate = new Date(date).toISOString().split('T')[0];
+            } catch (e) {
+                normalizedDate = String(date);
+            }
+        } else if (date) {
+            normalizedDate = String(date);
+        }
+        window.__zuidplas_orders_date = normalizedDate;
         
         // CRITICAL: Clear cart cache when orders change OR date changes (forces recalculation)
         const dateChanged = date && window.__zuidplas_orders_date && window.__zuidplas_orders_date !== date;

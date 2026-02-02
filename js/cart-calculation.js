@@ -372,7 +372,20 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     // CACHE: Create hash based on order IDs, count, AND date
     // CRITICAL: Include date so different dates don't share cache!
     const orderIds = orders.slice(0, 10).map(o => o.id).join(',') + '...' + orders.slice(-5).map(o => o.id).join(',');
-    const currentDate = window.__zuidplas_orders_date || 'unknown';
+    
+    // Normalize date to string format for consistent comparison
+    let currentDate = window.__zuidplas_orders_date || 'unknown';
+    if (currentDate instanceof Date) {
+        currentDate = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    } else if (typeof currentDate === 'string' && currentDate.includes('GMT')) {
+        // Convert Date string to YYYY-MM-DD
+        try {
+            currentDate = new Date(currentDate).toISOString().split('T')[0];
+        } catch (e) {
+            currentDate = String(currentDate);
+        }
+    }
+    
     const ordersHash = orders.length + '_' + currentDate + '_' + orderIds;
     
     console.log(`🔍 getGlobalOrdersAndCarts: Checking cache...`);
@@ -386,22 +399,36 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     }
     console.log(`   Current hash: ${ordersHash}`);
     
+    // Normalize cache date for comparison
+    let cacheDate = window.__zuidplas_cart_cache?.date || '';
+    if (cacheDate instanceof Date) {
+        cacheDate = cacheDate.toISOString().split('T')[0];
+    } else if (typeof cacheDate === 'string' && cacheDate.includes('GMT')) {
+        try {
+            cacheDate = new Date(cacheDate).toISOString().split('T')[0];
+        } catch (e) {
+            cacheDate = String(cacheDate);
+        }
+    }
+    
     // Skip cache if forceRefresh is true (Dashboard only!)
     if (!forceRefresh && window.__zuidplas_cart_cache && 
         window.__zuidplas_cart_cache.ordersHash === ordersHash &&
         window.__zuidplas_cart_cache.orders.length === orders.length &&
-        window.__zuidplas_cart_cache.date === currentDate) {
+        cacheDate === currentDate) {
         console.log('═══════════════════════════════════════════════════════════════════');
         console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result');
         console.log('═══════════════════════════════════════════════════════════════════');
-        console.log(`   ⚠️ This result was calculated using FUST (not stems!)`);
+        console.log(`   🔵 This result was calculated using FUST (not stems!)`);
         console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
         console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
-        console.log(`   Cached date: ${window.__zuidplas_cart_cache.date || 'unknown'}`);
+        console.log(`   Cached date: ${cacheDate || 'unknown'}`);
+        console.log(`   Current date: ${currentDate}`);
         console.log(`   Cached result: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
         console.log(`   Cached breakdown: Aalsmeer=${window.__zuidplas_cart_cache.cartResult.byRoute.Aalsmeer}, Naaldwijk=${window.__zuidplas_cart_cache.cartResult.byRoute.Naaldwijk}, Rijnsburg=${window.__zuidplas_cart_cache.cartResult.byRoute.Rijnsburg}`);
-        console.log(`   ✅ This was calculated using: fust = assembly_amount ÷ bundles_per_fust`);
+        console.log(`   ✅ Formula used: fust = assembly_amount ÷ bundles_per_fust`);
         console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
+        console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
         console.log('═══════════════════════════════════════════════════════════════════');
         return {
             orders: orders,
@@ -413,9 +440,9 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         } else if (window.__zuidplas_cart_cache) {
             console.log('🔄 getGlobalOrdersAndCarts: Cache mismatch - recalculating...');
             console.log(`   Cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
-            console.log(`   Cache date: ${window.__zuidplas_cart_cache.date || 'unknown'}`);
+            console.log(`   Cache date: ${cacheDate || 'unknown'}`);
             console.log(`   Current date: ${currentDate}`);
-            console.log(`   Date match: ${window.__zuidplas_cart_cache.date === currentDate}`);
+            console.log(`   Date match: ${cacheDate === currentDate}`);
             console.log(`   Hash match: ${window.__zuidplas_cart_cache.ordersHash === ordersHash}`);
             console.log(`   Count match: ${window.__zuidplas_cart_cache.orders.length === orders.length}`);
             console.log(`   Cache had: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
@@ -441,13 +468,26 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     // CACHE the result with timestamp and date
     // CRITICAL: This cache is now the SINGLE SOURCE OF TRUTH for ALL pages
     const cacheSource = forceRefresh ? 'Dashboard (forceRefresh=true)' : 'Other page';
+    
+    // Ensure date is normalized (YYYY-MM-DD format)
+    let normalizedDate = currentDate;
+    if (currentDate instanceof Date) {
+        normalizedDate = currentDate.toISOString().split('T')[0];
+    } else if (typeof currentDate === 'string' && currentDate.includes('GMT')) {
+        try {
+            normalizedDate = new Date(currentDate).toISOString().split('T')[0];
+        } catch (e) {
+            normalizedDate = String(currentDate);
+        }
+    }
+    
     window.__zuidplas_cart_cache = {
         ordersHash: ordersHash,
         orders: orders,
         cartResult: cartResult,
         timestamp: new Date().toISOString(),
         ordersCount: orders.length,
-        date: currentDate,  // CRITICAL: Store date so different dates don't share cache!
+        date: normalizedDate,  // CRITICAL: Store normalized date so different dates don't share cache!
         source: cacheSource
     };
     
