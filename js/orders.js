@@ -696,6 +696,8 @@ class OrderManager {
         console.log('ℹ️ assignCarts() is DISABLED - using cart-calculation.js instead');
         return; // DO NOTHING - new calculation happens in dashboard
     }
+    
+    /* ORPHANED CODE REMOVED - This was causing syntax errors
         console.log('🔧 Assigning carts to', this.orders.length, 'orders...');
         console.log('📊 Grouping by customer first (same customer = same cart group)...');
         
@@ -913,6 +915,7 @@ class OrderManager {
         this.filteredOrders = [...this.orders];
         this.displayOrders();
     }
+    END OF ORPHANED CODE */
 
     /**
      * Get cart summary - CRITICAL: Count each customer's cartsNeeded ONCE (not per order!)
