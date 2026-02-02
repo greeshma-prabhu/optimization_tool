@@ -869,97 +869,79 @@
                 // Use orders directly (they already have all data)
                 const ordersWithCarts = orders || [];
                 console.log('📊 Updating route overview with', ordersWithCarts.length, 'orders');
-                const optimizer = initializeOptimizer(ordersWithCarts);
-                const routeAnalysis = optimizer.processOrders();
                 
-                Object.keys(ROUTES).forEach(routeKey => {
-                    const route = ROUTES[routeKey];
-                    const analysis = routeAnalysis[routeKey];
-                    
-                    // Always show all routes, even if empty
-                    if (!analysis) {
-                        console.warn(`No analysis for route ${routeKey}, creating empty structure`);
-                        // Create empty route card
-                        const emptyCard = document.createElement('div');
-                        emptyCard.className = 'route-card';
-                        emptyCard.innerHTML = `
-                            <div class="route-header">
-                                <div class="route-title">Route ${route.id}: ${route.name}</div>
-                                <div class="route-time">${route.departureTime}</div>
-                            </div>
-                            <div class="route-info">
-                                <div class="route-info-item">
-                                    <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.orders', 'Orders') : 'Orders'}</div>
-                                    <div class="route-info-value">0</div>
-                                </div>
-                                <div class="route-info-item">
-                                    <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartsNeeded', 'Carts Needed') : 'Carts Needed'}</div>
-                                    <div class="route-info-value">0 / 17</div>
-                                </div>
-                                <div class="route-info-item">
-                                    <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.status', 'Status') : 'Status'}</div>
-                                    <div class="route-info-value"><span class="badge success">${typeof i18n !== 'undefined' ? i18n.t('common.ready', 'Ready') : 'Ready'}</span></div>
-                                </div>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 0%; background: var(--success)"></div>
-                            </div>
-                        `;
-                        container.appendChild(emptyCard);
-                        return;
-                    }
-                    
-                    // Use capacity object if available, otherwise use direct properties
-                    const capacity = analysis.capacity || {
-                        fits: analysis.fits !== undefined ? analysis.fits : true,
-                        status: analysis.status || 'fits',
-                        maxCapacity: analysis.maxCapacity || 17,
-                        equivalentStandard: analysis.totalCarts || 0,
-                        utilization: analysis.utilization || 0,
-                        overflow: analysis.overflow || 0
-                    };
-                const statusClass = capacity.fits ? 'success' : capacity.status === 'tight' ? 'warning' : 'danger';
-                let statusText = '';
-                if (typeof i18n !== 'undefined') {
-                    statusText = capacity.fits ? i18n.t('common.ready', 'Ready') : capacity.status === 'tight' ? i18n.t('common.tight', 'Tight') : i18n.t('optimization.overflow', 'Overflow');
+                // CRITICAL: Use FUST-based calculation (SAME AS DASHBOARD TOTAL!)
+                let cartResult = null;
+                if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
+                    cartResult = window.CartCalculation.calculateTotalCarts(ordersWithCarts);
+                    console.log('✅ Route overview using FUST calculation:');
+                    console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
+                    console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
+                    console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
                 } else {
-                    statusText = capacity.fits ? 'Ready' : capacity.status === 'tight' ? 'Tight' : 'Overflow';
+                    console.error('❌ CartCalculation not available for route overview!');
                 }
                 
-                const progress = Math.min(100, parseFloat(capacity.utilization));
+                // Route mapping
+                const routeMap = {
+                    'rijnsburg': { id: 1, name: 'Rijnsburg', locationId: 36, time: '09:00' },
+                    'aalsmeer': { id: 2, name: 'Aalsmeer', locationId: 32, time: '10:00' },
+                    'naaldwijk': { id: 3, name: 'Naaldwijk', locationId: 34, time: '11:00' }
+                };
                 
-                const card = document.createElement('div');
-                card.className = 'route-card';
-                card.innerHTML = `
-                    <div class="route-header">
-                        <div class="route-title">Route ${route.id}: ${route.name}</div>
-                        <div class="route-time">${route.departureTime}</div>
-                    </div>
-                    <div class="route-info">
-                        <div class="route-info-item">
-                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.orders', 'Orders') : 'Orders'}</div>
-                            <div class="route-info-value">${analysis.orders.length}</div>
+                Object.keys(routeMap).forEach(routeKey => {
+                    const route = routeMap[routeKey];
+                    
+                    // Get cart count from FUST calculation
+                    const routeName = route.name;
+                    const carts = cartResult ? (cartResult.byRoute[routeName] || 0) : 0;
+                    
+                    // Count orders for this route
+                    const routeOrders = ordersWithCarts.filter(order => {
+                        const orderLocationId = order.delivery_location_id || order.order?.delivery_location_id;
+                        return orderLocationId === route.locationId && (order.assembly_amount || 0) > 0;
+                    });
+                    const orderCount = routeOrders.length;
+                    
+                    // Calculate status
+                    const maxCapacity = 17;
+                    const fits = carts <= maxCapacity;
+                    const statusClass = fits ? 'success' : 'danger';
+                    const statusText = fits ? (typeof i18n !== 'undefined' ? i18n.t('common.ready', 'Ready') : 'Ready') : (typeof i18n !== 'undefined' ? i18n.t('optimization.overflow', 'Overflow') : 'Overflow');
+                    const progress = Math.min(100, (carts / maxCapacity) * 100);
+                    
+                    const card = document.createElement('div');
+                    card.className = 'route-card';
+                    card.innerHTML = `
+                        <div class="route-header">
+                            <div class="route-title">Route ${route.id}: ${route.name}</div>
+                            <div class="route-time">${route.time}</div>
                         </div>
-                        <div class="route-info-item">
-                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartsNeeded', 'Carts Needed') : 'Carts Needed'}</div>
-                            <div class="route-info-value">${capacity.equivalentStandard} / ${capacity.maxCapacity}</div>
+                        <div class="route-info">
+                            <div class="route-info-item">
+                                <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.orders', 'Orders') : 'Orders'}</div>
+                                <div class="route-info-value">${orderCount}</div>
+                            </div>
+                            <div class="route-info-item">
+                                <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.cartsNeeded', 'Carts Needed') : 'Carts Needed'}</div>
+                                <div class="route-info-value">${carts} / ${maxCapacity}</div>
+                            </div>
+                            <div class="route-info-item">
+                                <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.status', 'Status') : 'Status'}</div>
+                                <div class="route-info-value"><span class="badge ${statusClass}">${statusText}</span></div>
+                            </div>
                         </div>
-                        <div class="route-info-item">
-                            <div class="route-info-label">${typeof i18n !== 'undefined' ? i18n.t('optimization.status', 'Status') : 'Status'}</div>
-                            <div class="route-info-value"><span class="badge ${statusClass}">${statusText}</span></div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%; background: ${progress >= 100 ? 'var(--danger)' : progress >= 80 ? 'var(--warning)' : 'var(--success)'}"></div>
                         </div>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progress}%; background: ${progress >= 100 ? 'var(--danger)' : progress >= 80 ? 'var(--warning)' : 'var(--success)'}"></div>
-                    </div>
-                    ${capacity.warning ? `<div class="info-box warning" style="margin-top: 15px;">${capacity.warning}</div>` : ''}
-                    <div class="route-actions">
-                        <a href="optimization.html" class="btn btn-primary">${typeof i18n !== 'undefined' ? i18n.t('optimization.runOptimization', 'Optimize') : 'Optimize'}</a>
-                        <a href="orders.html" class="btn btn-secondary">${typeof i18n !== 'undefined' ? i18n.t('common.viewDetails', 'View Details') : 'View Details'}</a>
-                    </div>
-                `;
-                
-                container.appendChild(card);
+                        ${!fits ? `<div class="info-box warning" style="margin-top: 15px;">${carts - maxCapacity} carts overflow</div>` : ''}
+                        <div class="route-actions">
+                            <a href="optimization.html" class="btn btn-primary">${typeof i18n !== 'undefined' ? i18n.t('optimization.runOptimization', 'Optimize') : 'Optimize'}</a>
+                            <a href="orders.html" class="btn btn-secondary">${typeof i18n !== 'undefined' ? i18n.t('common.viewDetails', 'View Details') : 'View Details'}</a>
+                        </div>
+                    `;
+                    
+                    container.appendChild(card);
             });
             } catch (error) {
                 console.error('Error updating route overview:', error);
