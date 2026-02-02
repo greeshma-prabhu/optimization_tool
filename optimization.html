@@ -484,13 +484,17 @@
                 if (orders && orders.length > 0) {
                     console.log(`✅ Loaded ${orders.length} orders from global state`);
                     console.log(`Sample order:`, orders[0]);
+                    console.log(`🔍 DEBUG: First order assembly_amount:`, orders[0].assembly_amount);
+                    console.log(`🔍 DEBUG: First order delivery_location_id:`, orders[0].delivery_location_id);
+                    console.log(`🔍 DEBUG: First order customer_id:`, orders[0].customer_id);
                     
                     // Update orderManager with fresh data
                     orderManager.orders = orders;
                     orderManager.filteredOrders = [...orders];
                     
                     // CRITICAL: Initialize CartDisplayManager and update UI immediately
-                    console.log('📦 Initializing CartDisplayManager...');
+                    console.log('📦 Initializing CartDisplayManager with', orders.length, 'orders...');
+                    console.log('🔍 DEBUG: About to call CartCalculation.calculateTotalCarts()...');
                     cartDisplayManager = new CartDisplayManager(orders);
                     
                     // Update Input Summary with calculated values
