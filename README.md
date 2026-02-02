@@ -2,6 +2,16 @@
 
 Professional route optimization system with Florinet API integration for automated cart loading and route planning.
 
+## ⚠️ CRITICAL UPDATE (Feb 2, 2026)
+
+**Fixed 31x cart overcounting bug!**
+
+The tool was showing **1,923 carts** instead of **62 carts** due to counting stems instead of FUST containers. 
+
+✅ **Now Fixed**: Proper fust-based calculation using correct capacities per fust type.
+
+📄 See [FIXES_APPLIED.md](./FIXES_APPLIED.md) for full technical details.
+
 ## 🚀 Quick Start
 
 ### Local Development
