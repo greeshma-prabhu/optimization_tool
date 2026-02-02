@@ -292,6 +292,8 @@
     <script src="js/data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/cart-calculation.js"></script> <!-- CRITICAL: FUST-based cart calculation -->
+    <script src="js/cart-display-manager.js"></script> <!-- Unified cart display -->
     <script src="js/carts.js"></script>
     <script src="js/ordermanager-shim.js"></script>
     <script src="js/orders.js"></script>
@@ -488,10 +490,11 @@
                 const orders = await orderManager.fetchOrders(selectedDate);
                 console.log('✅ Fetched', orders.length, 'orders');
                 
-                console.log('🔧 Assigning carts...');
-                orderManager.assignCarts();
+                // DISABLED: orderManager.assignCarts() uses OLD buggy calculation
+                // Cart calculation now happens in updateSummary() using CartCalculation.calculateTotalCarts()
+                console.log('🔧 Skipping old assignCarts() - using FUST-based calculation instead...');
                 
-                console.log('📊 Updating summary...');
+                console.log('📊 Updating summary with FUST-based calculation...');
                 updateSummary();
                 updateOrdersDate(); // Update displayed date
                 
@@ -534,12 +537,59 @@
             updateSummary();
         }
 
-        // Update summary
+        // Update summary - USE CORRECT FUST-BASED CALCULATION
         function updateSummary() {
-            const summary = orderManager.getCartSummary();
-            document.getElementById('standard-carts-summary').textContent = summary.standard;
-            document.getElementById('danish-carts-summary').textContent = summary.danish;
-            document.getElementById('special-handling-summary').textContent = summary.specialHandling;
+            console.log('📊 Orders page: Updating cart summary using FUST calculation...');
+            
+            // Get orders from orderManager
+            const orders = orderManager.orders || orderManager.filteredOrders || [];
+            
+            // Use CartCalculation (FUST-based) - SAME AS DASHBOARD!
+            if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
+                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
+                const cartTypes = calculateCartTypes(cartResult);
+                
+                console.log('✅ Orders page cart calculation:');
+                console.log(`   Total carts: ${cartResult.total}`);
+                console.log(`   Standard: ${cartTypes.standard}`);
+                console.log(`   Danish: ${cartTypes.danish}`);
+                
+                // Update UI with CORRECT values
+                document.getElementById('standard-carts-summary').textContent = cartTypes.standard;
+                document.getElementById('danish-carts-summary').textContent = cartTypes.danish;
+                document.getElementById('special-handling-summary').textContent = '0'; // TODO: Calculate special handling
+            } else {
+                console.error('❌ CartCalculation not available! Using fallback...');
+                // Fallback to old method (but warn)
+                const summary = orderManager.getCartSummary();
+                document.getElementById('standard-carts-summary').textContent = summary.standard || 0;
+                document.getElementById('danish-carts-summary').textContent = summary.danish || 0;
+                document.getElementById('special-handling-summary').textContent = summary.specialHandling || 0;
+            }
+        }
+        
+        // Calculate cart types from breakdown (same logic as CartDisplayManager)
+        function calculateCartTypes(cartResult) {
+            if (!cartResult || !cartResult.breakdown) {
+                return { standard: 0, danish: 0 };
+            }
+            
+            let standardCarts = 0;
+            let danishCarts = 0;
+            
+            cartResult.breakdown.forEach(routeData => {
+                routeData.fustBreakdown.forEach(fust => {
+                    // Standard: 612 (Gerbera box 12cm), 614 (Gerbera mini)
+                    if (fust.fustType === '612' || fust.fustType === '614') {
+                        standardCarts += fust.carts;
+                    } else {
+                        // Danish/Other: 575, 902, 588, 996, 856, 821
+                        danishCarts += fust.carts;
+                    }
+                });
+            });
+            
+            return { standard: standardCarts, danish: danishCarts };
         }
 
         // Export orders
@@ -574,10 +624,10 @@
                     console.log(`✅ Orders page: Loaded ${globalOrders.length} orders from global state`);
                     orderManager.orders = globalOrders;
                     orderManager.filteredOrders = [...globalOrders];
-                    orderManager.assignCarts();
+                    // DISABLED: orderManager.assignCarts() - using FUST-based calculation in updateSummary()
                     orderManager.updateOrderCount();
                     orderManager.displayOrders();
-                    updateSummary();
+                    updateSummary(); // This now uses CartCalculation.calculateTotalCarts()
                     updateOrdersDate();
                 } else {
                     // PRIORITY 2: Fetch from API
@@ -601,10 +651,10 @@
             if (typeof orderManager !== 'undefined') {
                 orderManager.orders = event.detail.orders;
                 orderManager.filteredOrders = [...event.detail.orders];
-                orderManager.assignCarts();
+                // DISABLED: orderManager.assignCarts() - using FUST-based calculation in updateSummary()
                 orderManager.updateOrderCount();
                 orderManager.displayOrders();
-                updateSummary();
+                updateSummary(); // This now uses CartCalculation.calculateTotalCarts()
             }
         });
         
