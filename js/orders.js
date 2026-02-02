@@ -1086,7 +1086,8 @@ class OrderManager {
 }
 
 // Global instance
-const orderManager = new OrderManager();
+// OrderManager is now provided by ordermanager-shim.js
+// const orderManager = new OrderManager(); // REMOVED - using shim instead
 
 // Reload orders display when language changes
 document.addEventListener('languageChanged', () => {
