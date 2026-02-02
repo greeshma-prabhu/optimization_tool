@@ -333,36 +333,78 @@ function getGlobalOrdersAndCarts() {
         };
     }
     
-    // CACHE: Check if we already calculated for these orders
-    const ordersHash = orders.length + '_' + (orders[0]?.id || '0') + '_' + (orders[orders.length - 1]?.id || '0');
+    // CACHE: Create better hash based on order IDs and count
+    // This ensures same orders = same cache, different orders = new calculation
+    const orderIds = orders.slice(0, 10).map(o => o.id).join(',') + '...' + orders.slice(-5).map(o => o.id).join(',');
+    const ordersHash = orders.length + '_' + orderIds;
+    
+    console.log(`🔍 getGlobalOrdersAndCarts: Checking cache...`);
+    console.log(`   Orders count: ${orders.length}`);
+    console.log(`   Cache exists? ${!!window.__zuidplas_cart_cache}`);
+    if (window.__zuidplas_cart_cache) {
+        console.log(`   Cache hash: ${window.__zuidplas_cart_cache.ordersHash}`);
+        console.log(`   Cache orders count: ${window.__zuidplas_cart_cache.orders.length}`);
+    }
+    console.log(`   Current hash: ${ordersHash}`);
+    
     if (window.__zuidplas_cart_cache && 
         window.__zuidplas_cart_cache.ordersHash === ordersHash &&
         window.__zuidplas_cart_cache.orders.length === orders.length) {
         console.log('✅ getGlobalOrdersAndCarts: Using CACHED cart result (orders unchanged)');
+        console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+        console.log(`   Cached result: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
+        console.log(`   Cached breakdown: Aalsmeer=${window.__zuidplas_cart_cache.cartResult.byRoute.Aalsmeer}, Naaldwijk=${window.__zuidplas_cart_cache.cartResult.byRoute.Naaldwijk}, Rijnsburg=${window.__zuidplas_cart_cache.cartResult.byRoute.Rijnsburg}`);
         return {
             orders: orders,
             cartResult: window.__zuidplas_cart_cache.cartResult
         };
+    } else {
+        if (window.__zuidplas_cart_cache) {
+            console.log('🔄 getGlobalOrdersAndCarts: Cache mismatch - recalculating...');
+            console.log(`   Cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+            console.log(`   Hash match: ${window.__zuidplas_cart_cache.ordersHash === ordersHash}`);
+            console.log(`   Count match: ${window.__zuidplas_cart_cache.orders.length === orders.length}`);
+            console.log(`   Cache had: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
+        } else {
+            console.log('🔄 getGlobalOrdersAndCarts: No cache found - calculating fresh...');
+        }
     }
     
     // Calculate carts using the SAME function
     console.log(`🧮 getGlobalOrdersAndCarts: Calculating carts for ${orders.length} orders...`);
     const cartResult = calculateCarts(orders);
     
-    // CACHE the result
+    // CACHE the result with timestamp
     window.__zuidplas_cart_cache = {
         ordersHash: ordersHash,
-        orders: orders,
-        cartResult: cartResult
+        orders: orders, // Store reference to exact orders used
+        cartResult: cartResult,
+        timestamp: new Date().toISOString(),
+        ordersCount: orders.length
     };
     
-    console.log(`✅ getGlobalOrdersAndCarts: Result - ${cartResult.total} carts, ${cartResult.trucks} trucks`);
+    console.log(`✅ getGlobalOrdersAndCarts: Result calculated at ${new Date().toISOString()}`);
+    console.log(`   Total: ${cartResult.total} carts, ${cartResult.trucks} trucks`);
     console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
     
     return {
         orders: orders,
         cartResult: cartResult
     };
+}
+
+/**
+ * Clear the cart calculation cache
+ * Call this when orders are updated to force fresh calculation
+ */
+function clearCartCache() {
+    if (window.__zuidplas_cart_cache) {
+        console.log('🗑️ clearCartCache: Clearing cart cache...');
+        console.log(`   Old cache had: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
+        console.log(`   Old cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+        delete window.__zuidplas_cart_cache;
+        console.log('✅ Cart cache cleared');
+    }
 }
 
 // Export for use in other files
@@ -375,6 +417,8 @@ if (typeof window !== 'undefined') {
         getFustType: getFustType,
         FUST_CAPACITY: FUST_CAPACITY,
         // NEW: Single source of truth function
-        getGlobalOrdersAndCarts: getGlobalOrdersAndCarts
+        getGlobalOrdersAndCarts: getGlobalOrdersAndCarts,
+        // NEW: Clear cache function
+        clearCartCache: clearCartCache
     };
 }

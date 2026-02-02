@@ -800,33 +800,23 @@
         function updateDashboard(orders, options) {
             console.log('═══════════════════════════════════════════════════════════════════');
             console.log('📊 UPDATE DASHBOARD CALLED');
-            console.log(`   Orders: ${orders.length}`);
+            console.log(`   Orders parameter: ${orders ? orders.length : 0}`);
             
-            // Update stats
-            document.getElementById('total-orders-count').textContent = orders.length;
-            console.log('═══════════════════════════════════════════════════════════════════');
-            
-            // CRITICAL: ALWAYS use SINGLE SOURCE OF TRUTH for orders and cart calculation
+            // CRITICAL: ALWAYS use SINGLE SOURCE OF TRUTH - IGNORE orders parameter!
             // This ensures ALL pages show the SAME numbers!
-            // NO FALLBACKS - must use getGlobalOrdersAndCarts()!
             if (typeof window.CartCalculation !== 'undefined' && window.CartCalculation.getGlobalOrdersAndCarts) {
                 console.log('🛒 Dashboard: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
-                
-                // CRITICAL: Ensure orders are in global memory FIRST
-                if (orders && orders.length > 0 && (!window.__zuidplas_orders_memory || window.__zuidplas_orders_memory.length !== orders.length)) {
-                    console.log('🔄 Dashboard: Saving orders to global memory first...');
-                    window.__zuidplas_orders_memory = orders;
-                    // Clear cache to force fresh calculation
-                    if (window.__zuidplas_cart_cache) {
-                        delete window.__zuidplas_cart_cache;
-                    }
-                }
+                console.log('   ⚠️ IGNORING orders parameter - using global memory instead!');
                 
                 const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
                 const cartResult = globalData.cartResult;
                 const totalCarts = cartResult.total || 0;
+                const actualOrders = globalData.orders;
                 
-                console.log(`   Orders used: ${globalData.orders.length}`);
+                // Update stats with ACTUAL orders from global memory
+                document.getElementById('total-orders-count').textContent = actualOrders.length;
+                
+                console.log(`   Orders from global memory: ${actualOrders.length}`);
                 console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
                 console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
                 console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
@@ -835,12 +825,16 @@
                 
                 document.getElementById('total-carts-needed').textContent = totalCarts;
                 console.log(`✅ Dashboard updated with SINGLE SOURCE calculation: ${totalCarts} carts`);
+                
+                // Use actualOrders for route overview too
+                orders = actualOrders;
             } else {
                 console.error('❌ getGlobalOrdersAndCarts() NOT AVAILABLE! This should never happen!');
                 console.error('   CartCalculation available?', typeof window.CartCalculation !== 'undefined');
                 console.error('   getGlobalOrdersAndCarts available?', window.CartCalculation && typeof window.CartCalculation.getGlobalOrdersAndCarts === 'function');
                 // Don't use fallback - show error instead
                 document.getElementById('total-carts-needed').textContent = 'ERROR';
+                document.getElementById('total-orders-count').textContent = orders ? orders.length : 0;
             }
             console.log('═══════════════════════════════════════════════════════════════════');
             

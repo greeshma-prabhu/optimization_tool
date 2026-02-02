@@ -70,9 +70,14 @@ window.appState = {
         window.__zuidplas_orders_date = date;
         
         // CRITICAL: Clear cart cache when orders change (forces recalculation)
-        if (window.__zuidplas_cart_cache) {
+        if (window.CartCalculation && typeof window.CartCalculation.clearCartCache === 'function') {
+            window.CartCalculation.clearCartCache();
+        } else if (window.__zuidplas_cart_cache) {
+            console.log('🔄 Clearing cart cache (orders updated)...');
+            const oldCache = window.__zuidplas_cart_cache;
             delete window.__zuidplas_cart_cache;
-            console.log('🔄 Cleared cart cache (orders updated)');
+            console.log(`   Old cache had: ${oldCache.cartResult?.total || 'unknown'} carts`);
+            console.log('✅ Cart cache cleared');
         }
         
         console.log(`✅ Orders stored in memory (${this.orders.length} orders, shared across pages)`);
