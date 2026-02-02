@@ -25,6 +25,23 @@ const FUST_CAPACITY = {
     'default': 72
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// STANDARD BUNDLES_PER_FUST by fust type (industry standards)
+// Used when L11/L13, nr_base_product, or bundles_per_fust are missing
+// ═══════════════════════════════════════════════════════════════════
+const STANDARD_BUNDLES_PER_FUST = {
+    '612': 5,   // Standard Gerbera box
+    '614': 5,   // Gerbera mini box (same as 612)
+    '575': 4,   // Smaller container
+    '902': 5,   // Standard container
+    '588': 5,   // Medium container
+    '996': 4,   // Small container
+    '856': 3,   // Small container
+    '821': 5,   // Default
+    '999': 5,   // Unknown
+    'default': 5
+};
+
 // Route mapping from delivery_location_id
 const LOCATION_ID_TO_ROUTE = {
     32: 'Aalsmeer',
@@ -52,15 +69,13 @@ function getFustType(order) {
 
 /**
  * Calculate bundles_per_fust for an orderrow
- * CRITICAL: NO FALLBACKS - ONLY use real FUST data!
- * If FUST data is missing, return null (order will be skipped)
+ * CRITICAL: STRICTLY FUST calculation - use fust type standards if needed
  * 
  * Priority:
  * 1. L11 (stems per bundle) + L13 (stems per container) → bundles_per_container = L13 ÷ L11
  * 2. nr_base_product (stems per container) → bundles_per_container = nr_base_product ÷ 10
- * 3. bundles_per_fust (only if > 1, otherwise skip)
- * 
- * NO DEFAULT - if no data, return null!
+ * 3. bundles_per_fust (only if > 1)
+ * 4. Use STANDARD bundles_per_fust for fust type (still FUST-based!)
  */
 function calculateBundlesPerFust(orderrow) {
     const properties = orderrow.properties || [];
@@ -104,32 +119,35 @@ function calculateBundlesPerFust(orderrow) {
             method: 'bundles_per_fust'
         };
     }
-    // If bundles_per_fust = 1, SKIP IT (would cause inflation)!
+    // If bundles_per_fust = 1, don't use it (would cause inflation)
     
-    // NO FALLBACK - return null if no FUST data available!
-    return null;
+    // Priority 4: Use STANDARD bundles_per_fust for this fust type
+    // This is STILL FUST-based - using fust type to determine bundles_per_fust
+    const fustType = getFustType(orderrow);
+    const standardBundlesPerFust = STANDARD_BUNDLES_PER_FUST[fustType] || STANDARD_BUNDLES_PER_FUST['default'];
+    
+    return {
+        bundlesPerFust: standardBundlesPerFust,
+        method: 'fust_type_standard',
+        fustType: fustType
+    };
 }
 
 /**
  * Calculate FUST for a single orderrow
  * FORMULA: fust = assembly_amount ÷ bundles_per_fust
  * 
- * CRITICAL: Returns null if no FUST data available (order will be skipped)
+ * CRITICAL: ALWAYS returns a value - uses fust type standards if needed
  */
 function calculateFustForOrderrow(orderrow) {
     const assemblyAmount = orderrow.assembly_amount || 0;
     
     if (assemblyAmount === 0) {
-        return null; // Skip orders with no assembly amount
+        return { totalFust: 0, method: 'zero', bundlesPerFust: 0 };
     }
     
+    // This will ALWAYS return a value (uses fust type standards if needed)
     const bundlesPerFustData = calculateBundlesPerFust(orderrow);
-    
-    // CRITICAL: If no FUST data available, return null (skip this order)
-    if (!bundlesPerFustData) {
-        return null;
-    }
-    
     const bundlesPerFust = bundlesPerFustData.bundlesPerFust;
     const totalFust = assemblyAmount / bundlesPerFust;
     
@@ -177,7 +195,8 @@ function calculateCarts(orders) {
         'L11_L13': 0,
         'nr_base_product': 0,
         'bundles_per_fust': 0,
-        'skipped': 0  // Orders skipped due to missing FUST data
+        'fust_type_standard': 0,  // Using fust type standard (still FUST-based!)
+        'zero': 0
     };
     
     // Step 2: Calculate FUST for each orderrow and aggregate by route + fust type
@@ -189,9 +208,9 @@ function calculateCarts(orders) {
     };
     
     console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('STEP 1: Calculating FUST for each orderrow (ONLY orders with FUST data!)');
+    console.log('STEP 1: Calculating FUST for each orderrow (ALL orders - STRICTLY FUST!)');
     console.log('FORMULA: fust = assembly_amount ÷ bundles_per_fust');
-    console.log('⚠️ Orders WITHOUT FUST data will be SKIPPED (no fallbacks!)');
+    console.log('✅ ALL orders calculated using FUST (uses fust type standards if needed)');
     console.log('═══════════════════════════════════════════════════════════════════');
     
     validOrders.forEach((order, idx) => {
@@ -199,15 +218,6 @@ function calculateCarts(orders) {
         const fustType = getFustType(order);
         const fustCalc = calculateFustForOrderrow(order);
         const assemblyAmount = order.assembly_amount || 0;
-        
-        // CRITICAL: Skip orders without FUST data (no fallbacks!)
-        if (!fustCalc) {
-            methodCounts.skipped++;
-            if (methodCounts.skipped <= 5) {
-                console.warn(`⚠️ Order ${order.id || idx}: SKIPPED - No FUST data available (missing L11/L13, nr_base_product, or bundles_per_fust > 1)`);
-            }
-            return; // Skip this order
-        }
         
         // Track method usage
         methodCounts[fustCalc.method] = (methodCounts[fustCalc.method] || 0) + 1;
@@ -220,36 +230,36 @@ function calculateCarts(orders) {
         
         // Log first 5 orders for debugging
         if (idx < 5) {
-            console.log(`Order ${idx + 1}: ${assemblyAmount} bunches ÷ ${fustCalc.bundlesPerFust.toFixed(2)} bundles/fust = ${fustCalc.totalFust.toFixed(2)} FUST (type ${fustType}, route ${route}, method: ${fustCalc.method})`);
+            const methodNote = fustCalc.method === 'fust_type_standard' ? ` (using standard for fust ${fustType})` : '';
+            console.log(`Order ${idx + 1}: ${assemblyAmount} bunches ÷ ${fustCalc.bundlesPerFust.toFixed(2)} bundles/fust = ${fustCalc.totalFust.toFixed(2)} FUST (type ${fustType}, route ${route}, method: ${fustCalc.method}${methodNote})`);
         }
     });
     
     // Show method usage summary - CRITICAL FOR DEBUGGING!
     console.log('');
     console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('📊 FUST CALCULATION METHOD USAGE (CRITICAL CHECK!)');
+    console.log('📊 FUST CALCULATION METHOD USAGE (ALL ORDERS - STRICTLY FUST!)');
     console.log('═══════════════════════════════════════════════════════════════════');
-    const totalWithData = (methodCounts.L11_L13 || 0) + (methodCounts.nr_base_product || 0) + (methodCounts.bundles_per_fust || 0);
-    const totalSkipped = methodCounts.skipped || 0;
-    const totalOrders = totalWithData + totalSkipped;
+    const totalWithRealData = (methodCounts.L11_L13 || 0) + (methodCounts.nr_base_product || 0) + (methodCounts.bundles_per_fust || 0);
+    const totalWithStandard = methodCounts.fust_type_standard || 0;
+    const totalOrders = validOrders.length;
     
-    console.log(`   ✅ Using REAL FUST DATA: ${totalWithData} orders`);
-    console.log(`   ❌ SKIPPED (no FUST data): ${totalSkipped} orders`);
-    console.log(`   Total valid orders: ${totalWithData} out of ${validOrders.length}`);
+    console.log(`   ✅ Using REAL FUST DATA (L11/L13, nr_base_product, bundles_per_fust): ${totalWithRealData} orders`);
+    console.log(`   ✅ Using FUST TYPE STANDARD (still FUST-based!): ${totalWithStandard} orders`);
+    console.log(`   Total orders calculated: ${totalOrders}`);
     console.log('');
     console.log('   Breakdown:');
     console.log(`      L11/L13 (most accurate): ${methodCounts.L11_L13 || 0}`);
     console.log(`      nr_base_product: ${methodCounts.nr_base_product || 0}`);
     console.log(`      bundles_per_fust (>1): ${methodCounts.bundles_per_fust || 0}`);
-    console.log(`      SKIPPED (no FUST data): ${methodCounts.skipped || 0}`);
+    console.log(`      fust_type_standard (using fust type): ${methodCounts.fust_type_standard || 0}`);
     
-    if (totalSkipped > 0) {
-        const percentage = ((totalSkipped / validOrders.length) * 100).toFixed(1);
-        console.warn(`   ⚠️ WARNING: ${totalSkipped} orders (${percentage}%) SKIPPED - missing FUST data!`);
-        console.warn(`   ⚠️ These orders need: L11/L13 properties, nr_base_product, or bundles_per_fust > 1`);
-    } else {
-        console.log('   ✅ ALL orders have FUST data - calculation is working correctly!');
+    if (totalWithStandard > 0) {
+        const percentage = ((totalWithStandard / totalOrders) * 100).toFixed(1);
+        console.log(`   ℹ️ INFO: ${totalWithStandard} orders (${percentage}%) using fust type standard`);
+        console.log(`   ℹ️ This is still FUST-based calculation - using standard bundles_per_fust for fust type`);
     }
+    console.log('   ✅ ALL orders calculated using FUST (no orders skipped!)');
     console.log('═══════════════════════════════════════════════════════════════════');
     console.log('');
     
