@@ -28,8 +28,12 @@ window.appState = {
             location: order.location || order.location_name,
             location_name: order.location_name,
             route: order.route,
-            quantity: order.quantity || order.total_stems,
-            crateType: order.crateType,
+            delivery_location_id: order.delivery_location_id, // CRITICAL for route detection
+            fust_count: order.fust_count, // CRITICAL for cart calculation
+            fust_code: order.fust_code || order.container_code, // CRITICAL for capacity lookup
+            bundles_per_fust: order.bundles_per_fust,
+            quantity: order.quantity || order.fust_count, // Use fust_count as quantity
+            crateType: order.crateType || order.fust_code,
             cartType: order.cartType,
             cartsNeeded: order.cartsNeeded,
             deliveryDate: order.deliveryDate || order.delivery_date

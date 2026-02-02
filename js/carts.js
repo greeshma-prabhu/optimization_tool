@@ -58,55 +58,51 @@ class CartManager {
 
     /**
      * Calculate number of carts needed for an order
+     * 
+     * CRITICAL FIX based on feedback report:
+     * We calculate carts based on FUST (containers), not stems!
+     * 
+     * Formula: carts = fust_count ÷ capacity_per_fust_type
      */
     calculateCartsNeeded(order) {
-        const crateType = order.crateType || order.productCode || '612';
-        const quantity = parseInt(order.quantity || order.amount || 0, 10);
+        // Get fust code (container type) from order
+        const fustCode = order.fust_code || order.container_code || order.crateType || order.productCode || '612';
         
-        // Validate quantity
-        if (!quantity || quantity <= 0) {
-            console.warn(`⚠️ Order ${order.id} has invalid quantity:`, quantity, '- using default 100');
-            const defaultQty = 100;
-            
-            if (order.cartType === 'danish') {
-                const cartsNeeded = Math.ceil(defaultQty / this.capacities.danish);
-                return {
-                    carts: cartsNeeded,
-                    type: 'danish',
-                    capacity: this.capacities.danish,
-                    remaining: (cartsNeeded * this.capacities.danish) - defaultQty
-                };
-            } else {
-                const capacity = this.capacities.standard[crateType] || this.capacities.standard['612'];
-                const cartsNeeded = Math.ceil(defaultQty / capacity);
-                return {
-                    carts: cartsNeeded,
-                    type: 'standard',
-                    capacity: capacity,
-                    crateType: crateType,
-                    remaining: (cartsNeeded * capacity) - defaultQty
-                };
-            }
+        // Get fust count (number of containers)
+        const fustCount = order.fust_count || 0;
+        
+        // Validate fust count
+        if (!fustCount || fustCount <= 0) {
+            console.warn(`⚠️ Order ${order.id} has invalid fust_count:`, fustCount, '- skipping cart calculation');
+            return {
+                carts: 0,
+                type: order.cartType || 'standard',
+                capacity: 0,
+                remaining: 0
+            };
         }
         
         if (order.cartType === 'danish') {
-            const cartsNeeded = Math.ceil(quantity / this.capacities.danish);
+            // Danish cart calculation
+            const cartsNeeded = Math.ceil(fustCount / this.capacities.danish);
             return {
                 carts: cartsNeeded,
                 type: 'danish',
                 capacity: this.capacities.danish,
-                remaining: (cartsNeeded * this.capacities.danish) - quantity
+                fustCount: fustCount,
+                remaining: (cartsNeeded * this.capacities.danish) - fustCount
             };
         } else {
-            // Standard cart
-            const capacity = this.capacities.standard[crateType] || this.capacities.standard['612'];
-            const cartsNeeded = Math.ceil(quantity / capacity);
+            // Standard cart - capacity depends on fust type
+            const capacity = this.capacities.standard[fustCode] || this.capacities.standard['612'];
+            const cartsNeeded = Math.ceil(fustCount / capacity);
             return {
                 carts: cartsNeeded,
                 type: 'standard',
                 capacity: capacity,
-                crateType: crateType,
-                remaining: (cartsNeeded * capacity) - quantity
+                fustCode: fustCode,
+                fustCount: fustCount,
+                remaining: (cartsNeeded * capacity) - fustCount
             };
         }
     }
@@ -178,28 +174,31 @@ class CartManager {
             let totalQuantity = 0;
             
             clientOrders.forEach((order, orderIdx) => {
-                totalQuantity += (order.quantity || 0);
+                // CRITICAL FIX: Use fust_count (containers), not quantity or stems!
+                totalQuantity += (order.fust_count || order.quantity || 0);
                 
                 // Debug first order of first few clients
                 if (clientIdx < 3 && orderIdx === 0) {
                     const orderWithCartType = this.assignCartType(order);
+                    const fustCode = order.fust_code || order.container_code || '612';
                     console.log(`  First order:`, {
+                        fust_count: order.fust_count,
+                        fust_code: fustCode,
                         quantity: order.quantity,
-                        crateType: order.crateType,
                         cartType: orderWithCartType.cartType,
                         capacity: orderWithCartType.cartType === 'danish' 
                             ? this.capacities.danish 
-                            : (this.capacities.standard[order.crateType || '612'] || 72)
+                            : (this.capacities.standard[fustCode] || 72)
                     });
                 }
             });
             
-            // Calculate carts based on TOTAL quantity for this customer (not per-order)
-            // cartType already declared above, reuse it
-            const crateType = firstOrder.crateType || '612';
+            // Calculate carts based on TOTAL fust count for this customer (not per-order)
+            // Use the correct capacity based on fust type!
+            const fustCode = firstOrder.fust_code || firstOrder.container_code || '612';
             const capacity = cartType === 'danish' 
                 ? this.capacities.danish 
-                : (this.capacities.standard[crateType] || 72);
+                : (this.capacities.standard[fustCode] || 72);
             
             const totalCarts = Math.ceil(totalQuantity / capacity);
             
@@ -207,7 +206,7 @@ class CartManager {
             const route = this.determineRoute(firstOrder);
             
             if (clientIdx < 5) {
-                console.log(`  → Route: ${route}, Total carts: ${totalCarts}, Total quantity: ${totalQuantity}`);
+                console.log(`  → Route: ${route}, Total carts: ${totalCarts}, Total fust: ${totalQuantity.toFixed(2)}, Capacity: ${capacity}`);
             }
             
             if (routeCarts[route]) {
@@ -270,22 +269,33 @@ class CartManager {
 
     /**
      * Determine route from order data
+     * 
+     * CRITICAL FIX: Use delivery_location_id (from feedback report)
+     *   - delivery_location_id = 32 → Aalsmeer
+     *   - delivery_location_id = 34 → Naaldwijk
+     *   - delivery_location_id = 36 → Rijnsburg
      */
     determineRoute(order) {
-        const location = (order.deliveryLocation || order.location || order.delivery_address || '').toLowerCase();
-        const customer = (order.customer || order.customerName || order.client || '').toLowerCase();
-        
-        // Debug logging for first few orders
-        if (Math.random() < 0.05) { // Log 5% of orders to debug
-            console.log('🔍 Determining route for order:', {
-                customer: customer || '(empty)',
-                location: location || '(empty)',
-                orderId: order.id || order.orderId,
-                rawOrder: order
-            });
+        // PRIORITY 1: Use delivery_location_id (most accurate!)
+        const deliveryLocationId = order.delivery_location_id || order.deliveryLocationId;
+        if (deliveryLocationId) {
+            switch(deliveryLocationId) {
+                case 32: return 'aalsmeer';
+                case 34: return 'naaldwijk';
+                case 36: return 'rijnsburg';
+            }
         }
         
-        // Check location first (most reliable)
+        // PRIORITY 2: Check if route is already set by API enrichment
+        if (order.route && ['rijnsburg', 'aalsmeer', 'naaldwijk'].includes(order.route.toLowerCase())) {
+            return order.route.toLowerCase();
+        }
+        
+        // FALLBACK: Use location name
+        const location = (order.deliveryLocation || order.location || order.location_name || order.delivery_address || '').toLowerCase();
+        const customer = (order.customer || order.customer_name || order.customerName || order.client || '').toLowerCase();
+        
+        // Check location
         if (location) {
             if (location.includes('rijnsburg') || location.includes('rijnsberg')) {
                 return 'rijnsburg';
@@ -301,45 +311,37 @@ class CartManager {
         }
         
         // Check customer name against client lists (case-insensitive partial match)
-        if (customer && customer !== 'unknown') {
+        if (customer && customer !== 'unknown' && typeof ROUTES !== 'undefined') {
             // Check Rijnsburg clients
-            for (const clientName of ROUTES.rijnsburg.clientList) {
-                if (customer.includes(clientName.toLowerCase()) || clientName.toLowerCase().includes(customer)) {
-                    return 'rijnsburg';
+            if (ROUTES.rijnsburg && ROUTES.rijnsburg.clientList) {
+                for (const clientName of ROUTES.rijnsburg.clientList) {
+                    if (customer.includes(clientName.toLowerCase()) || clientName.toLowerCase().includes(customer)) {
+                        return 'rijnsburg';
+                    }
                 }
             }
             
             // Check Aalsmeer clients
-            for (const clientName of ROUTES.aalsmeer.clientList) {
-                if (customer.includes(clientName.toLowerCase()) || clientName.toLowerCase().includes(customer)) {
-                    return 'aalsmeer';
+            if (ROUTES.aalsmeer && ROUTES.aalsmeer.clientList) {
+                for (const clientName of ROUTES.aalsmeer.clientList) {
+                    if (customer.includes(clientName.toLowerCase()) || clientName.toLowerCase().includes(customer)) {
+                        return 'aalsmeer';
+                    }
                 }
             }
             
             // Check Naaldwijk clients
-            for (const clientName of ROUTES.naaldwijk.clientList) {
-                if (customer.includes(clientName.toLowerCase()) || clientName.toLowerCase().includes(customer)) {
-                    return 'naaldwijk';
+            if (ROUTES.naaldwijk && ROUTES.naaldwijk.clientList) {
+                for (const clientName of ROUTES.naaldwijk.clientList) {
+                    if (customer.includes(clientName.toLowerCase()) || clientName.toLowerCase().includes(customer)) {
+                        return 'naaldwijk';
+                    }
                 }
             }
         }
         
-        // If we still can't determine, distribute evenly to avoid all going to one route
-        const orderId = order.id || order.orderId || 'unknown';
-        const routeHash = orderId.toString().charCodeAt(0) % 3;
-        const routes = ['rijnsburg', 'aalsmeer', 'naaldwijk'];
-        const assignedRoute = routes[routeHash];
-        
-        // Only log warning for first few orders to avoid spam
-        if (Math.random() < 0.01) { // Log 1% of orders
-            console.warn('⚠️ Could not determine route for order:', {
-                customer: customer || '(empty)',
-                location: location || '(empty)',
-                orderId: orderId
-            }, `- distributing to ${assignedRoute} (hash-based)`);
-        }
-        
-        return assignedRoute;
+        // Default to Rijnsburg
+        return 'rijnsburg';
     }
 
     /**

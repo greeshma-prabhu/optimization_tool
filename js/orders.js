@@ -10,6 +10,18 @@ class OrderManager {
         this.currentDate = new Date();
         this.api = florinetAPI;
         
+        // Fust capacities (from business requirements)
+        this.FUST_CAPACITIES = {
+            '612': 72,  // Gerbera box 12cm: 3 layers of 24
+            '614': 72,  // Gerbera mini box: same as 612
+            '575': 32,  // Charge code Fc566
+            '902': 40,  // Charge code Fc588: 4 layers of 10
+            '588': 40,  // Medium container
+            '996': 32,  // Small container + small rack
+            '856': 20,  // Charge code €6.00
+            '821': 40   // Default
+        };
+        
         // Dynamic mappings (fetched from API, NOT hardcoded!)
         this.locationMap = new Map(); // location_id → location name
         this.companyMap = new Map();  // company_id → company name
@@ -20,6 +32,14 @@ class OrderManager {
         
         // Fetch reference data on initialization
         this.initializeReferenceMaps();
+    }
+    
+    /**
+     * Get fust capacity for a given fust code
+     * Helper method for cart calculation
+     */
+    getFustCapacityForCode(fustCode) {
+        return this.FUST_CAPACITIES[fustCode] || 72; // Default to 72 if unknown
     }
     
     /**
@@ -321,36 +341,48 @@ class OrderManager {
             const productCodes = [];
             
             orderRows.forEach((row, rowIdx) => {
-                // PRIORITY 1: Use total_stems calculated by API (from VBN properties)
-                let rowQty = row.total_stems || 0;
-                let qtySource = 'total_stems (calculated by API)';
+                // CRITICAL FIX: Use fust_count (containers), NOT total_stems!
+                // According to feedback report, we transport FUST (containers), not stems
+                let rowQty = row.fust_count || 0;
+                let qtySource = 'fust_count (containers)';
                 
-                // FALLBACK: If total_stems is 0 or missing, use assembly_amount
-                if (rowQty === 0) {
-                    rowQty = row.assembly_amount || 0;
-                    qtySource = 'assembly_amount';
+                // FALLBACK 1: If fust_count is 0 or missing, calculate from assembly_amount
+                if (rowQty === 0 && row.assembly_amount && row.bundles_per_fust) {
+                    rowQty = row.assembly_amount / row.bundles_per_fust;
+                    qtySource = 'assembly_amount ÷ bundles_per_fust';
                 }
                 
-                // LAST RESORT: Try other fields
+                // FALLBACK 2: amount_of_plates (plates are containers)
+                if (rowQty === 0 && row.amount_of_plates) {
+                    rowQty = row.amount_of_plates;
+                    qtySource = 'amount_of_plates';
+                }
+                
+                // FALLBACK 3: amount_of_transport_carriers (fraction of cart)
+                if (rowQty === 0 && row.amount_of_transport_carriers) {
+                    // Need to convert fraction to fust count
+                    const fustCode = row.fust_code || row.container_code || '612';
+                    const fustCapacity = this.getFustCapacityForCode(fustCode);
+                    rowQty = row.amount_of_transport_carriers * fustCapacity;
+                    qtySource = 'amount_of_transport_carriers × capacity';
+                }
+                
+                // LAST RESORT: assembly_amount (assume it's in fust units)
                 if (rowQty === 0) {
-                    if (row.amount_of_plates) {
-                        rowQty = row.amount_of_plates;
-                        qtySource = 'amount_of_plates';
-                    } else if (row.quantity) {
-                        rowQty = row.quantity;
-                        qtySource = 'quantity';
-                    }
+                    rowQty = row.assembly_amount || 0;
+                    qtySource = 'assembly_amount (fallback)';
                 }
                 
                 // Log quantity extraction for first order
                 if (processedCount === 1 && rowIdx === 0) {
-                    console.log('   🔢 QUANTITY EXTRACTION:');
-                    console.log('      total_stems (from API):', row.total_stems);
+                    console.log('   🔢 QUANTITY EXTRACTION (FUST COUNT):');
+                    console.log('      fust_count (from API):', row.fust_count);
                     console.log('      assembly_amount:', row.assembly_amount);
+                    console.log('      bundles_per_fust:', row.bundles_per_fust);
                     console.log('      amount_of_plates:', row.amount_of_plates);
-                    console.log('      stems_per_bundle:', row.stems_per_bundle);
-                    console.log('      stems_per_container:', row.stems_per_container);
-                    console.log(`      → Using: ${qtySource} = ${rowQty}`);
+                    console.log('      amount_of_transport_carriers:', row.amount_of_transport_carriers);
+                    console.log('      fust_code:', row.fust_code || row.container_code);
+                    console.log(`      → Using: ${qtySource} = ${rowQty.toFixed(2)} fust`);
                 }
                 
                 totalQuantity += rowQty;

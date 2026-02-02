@@ -510,9 +510,25 @@ class FlorinetAPI {
     }
 
     /**
-     * Map location name to route (Rijnsburg, Aalsmeer, Naaldwijk)
+     * Map location to route using delivery_location_id (CORRECT METHOD from feedback report)
+     * 
+     * CRITICAL FIX: Use delivery_location_id, not location name!
+     * According to the feedback report:
+     *   - delivery_location_id = 32 → Aalsmeer
+     *   - delivery_location_id = 34 → Naaldwijk
+     *   - delivery_location_id = 36 → Rijnsburg
      */
-    mapLocationToRoute(locationName) {
+    mapLocationToRoute(locationName, deliveryLocationId) {
+        // PRIORITY 1: Use delivery_location_id (most reliable)
+        if (deliveryLocationId) {
+            switch(deliveryLocationId) {
+                case 32: return 'aalsmeer';
+                case 34: return 'naaldwijk';
+                case 36: return 'rijnsburg';
+            }
+        }
+        
+        // FALLBACK: Use location name (less reliable, but better than nothing)
         if (!locationName) return 'rijnsburg'; // Default
         
         const location = locationName.toLowerCase();
@@ -585,24 +601,32 @@ class FlorinetAPI {
             row.product_name = `Product ${row.composite_product_id}`;
         }
         
-        // MAP LOCATION TO ROUTE
-        row.route = this.mapLocationToRoute(row.location_name);
+        // MAP LOCATION TO ROUTE (use delivery_location_id for accuracy!)
+        row.route = this.mapLocationToRoute(row.location_name, order.delivery_location_id);
         
         // Extract packaging properties
         const props = this.extractProperties(row);
         row.stems_per_bundle = props.stemsPerBundle;
         row.stems_per_container = props.stemsPerContainer;
-        row.bundles_per_container = props.bundlesPerContainer;
+        row.bundles_per_fust = props.bundlesPerFust; // CRITICAL: bundles per FUST (not bundles per cart!)
+        row.bundles_per_container = props.bundlesPerFust; // Alias for backwards compatibility
+        row.fust_code = props.fustCode; // CRITICAL: Fust type code (612, 575, 902, etc)
         row.container_code = props.containerCode;
         row.quality_group = props.qualityGroup;
         row.country_of_origin = props.countryOfOrigin;
         
-        // Calculate total stems (following manual priority)
+        // Calculate total FUST (containers), NOT stems!
+        // This is the critical fix from the feedback report
+        row.fust_count = this.calculateFustCount(row, props);
+        
+        // Also calculate total stems for display/reference (but DON'T use for cart calculation!)
         row.total_stems = this.calculateTotalStems(row, props);
         
         // Delivery info
         row.delivery_date = order.delivery_date;
         row.transport_date = order.transport_date;
+        row.delivery_location_id = order.delivery_location_id; // CRITICAL for route detection!
+        row.customer_id = order.customer_id; // For reference
         
         return row;
     }
@@ -621,9 +645,12 @@ class FlorinetAPI {
             switch (code) {
                 case 'L11': props.stemsPerBundle = parseInt(value, 10); break;
                 case 'L13': props.stemsPerContainer = parseInt(value, 10); break;
-                case 'L14': props.bundlesPerContainer = parseInt(value, 10); break;
+                case 'L14': props.bundlesPerFust = parseInt(value, 10); break; // CRITICAL: bundles per FUST (container)
                 case 'S20': props.stemLength = parseInt(value, 10); break;
-                case '901': props.containerCode = value; break;
+                case '901': 
+                    props.fustCode = value; // CRITICAL: Fust type code (612, 575, 902, etc)
+                    props.containerCode = value; // Keep for backwards compatibility
+                    break;
                 case 'S98': props.qualityGroup = value; break;
                 case 'S62': props.countryOfOrigin = value; break;
             }
@@ -654,6 +681,68 @@ class FlorinetAPI {
         
         // Fallback: assembly_amount (bundles)
         return row.assembly_amount || 0;
+    }
+
+    /**
+     * Calculate FUST COUNT (containers) - THE CORRECT WAY
+     * 
+     * CRITICAL FIX based on feedback report:
+     * We transport FUST (containers), not individual stems!
+     * 
+     * Formula: fust_count = assembly_amount ÷ bundles_per_fust
+     * 
+     * Example:
+     *   - assembly_amount = 4 bunches
+     *   - bundles_per_fust = 5 bunches per container
+     *   - fust_count = 4 ÷ 5 = 0.8 containers
+     * 
+     * Then cart calculation uses: carts = fust_count ÷ capacity_per_fust_type
+     */
+    calculateFustCount(row, props) {
+        // Priority 1: assembly_amount ÷ bundles_per_fust (from L14 property)
+        if (row.assembly_amount && props.bundlesPerFust && props.bundlesPerFust > 0) {
+            return row.assembly_amount / props.bundlesPerFust;
+        }
+        
+        // Priority 2: amount_of_transport_carriers (this is already in fust units!)
+        // Note: This is a FRACTION (e.g., 0.25 = quarter cart), not fust count
+        // We need to convert it to fust based on the fust type capacity
+        if (row.amount_of_transport_carriers) {
+            // amount_of_transport_carriers is fraction of CART, not fust
+            // Need to multiply by cart capacity to get fust count
+            const fustCode = props.fustCode || row.container_code || '612';
+            const fustCapacity = this.getFustCapacity(fustCode);
+            return row.amount_of_transport_carriers * fustCapacity;
+        }
+        
+        // Priority 3: amount_of_plates (plates are containers)
+        if (row.amount_of_plates) {
+            return row.amount_of_plates;
+        }
+        
+        // Fallback: Assume assembly_amount is in fust units (not ideal, but better than nothing)
+        return row.assembly_amount || 0;
+    }
+
+    /**
+     * Get fust capacity (how many fust fit in one cart)
+     * Based on fust type code from property '901'
+     * 
+     * From business requirements document:
+     */
+    getFustCapacity(fustCode) {
+        const FUST_CAPACITIES = {
+            '612': 72,  // Gerbera box 12cm: 3 layers of 24
+            '614': 72,  // Gerbera mini box: same as 612
+            '575': 32,  // Charge code Fc566: Extra layer: 16×612 or 10×902
+            '902': 40,  // Charge code Fc588: 4 layers of 10
+            '588': 40,  // Medium container: Clock trade only
+            '996': 32,  // Small container + small rack: Extra: 10×902 or 12×612
+            '856': 20,  // Charge code €6.00
+            '821': 40   // Default to 40 if unknown
+        };
+        
+        return FUST_CAPACITIES[fustCode] || 72; // Default to 72 if unknown
     }
 
     /**
