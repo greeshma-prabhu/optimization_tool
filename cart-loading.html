@@ -2524,43 +2524,44 @@
                     i18n.setLanguage(savedLang);
                 }
                 
-                // Load orders - check multiple sources
-                console.log('🔄 Cart Optimization: Loading orders...');
+                // CRITICAL: Use SINGLE SOURCE OF TRUTH for orders and cart calculation
+                // This ensures ALL pages show the SAME numbers!
+                console.log('🔄 Cart Optimization: Loading orders from SINGLE SOURCE...');
                 let orders = [];
+                let cartResult = null;
                 
-                // Priority 1: Check global memory (shared across pages)
-                if (window.__zuidplas_orders_memory && window.__zuidplas_orders_memory.length > 0) {
-                    orders = window.__zuidplas_orders_memory;
-                    console.log(`✅ Loaded ${orders.length} orders from global memory`);
-                } 
-                // Priority 2: Check appState
-                else if (window.appState && window.appState.getOrders) {
-                    orders = window.appState.getOrders();
-                    if (orders && orders.length > 0) {
-                        console.log(`✅ Loaded ${orders.length} orders from appState`);
-                    }
-                }
-                // Priority 3: Check localStorage
-                else {
-                    const storedOrders = localStorage.getItem('zuidplas_orders') || localStorage.getItem('cachedOrders');
-                    if (storedOrders) {
-                        try {
-                            orders = JSON.parse(storedOrders);
-                            console.log(`✅ Loaded ${orders.length} orders from localStorage`);
-                            
-                            // Update appState memory
-                            if (window.appState) {
-                                window.appState.orders = orders;
-                                window.appState.ordersLoaded = orders.length > 0;
-                            }
-                            
-                            // Store in global memory for sharing
-                            window.__zuidplas_orders_memory = orders;
-                        } catch (e) {
-                            console.error('Failed to parse stored orders:', e);
+                if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                    console.log('🛒 Cart Optimization: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
+                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                    orders = globalData.orders;
+                    cartResult = globalData.cartResult;
+                    console.log(`✅ Cart Optimization: Loaded ${orders.length} orders from SINGLE SOURCE`);
+                    console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
+                } else {
+                    // Fallback to old method
+                    if (window.__zuidplas_orders_memory && window.__zuidplas_orders_memory.length > 0) {
+                        orders = window.__zuidplas_orders_memory;
+                        console.log(`✅ Loaded ${orders.length} orders from global memory`);
+                    } else if (window.appState && window.appState.getOrders) {
+                        orders = window.appState.getOrders();
+                        if (orders && orders.length > 0) {
+                            console.log(`✅ Loaded ${orders.length} orders from appState`);
                         }
                     } else {
-                        console.log('ℹ️ No orders found in any storage');
+                        const storedOrders = localStorage.getItem('zuidplas_orders') || localStorage.getItem('cachedOrders');
+                        if (storedOrders) {
+                            try {
+                                orders = JSON.parse(storedOrders);
+                                console.log(`✅ Loaded ${orders.length} orders from localStorage`);
+                                if (window.appState) {
+                                    window.appState.orders = orders;
+                                    window.appState.ordersLoaded = orders.length > 0;
+                                }
+                                window.__zuidplas_orders_memory = orders;
+                            } catch (e) {
+                                console.error('Failed to parse stored orders:', e);
+                            }
+                        }
                     }
                 }
                 
@@ -2575,8 +2576,14 @@
                     orderManager.filteredOrders = [...orders];
                     
                     // CRITICAL: Update cart counts using CartDisplayManager
+                    // Use cartResult from SINGLE SOURCE if available
                     if (window.CartDisplayManager) {
                         const cartManager = new CartDisplayManager(orders);
+                        // If we got cartResult from single source, use it directly
+                        if (cartResult) {
+                            cartManager.cartData = cartResult;
+                            console.log('✅ Using cart result from SINGLE SOURCE');
+                        }
                         cartManager.updateDOM();
                         console.log('✅ Cart counts updated using CartDisplayManager');
                     } else {

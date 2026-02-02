@@ -246,6 +246,69 @@ function calculateTrucks(totalCarts) {
     return Math.ceil(totalCarts / 17);
 }
 
+/**
+ * GLOBAL SINGLE SOURCE OF TRUTH
+ * ALL pages must use this to get the SAME orders and calculate the SAME carts
+ */
+function getGlobalOrdersAndCarts() {
+    console.log('🔍 getGlobalOrdersAndCarts: Getting orders from single source...');
+    
+    // Priority 1: Global memory (most reliable, shared across all pages)
+    let orders = null;
+    if (window.__zuidplas_orders_memory && window.__zuidplas_orders_memory.length > 0) {
+        orders = window.__zuidplas_orders_memory;
+        console.log(`✅ getGlobalOrdersAndCarts: Found ${orders.length} orders in global memory`);
+    }
+    // Priority 2: appState
+    else if (window.appState && typeof window.appState.getOrders === 'function') {
+        orders = window.appState.getOrders();
+        if (orders && orders.length > 0) {
+            console.log(`✅ getGlobalOrdersAndCarts: Found ${orders.length} orders in appState`);
+            // Also store in global memory for consistency
+            window.__zuidplas_orders_memory = orders;
+        }
+    }
+    // Priority 3: localStorage
+    else {
+        const stored = localStorage.getItem('zuidplas_orders') || localStorage.getItem('cachedOrders');
+        if (stored) {
+            try {
+                orders = JSON.parse(stored);
+                console.log(`✅ getGlobalOrdersAndCarts: Found ${orders.length} orders in localStorage`);
+                // Store in global memory
+                window.__zuidplas_orders_memory = orders;
+            } catch (e) {
+                console.error('❌ getGlobalOrdersAndCarts: Failed to parse localStorage:', e);
+            }
+        }
+    }
+    
+    if (!orders || orders.length === 0) {
+        console.warn('⚠️ getGlobalOrdersAndCarts: No orders found!');
+        return {
+            orders: [],
+            cartResult: {
+                total: 0,
+                byRoute: { Aalsmeer: 0, Naaldwijk: 0, Rijnsburg: 0 },
+                trucks: 0,
+                breakdown: []
+            }
+        };
+    }
+    
+    // Calculate carts using the SAME function
+    console.log(`🧮 getGlobalOrdersAndCarts: Calculating carts for ${orders.length} orders...`);
+    const cartResult = calculateCarts(orders);
+    
+    console.log(`✅ getGlobalOrdersAndCarts: Result - ${cartResult.total} carts, ${cartResult.trucks} trucks`);
+    console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
+    
+    return {
+        orders: orders,
+        cartResult: cartResult
+    };
+}
+
 // Export for use in other files
 if (typeof window !== 'undefined') {
     window.CartCalculation = {
@@ -254,6 +317,8 @@ if (typeof window !== 'undefined') {
         calculateTrucks: calculateTrucks,
         getRoute: getRoute,
         getFustType: getFustType,
-        FUST_CAPACITY: FUST_CAPACITY
+        FUST_CAPACITY: FUST_CAPACITY,
+        // NEW: Single source of truth function
+        getGlobalOrdersAndCarts: getGlobalOrdersAndCarts
     };
 }

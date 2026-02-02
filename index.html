@@ -805,12 +805,15 @@
             document.getElementById('total-orders-count').textContent = orders.length;
             console.log('═══════════════════════════════════════════════════════════════════');
             
-            // Use NEW CORRECT cart calculation (cart-calculation.js)
-            if (typeof window.CartCalculation !== 'undefined') {
-                console.log('🛒 Using NEW cart-calculation.js (FUST-BASED with L11/L13)...');
-                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
+            // CRITICAL: Use SINGLE SOURCE OF TRUTH for orders and cart calculation
+            // This ensures ALL pages show the SAME numbers!
+            if (typeof window.CartCalculation !== 'undefined' && window.CartCalculation.getGlobalOrdersAndCarts) {
+                console.log('🛒 Dashboard: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                const cartResult = globalData.cartResult;
                 const totalCarts = cartResult.total || 0;
                 
+                console.log(`   Orders used: ${globalData.orders.length}`);
                 console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
                 console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
                 console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
@@ -818,7 +821,15 @@
                 console.log(`   TRUCKS: ${cartResult.trucks || 0}`);
                 
                 document.getElementById('total-carts-needed').textContent = totalCarts;
-                console.log(`✅ Dashboard updated with CORRECT calculation: ${totalCarts} carts`);
+                console.log(`✅ Dashboard updated with SINGLE SOURCE calculation: ${totalCarts} carts`);
+            } else if (typeof window.CartCalculation !== 'undefined') {
+                // Fallback to direct calculation if getGlobalOrdersAndCarts not available
+                console.log('🛒 Dashboard: Using cart-calculation.js (FUST-BASED)...');
+                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
+                const totalCarts = cartResult.total || 0;
+                
+                document.getElementById('total-carts-needed').textContent = totalCarts;
+                console.log(`✅ Dashboard updated with calculation: ${totalCarts} carts`);
             } else {
                 console.error('❌ cart-calculation.js NOT LOADED! Using old buggy method...');
                 const cartSummary = orderManager.getCartSummary();
@@ -866,20 +877,33 @@
             container.innerHTML = '';
             
             try {
-                // Use orders directly (they already have all data)
-                const ordersWithCarts = orders || [];
-                console.log('📊 Updating route overview with', ordersWithCarts.length, 'orders');
-                
-                // CRITICAL: Use FUST-based calculation (SAME AS DASHBOARD TOTAL!)
+                // CRITICAL: Use SINGLE SOURCE OF TRUTH for orders and cart calculation
+                let ordersWithCarts = [];
                 let cartResult = null;
-                if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
-                    cartResult = window.CartCalculation.calculateTotalCarts(ordersWithCarts);
-                    console.log('✅ Route overview using FUST calculation:');
+                
+                if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                    console.log('🛒 Route overview: Using SINGLE SOURCE OF TRUTH...');
+                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                    ordersWithCarts = globalData.orders;
+                    cartResult = globalData.cartResult;
+                    console.log('✅ Route overview using SINGLE SOURCE:');
+                    console.log(`   Orders: ${ordersWithCarts.length}`);
                     console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
                     console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
                     console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
                 } else {
-                    console.error('❌ CartCalculation not available for route overview!');
+                    // Fallback to passed orders
+                    ordersWithCarts = orders || [];
+                    console.log('📊 Updating route overview with', ordersWithCarts.length, 'orders');
+                    if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
+                        cartResult = window.CartCalculation.calculateTotalCarts(ordersWithCarts);
+                        console.log('✅ Route overview using FUST calculation:');
+                        console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
+                        console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
+                        console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
+                    } else {
+                        console.error('❌ CartCalculation not available for route overview!');
+                    }
                 }
                 
                 // Route mapping
