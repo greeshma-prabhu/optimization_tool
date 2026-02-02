@@ -374,16 +374,34 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     const orderIds = orders.slice(0, 10).map(o => o.id).join(',') + '...' + orders.slice(-5).map(o => o.id).join(',');
     
     // Normalize date to string format for consistent comparison
-    let currentDate = window.__zuidplas_orders_date || 'unknown';
+    let currentDate = window.__zuidplas_orders_date || null;
+    
+    // If date is not set, try to get from first order's delivery_date
+    if (!currentDate && orders.length > 0) {
+        const firstOrderDate = orders[0].delivery_date || orders[0].order?.delivery_date;
+        if (firstOrderDate) {
+            try {
+                currentDate = new Date(firstOrderDate).toISOString().split('T')[0];
+                console.log(`   📅 Date not in memory, extracted from order: ${currentDate}`);
+            } catch (e) {
+                console.warn(`   ⚠️ Could not parse date from order: ${firstOrderDate}`);
+            }
+        }
+    }
+    
+    // Normalize date format
     if (currentDate instanceof Date) {
         currentDate = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-    } else if (typeof currentDate === 'string' && currentDate.includes('GMT')) {
+    } else if (currentDate && typeof currentDate === 'string' && currentDate.includes('GMT')) {
         // Convert Date string to YYYY-MM-DD
         try {
             currentDate = new Date(currentDate).toISOString().split('T')[0];
         } catch (e) {
             currentDate = String(currentDate);
         }
+    } else if (!currentDate) {
+        currentDate = 'unknown';
+        console.warn(`   ⚠️ WARNING: No date found! Using 'unknown' - cache might be shared across dates!`);
     }
     
     const ordersHash = orders.length + '_' + currentDate + '_' + orderIds;
@@ -454,7 +472,13 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     // Calculate carts using the SAME function
     console.log(`🧮 getGlobalOrdersAndCarts: Calculating carts for ${orders.length} orders...`);
     console.log(`   Date: ${currentDate}`);
-    console.log(`   ⚠️ This is a FRESH FUST calculation - all pages will use this result!`);
+    if (forceRefresh) {
+        console.log(`   🔵 DASHBOARD is calculating FRESH (forceRefresh=true)`);
+        console.log(`   ⚠️ This will OVERWRITE any existing cache!`);
+    } else {
+        console.log(`   ⚠️ Other page is calculating (no cache found)`);
+        console.log(`   ⚠️ Dashboard should have calculated first - this shouldn't happen!`);
+    }
     console.log(`   🔵 STARTING FUST CALCULATION NOW...`);
     console.log('');
     
@@ -464,10 +488,17 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     console.log('');
     console.log(`✅ FUST CALCULATION COMPLETE!`);
     console.log(`   Result: ${cartResult.total} carts`);
+    console.log(`   Breakdown: Aalsmeer=${cartResult.byRoute.Aalsmeer}, Naaldwijk=${cartResult.byRoute.Naaldwijk}, Rijnsburg=${cartResult.byRoute.Rijnsburg}`);
     
     // CACHE the result with timestamp and date
     // CRITICAL: This cache is now the SINGLE SOURCE OF TRUTH for ALL pages
-    const cacheSource = forceRefresh ? 'Dashboard (forceRefresh=true)' : 'Other page';
+    const cacheSource = forceRefresh ? 'Dashboard (forceRefresh=true)' : 'Other page (⚠️ Dashboard should calculate first!)';
+    
+    if (!forceRefresh) {
+        console.warn(`   ⚠️ WARNING: Cache being set by ${cacheSource}`);
+        console.warn(`   ⚠️ Dashboard should calculate first with forceRefresh=true!`);
+        console.warn(`   ⚠️ This might cause inconsistent results!`);
+    }
     
     // Ensure date is normalized (YYYY-MM-DD format)
     let normalizedDate = currentDate;

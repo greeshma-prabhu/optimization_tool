@@ -72,16 +72,23 @@ window.appState = {
         let normalizedDate = date;
         if (date instanceof Date) {
             normalizedDate = date.toISOString().split('T')[0];
+            console.log(`   📅 Date normalized: ${date.toISOString()} → ${normalizedDate}`);
         } else if (date && typeof date === 'string' && date.includes('GMT')) {
             try {
                 normalizedDate = new Date(date).toISOString().split('T')[0];
+                console.log(`   📅 Date normalized: ${date} → ${normalizedDate}`);
             } catch (e) {
                 normalizedDate = String(date);
+                console.warn(`   ⚠️ Could not normalize date: ${date}, using as-is`);
             }
         } else if (date) {
             normalizedDate = String(date);
+            console.log(`   📅 Date stored as string: ${normalizedDate}`);
+        } else {
+            console.warn(`   ⚠️ WARNING: No date provided to setOrders!`);
         }
         window.__zuidplas_orders_date = normalizedDate;
+        console.log(`   ✅ Date stored in memory: ${window.__zuidplas_orders_date}`);
         
         // CRITICAL: Clear cart cache when orders change OR date changes (forces recalculation)
         const dateChanged = date && window.__zuidplas_orders_date && window.__zuidplas_orders_date !== date;
