@@ -537,34 +537,36 @@
             updateSummary();
         }
 
-        // Update summary - USE CORRECT FUST-BASED CALCULATION
+        // Update summary - USE SINGLE SOURCE OF TRUTH
         function updateSummary() {
-            console.log('📊 Orders page: Updating cart summary using FUST calculation...');
+            console.log('📊 Orders page: Updating cart summary using SINGLE SOURCE OF TRUTH...');
             
-            // Get orders from orderManager
-            const orders = orderManager.orders || orderManager.filteredOrders || [];
-            
-            // Use CartCalculation (FUST-based) - SAME AS DASHBOARD!
-            if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
-                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
+            // CRITICAL: Use getGlobalOrdersAndCarts() - SAME AS ALL OTHER PAGES!
+            if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                console.log('🛒 Orders page: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                const cartResult = globalData.cartResult;
+                const orders = globalData.orders;
+                
                 const cartTypes = calculateCartTypes(cartResult);
                 
-                console.log('✅ Orders page cart calculation:');
+                console.log('✅ Orders page cart calculation (from SINGLE SOURCE):');
+                console.log(`   Orders: ${orders.length}`);
                 console.log(`   Total carts: ${cartResult.total}`);
                 console.log(`   Standard: ${cartTypes.standard}`);
                 console.log(`   Danish: ${cartTypes.danish}`);
+                console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
                 
                 // Update UI with CORRECT values
                 document.getElementById('standard-carts-summary').textContent = cartTypes.standard;
                 document.getElementById('danish-carts-summary').textContent = cartTypes.danish;
                 document.getElementById('special-handling-summary').textContent = '0'; // TODO: Calculate special handling
             } else {
-                console.error('❌ CartCalculation not available! Using fallback...');
-                // Fallback to old method (but warn)
-                const summary = orderManager.getCartSummary();
-                document.getElementById('standard-carts-summary').textContent = summary.standard || 0;
-                document.getElementById('danish-carts-summary').textContent = summary.danish || 0;
-                document.getElementById('special-handling-summary').textContent = summary.specialHandling || 0;
+                console.error('❌ getGlobalOrdersAndCarts() NOT AVAILABLE! This should never happen!');
+                // Don't use fallback - show error
+                document.getElementById('standard-carts-summary').textContent = 'ERROR';
+                document.getElementById('danish-carts-summary').textContent = 'ERROR';
+                document.getElementById('special-handling-summary').textContent = 'ERROR';
             }
         }
         
