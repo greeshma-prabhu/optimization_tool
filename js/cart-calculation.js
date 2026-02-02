@@ -391,11 +391,18 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         window.__zuidplas_cart_cache.ordersHash === ordersHash &&
         window.__zuidplas_cart_cache.orders.length === orders.length &&
         window.__zuidplas_cart_cache.date === currentDate) {
-        console.log('✅ getGlobalOrdersAndCarts: Using CACHED cart result (orders unchanged, same date)');
+        console.log('═══════════════════════════════════════════════════════════════════');
+        console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result');
+        console.log('═══════════════════════════════════════════════════════════════════');
+        console.log(`   ⚠️ This result was calculated using FUST (not stems!)`);
         console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+        console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
         console.log(`   Cached date: ${window.__zuidplas_cart_cache.date || 'unknown'}`);
         console.log(`   Cached result: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
         console.log(`   Cached breakdown: Aalsmeer=${window.__zuidplas_cart_cache.cartResult.byRoute.Aalsmeer}, Naaldwijk=${window.__zuidplas_cart_cache.cartResult.byRoute.Naaldwijk}, Rijnsburg=${window.__zuidplas_cart_cache.cartResult.byRoute.Rijnsburg}`);
+        console.log(`   ✅ This was calculated using: fust = assembly_amount ÷ bundles_per_fust`);
+        console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
+        console.log('═══════════════════════════════════════════════════════════════════');
         return {
             orders: orders,
             cartResult: window.__zuidplas_cart_cache.cartResult
@@ -420,8 +427,16 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     // Calculate carts using the SAME function
     console.log(`🧮 getGlobalOrdersAndCarts: Calculating carts for ${orders.length} orders...`);
     console.log(`   Date: ${currentDate}`);
-    console.log(`   ⚠️ This is a FRESH calculation - all pages will use this result!`);
+    console.log(`   ⚠️ This is a FRESH FUST calculation - all pages will use this result!`);
+    console.log(`   🔵 STARTING FUST CALCULATION NOW...`);
+    console.log('');
+    
+    // CRITICAL: This MUST run the FUST calculation function
     const cartResult = calculateCarts(orders);
+    
+    console.log('');
+    console.log(`✅ FUST CALCULATION COMPLETE!`);
+    console.log(`   Result: ${cartResult.total} carts`);
     
     // CACHE the result with timestamp and date
     // CRITICAL: This cache is now the SINGLE SOURCE OF TRUTH for ALL pages

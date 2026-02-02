@@ -10,8 +10,10 @@
  */
 
 class CartDisplayManager {
-    constructor(orders = []) {
-        this.orders = Array.isArray(orders) ? orders : [];
+    constructor(orders = null) {
+        // CRITICAL: Don't store orders - get from SINGLE SOURCE instead!
+        // This ensures we always use the same orders and cache as Dashboard
+        this.orders = null; // Will be set from getGlobalOrdersAndCarts()
         this.cartData = null;
         this.calculate();
     }
