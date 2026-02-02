@@ -382,9 +382,11 @@ function getGlobalOrdersAndCarts() {
     
     // Calculate carts using the SAME function
     console.log(`🧮 getGlobalOrdersAndCarts: Calculating carts for ${orders.length} orders...`);
+    console.log(`   ⚠️ This is a FRESH calculation - all pages will use this result!`);
     const cartResult = calculateCarts(orders);
     
     // CACHE the result with timestamp
+    // CRITICAL: This cache is now the SINGLE SOURCE OF TRUTH for ALL pages
     window.__zuidplas_cart_cache = {
         ordersHash: ordersHash,
         orders: orders,
@@ -393,9 +395,10 @@ function getGlobalOrdersAndCarts() {
         ordersCount: orders.length
     };
     
-    console.log(`✅ getGlobalOrdersAndCarts: Result calculated at ${new Date().toISOString()}`);
+    console.log(`✅ getGlobalOrdersAndCarts: Result calculated and CACHED at ${new Date().toISOString()}`);
     console.log(`   Total: ${cartResult.total} carts, ${cartResult.trucks} trucks`);
     console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
+    console.log(`   🔒 This cache is now LOCKED - all pages MUST use this result!`);
     
     return {
         orders: orders,

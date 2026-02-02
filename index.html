@@ -665,6 +665,9 @@
                             console.log(`🔄 Saving ${orders.length} orders to global state FIRST...`);
                             window.appState.setOrders(orders, selectedDate);
                             
+                            // CRITICAL: Wait a tiny bit to ensure cache is cleared
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            
                             // Initialize optimizer with orders that have carts assigned
                             console.log('🔧 Initializing optimizer with', orders.length, 'orders...');
                             const optimizer = initializeOptimizer(orders);
@@ -807,18 +810,10 @@
             if (typeof window.CartCalculation !== 'undefined' && window.CartCalculation.getGlobalOrdersAndCarts) {
                 console.log('🛒 Dashboard: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
                 console.log('   ⚠️ IGNORING orders parameter - using global memory instead!');
+                console.log('   🔒 Dashboard will ALWAYS use cache if available (no fresh calculation!)');
                 
-                // Force fresh calculation if cache is older than 1 minute (might be stale)
-                if (window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.timestamp) {
-                    const cacheAge = Date.now() - new Date(window.__zuidplas_cart_cache.timestamp).getTime();
-                    if (cacheAge > 60000) { // 1 minute
-                        console.log('🔄 Dashboard: Cache is older than 1 minute, forcing refresh...');
-                        if (window.CartCalculation.clearCartCache) {
-                            window.CartCalculation.clearCartCache();
-                        }
-                    }
-                }
-                
+                // CRITICAL: Dashboard MUST use cache if it exists - never calculate fresh!
+                // This ensures Dashboard shows the SAME result as all other pages
                 const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
                 const cartResult = globalData.cartResult;
                 const totalCarts = cartResult.total || 0;
