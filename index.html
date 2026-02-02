@@ -256,6 +256,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
     <script src="js/cart-calculation.js"></script> <!-- NEW CORRECT CALCULATION -->
+    <script src="js/order-validator.js"></script> <!-- ORDER VALIDATION -->
     <script src="js/carts.js"></script>
     <script src="js/ordermanager-shim.js"></script>
     <script src="js/orders.js"></script>
@@ -480,9 +481,17 @@
                 const apiOrders = await florinetAPI.fetchOrdersForDate(selectedDate);
                 
                 if (apiOrders && apiOrders.length > 0) {
-                    // Use API orders directly - they're already enriched!
-                    const orders = apiOrders;
-                    console.log('✅ Loaded', orders.length, 'enriched orders from API');
+                    console.log('✅ Loaded', apiOrders.length, 'raw orders from API');
+                    
+                    // VALIDATE ORDERS - filter out invalid/test/cancelled/duplicates
+                    let orders = apiOrders;
+                    if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
+                        const validationResult = window.OrderValidator.validateOrders(apiOrders);
+                        orders = validationResult.orders;
+                        console.log('✅ Processing', orders.length, 'valid orders after validation');
+                    } else {
+                        console.log('⚠️ Order validator not available, using all orders');
+                    }
                     
                     // Initialize optimizer
                     const optimizer = initializeOptimizer(orders);
@@ -625,9 +634,32 @@
                         console.log('📅 Fetching orders for date:', selectedDate.toISOString().split('T')[0]);
                         const apiOrders = await florinetAPI.fetchOrdersForDate(selectedDate);
                         if (apiOrders && apiOrders.length > 0) {
-                            // Use API orders directly - they're already enriched!
-                            orders = apiOrders;
-                            console.log('✅ Loaded', orders.length, 'enriched orders from API');
+                            console.log('✅ Loaded', apiOrders.length, 'raw orders from API');
+                            
+                            // VALIDATE ORDERS - filter out invalid/test/cancelled/duplicates
+                            if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
+                                const validationResult = window.OrderValidator.validateOrders(apiOrders);
+                                orders = validationResult.orders;
+                                
+                                // Get statistics
+                                const stats = window.OrderValidator.getOrderStats(orders);
+                                console.log('');
+                                console.log('📊 ORDER STATISTICS:');
+                                console.log('  Aalsmeer:', stats.byRoute.Aalsmeer, 'orders');
+                                console.log('  Naaldwijk:', stats.byRoute.Naaldwijk, 'orders');
+                                console.log('  Rijnsburg:', stats.byRoute.Rijnsburg, 'orders');
+                                console.log('  Total customers:', Object.keys(stats.byCustomer).length);
+                                if (stats.topCustomers.length > 0) {
+                                    console.log('  Top customer:', stats.topCustomers[0].name, `(${stats.topCustomers[0].count} orders)`);
+                                }
+                                console.log('');
+                            } else {
+                                // Fallback if validator not loaded
+                                orders = apiOrders;
+                                console.log('⚠️ Order validator not available, using all orders');
+                            }
+                            
+                            console.log('✅ Processing', orders.length, 'valid orders');
                             
                             // Initialize optimizer with orders that have carts assigned
                             console.log('🔧 Initializing optimizer with', orders.length, 'orders...');
