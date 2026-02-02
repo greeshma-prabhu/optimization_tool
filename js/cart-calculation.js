@@ -256,3 +256,4 @@ if (typeof window !== 'undefined') {
     };
 }
 
+// Force Vercel rebuild - Mon Feb  2 05:52:30 AM CET 2026
