@@ -69,15 +69,23 @@ window.appState = {
         window.__zuidplas_orders_count = this.orders.length;
         window.__zuidplas_orders_date = date;
         
-        // CRITICAL: Clear cart cache when orders change (forces recalculation)
-        if (window.CartCalculation && typeof window.CartCalculation.clearCartCache === 'function') {
-            window.CartCalculation.clearCartCache();
-        } else if (window.__zuidplas_cart_cache) {
-            console.log('🔄 Clearing cart cache (orders updated)...');
-            const oldCache = window.__zuidplas_cart_cache;
-            delete window.__zuidplas_cart_cache;
-            console.log(`   Old cache had: ${oldCache.cartResult?.total || 'unknown'} carts`);
-            console.log('✅ Cart cache cleared');
+        // CRITICAL: Clear cart cache when orders change OR date changes (forces recalculation)
+        const dateChanged = date && window.__zuidplas_orders_date && window.__zuidplas_orders_date !== date;
+        const shouldClearCache = !window.__zuidplas_cart_cache || dateChanged || 
+                                 (window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.date !== date);
+        
+        if (shouldClearCache) {
+            if (window.CartCalculation && typeof window.CartCalculation.clearCartCache === 'function') {
+                console.log(`🔄 Clearing cart cache (${dateChanged ? 'date changed' : 'orders updated'})...`);
+                window.CartCalculation.clearCartCache();
+            } else if (window.__zuidplas_cart_cache) {
+                console.log(`🔄 Clearing cart cache (${dateChanged ? 'date changed' : 'orders updated'})...`);
+                const oldCache = window.__zuidplas_cart_cache;
+                delete window.__zuidplas_cart_cache;
+                console.log(`   Old cache had: ${oldCache.cartResult?.total || 'unknown'} carts for date ${oldCache.date || 'unknown'}`);
+                console.log(`   New date: ${date || 'unknown'}`);
+                console.log('✅ Cart cache cleared');
+            }
         }
         
         console.log(`✅ Orders stored in memory (${this.orders.length} orders, shared across pages)`);
