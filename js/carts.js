@@ -110,8 +110,22 @@ class CartManager {
     /**
      * Group orders by route and calculate total carts
      * CRITICAL: Group orders by client first - same client orders go on same cart
+     * 
+     * ⚠️ DISABLED - Using cart-calculation.js instead (Feb 2, 2026)
+     * This old method is buggy and causes double-counting.
      */
     calculateRouteCarts(orders) {
+        console.warn('⚠️ OLD calculateRouteCarts() called but DISABLED');
+        console.warn('   Using cart-calculation.js instead for accurate FUST-based calculation');
+        
+        // Return empty structure to prevent errors
+        return {
+            rijnsburg: { standard: 0, danish: 0, orders: [], clients: {} },
+            aalsmeer: { standard: 0, danish: 0, orders: [], clients: {} },
+            naaldwijk: { standard: 0, danish: 0, orders: [], clients: {} }
+        };
+        
+        /* OLD BUGGY CODE - DISABLED
         console.log('=================================');
         console.log('🛒 CALCULATING ROUTE CARTS');
         console.log(`Input: ${orders.length} orders`);
@@ -266,6 +280,7 @@ class CartManager {
         console.log('=================================');
 
         return routeCarts;
+        END OF OLD BUGGY CODE */
     }
 
     /**
