@@ -109,7 +109,27 @@ window.appState = {
                 // Check if not too old (24 hours)
                 const age = Date.now() - parseInt(timestamp || '0');
                 if (age < 24 * 60 * 60 * 1000) {
-                    this.orders = JSON.parse(storedOrders);
+                    const parsed = JSON.parse(storedOrders);
+                    
+                    // CRITICAL: Validate data quality - check if customer_name exists
+                    const sampleSize = Math.min(5, parsed.length);
+                    let validCount = 0;
+                    for (let i = 0; i < sampleSize; i++) {
+                        if (parsed[i] && parsed[i].customer_name && !parsed[i].customer_name.startsWith('customer ')) {
+                            validCount++;
+                        }
+                    }
+                    
+                    // If less than 50% have valid customer names, data is BAD - clear it!
+                    if (validCount < sampleSize / 2) {
+                        console.error('❌ OLD/BAD DATA DETECTED - customer names missing!');
+                        console.error(`   Only ${validCount}/${sampleSize} orders have valid customer_name`);
+                        console.error('   Clearing localStorage and requiring fresh fetch...');
+                        this.clearOrders();
+                        return [];
+                    }
+                    
+                    this.orders = parsed;
                     this.ordersLoaded = true;
                     console.log(`✅ Loaded ${this.orders.length} orders from localStorage`);
                     return this.orders;
