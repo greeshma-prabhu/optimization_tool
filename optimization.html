@@ -175,6 +175,7 @@
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
     <script src="js/carts.js"></script>
+    <script src="js/ordermanager-shim.js"></script>
     <script src="js/orders.js"></script>
     <script src="js/optimizer.js"></script>
     <script src="js/navigation.js"></script>
@@ -185,21 +186,17 @@
             try {
                 console.log('🔄 Starting optimization...');
                 
-                // Fetch orders if not already loaded
-                if (!orderManager || !orderManager.orders || orderManager.orders.length === 0) {
-                    console.log('📦 No orders found, fetching...');
-                    await orderManager.fetchOrders(null, true); // Use dummy data
-                    orderManager.assignCarts();
+                // Get orders from global state
+                const orders = window.appState.getOrders();
+                
+                if (!orders || orders.length === 0) {
+                    throw new Error('No orders available. Please load orders from Dashboard first.');
                 }
 
-                console.log('📊 Orders loaded:', orderManager.orders.length);
+                console.log('📊 Orders loaded:', orders.length);
 
                 // Initialize optimizer
-                if (!orderManager.orders || orderManager.orders.length === 0) {
-                    throw new Error('No orders available. Please load orders first.');
-                }
-
-                currentOptimizer = initializeOptimizer(orderManager.orders);
+                currentOptimizer = initializeOptimizer(orders);
                 
                 if (!currentOptimizer) {
                     throw new Error('Failed to initialize optimizer');
@@ -232,9 +229,15 @@
         }
 
         function updateInputSummary() {
-            const summary = orderManager.getCartSummary();
-            document.getElementById('input-orders').textContent = orderManager.orders.length;
-            document.getElementById('input-carts').textContent = summary.standard + summary.danish;
+            // Use cart-calculation.js for cart counts
+            const orders = window.appState.getOrders();
+            
+            if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
+                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
+                const totalCarts = cartResult.totalCarts || 0;
+                
+                document.getElementById('input-orders').textContent = orders.length;
+                document.getElementById('input-carts').textContent = totalCarts;
             document.getElementById('input-danish').textContent = summary.danish;
             document.getElementById('input-standard').textContent = summary.standard;
         }
