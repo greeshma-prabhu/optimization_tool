@@ -475,33 +475,23 @@
                 const apiOrders = await florinetAPI.fetchOrdersForDate(selectedDate);
                 
                 if (apiOrders && apiOrders.length > 0) {
-                    // Process API orders
-                    const orders = orderManager.processOrders(apiOrders);
-                    orderManager.orders = orders;
-                    orderManager.filteredOrders = [...orders];
-                    orderManager.updateOrderCount();
-                    orderManager.displayOrders();
-                    
-                    // Assign carts
-                    // DISABLED OLD BUGGY METHOD: orderManager.assignCarts();
-                    console.log('✅ Skipped old assignCarts(). Using NEW cart calculation instead.');
-                    
-                    // Update orders array
-                    const ordersWithCarts = orderManager.orders;
+                    // Use API orders directly - they're already enriched!
+                    const orders = apiOrders;
+                    console.log('✅ Loaded', orders.length, 'enriched orders from API');
                     
                     // Initialize optimizer
-                    const optimizer = initializeOptimizer(ordersWithCarts);
+                    const optimizer = initializeOptimizer(orders);
                     const options = optimizer.generateOptions();
                     
                     // Update dashboard
-                    updateDashboard(ordersWithCarts, options);
+                    updateDashboard(orders, options);
                     
                     // Get existing orders count for comparison
                     const existingCount = window.appState.getOrderCount();
-                    const hasChanges = ordersWithCarts.length !== existingCount;
+                    const hasChanges = orders.length !== existingCount;
                     
                     if (hasChanges) {
-                        console.log(`🔄 Changes detected: ${existingCount} → ${ordersWithCarts.length} orders`);
+                        console.log(`🔄 Changes detected: ${existingCount} → ${orders.length} orders`);
                     } else {
                         console.log('ℹ️ No changes detected - same number of orders');
                     }
