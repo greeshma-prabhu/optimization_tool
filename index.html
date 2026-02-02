@@ -784,19 +784,28 @@
             
             // Update stats
             document.getElementById('total-orders-count').textContent = orders.length;
+            console.log('═══════════════════════════════════════════════════════════════════');
             
-            // SIMPLE FIX: Just use the cart summary that's already calculated
-            console.log('🛒 Getting cart summary from orderManager...');
-            const cartSummary = orderManager.getCartSummary();
-            const totalCarts = (cartSummary.standard || 0) + (cartSummary.danish || 0);
-            
-            console.log(`   Standard carts: ${cartSummary.standard}`);
-            console.log(`   Danish carts: ${cartSummary.danish}`);
-            console.log(`   TOTAL: ${totalCarts}`);
-            
-            // Update UI
-            document.getElementById('total-carts-needed').textContent = totalCarts;
-            console.log(`✅ Dashboard UI updated: ${totalCarts} carts`);
+            // Use NEW CORRECT cart calculation (cart-calculation.js)
+            if (typeof window.CartCalculation !== 'undefined') {
+                console.log('🛒 Using NEW cart-calculation.js (FUST-BASED with L11/L13)...');
+                const cartResult = window.CartCalculation.calculateTotalCarts(orders);
+                const totalCarts = cartResult.totalCarts || 0;
+                
+                console.log(`   Rijnsburg: ${cartResult.cartsByRoute.rijnsburg} carts`);
+                console.log(`   Aalsmeer: ${cartResult.cartsByRoute.aalsmeer} carts`);
+                console.log(`   Naaldwijk: ${cartResult.cartsByRoute.naaldwijk} carts`);
+                console.log(`   TOTAL: ${totalCarts} carts`);
+                
+                document.getElementById('total-carts-needed').textContent = totalCarts;
+                console.log(`✅ Dashboard updated with CORRECT calculation: ${totalCarts} carts`);
+            } else {
+                console.error('❌ cart-calculation.js NOT LOADED! Using old buggy method...');
+                const cartSummary = orderManager.getCartSummary();
+                const totalCarts = (cartSummary.standard || 0) + (cartSummary.danish || 0);
+                document.getElementById('total-carts-needed').textContent = totalCarts;
+                console.log(`⚠️ Dashboard (OLD BUGGY METHOD): ${totalCarts} carts`);
+            }
             console.log('═══════════════════════════════════════════════════════════════════');
             
             // Update routes status
