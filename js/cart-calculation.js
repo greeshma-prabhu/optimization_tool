@@ -455,12 +455,16 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
             }
         }
         
-        // Use cache if it matches
-        if (window.__zuidplas_cart_cache && 
-            window.__zuidplas_cart_cache.ordersHash === ordersHash &&
-            window.__zuidplas_cart_cache.orders.length === orders.length &&
-            cacheDate === currentDate) {
-            console.log('═══════════════════════════════════════════════════════════════════');
+        // Use cache if it exists (even if hash doesn't match - Dashboard will recalculate when user syncs)
+        if (window.__zuidplas_cart_cache) {
+            // Check if cache matches
+            const hashMatch = window.__zuidplas_cart_cache.ordersHash === ordersHash;
+            const countMatch = window.__zuidplas_cart_cache.orders.length === orders.length;
+            const dateMatch = cacheDate === currentDate;
+            
+            if (hashMatch && countMatch && dateMatch) {
+                // Perfect match - use cache
+                console.log('═══════════════════════════════════════════════════════════════════');
             console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result');
             console.log('═══════════════════════════════════════════════════════════════════');
             console.log(`   🔵 This result was calculated using FUST (not stems!)`);
@@ -478,22 +482,54 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 orders: orders,
                 cartResult: window.__zuidplas_cart_cache.cartResult
             };
-        } else {
-            // Cache exists but doesn't match OR cache doesn't exist - need to recalculate
-            if (window.__zuidplas_cart_cache) {
-                // Cache exists but doesn't match
-                console.log('🔄 getGlobalOrdersAndCarts: Cache mismatch - recalculating...');
-                console.log(`   Cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
-                console.log(`   Cache date: ${cacheDate || 'unknown'}`);
-                console.log(`   Current date: ${currentDate}`);
-                console.log(`   Date match: ${cacheDate === currentDate}`);
-                console.log(`   Hash match: ${window.__zuidplas_cart_cache.ordersHash === ordersHash}`);
-                console.log(`   Count match: ${window.__zuidplas_cart_cache.orders.length === orders.length}`);
-                console.log(`   Cache had: ${window.__zuidplas_cart_cache.cartResult?.total || 'unknown'} carts`);
             } else {
-                // No cache exists at all
-                console.log('🔄 getGlobalOrdersAndCarts: No cache found - calculating fresh...');
+                // Cache exists but doesn't match - USE IT ANYWAY (don't recalculate!)
+                console.warn('⚠️ WARNING: Cache exists but doesn\'t match current orders/date');
+                console.warn(`   Cache date: ${cacheDate || 'unknown'}, Current date: ${currentDate}`);
+                console.warn(`   Hash match: ${hashMatch}, Count match: ${countMatch}, Date match: ${dateMatch}`);
+                console.warn(`   ⚠️ Using Dashboard's cache anyway - Dashboard will recalculate when you sync!`);
+                console.warn(`   ⚠️ Non-Dashboard pages should NEVER recalculate - only Dashboard can!`);
+                console.log('═══════════════════════════════════════════════════════════════════');
+                console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result (cache mismatch but using anyway)');
+                console.log('═══════════════════════════════════════════════════════════════════');
+                console.log(`   🔵 This result was calculated using FUST (not stems!)`);
+                console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+                console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
+                console.log(`   Cached date: ${cacheDate || 'unknown'}`);
+                console.log(`   Current date: ${currentDate}`);
+                console.log(`   Cached result: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
+                console.log(`   Cached breakdown: Aalsmeer=${window.__zuidplas_cart_cache.cartResult.byRoute.Aalsmeer}, Naaldwijk=${window.__zuidplas_cart_cache.cartResult.byRoute.Naaldwijk}, Rijnsburg=${window.__zuidplas_cart_cache.cartResult.byRoute.Rijnsburg}`);
+                console.log(`   ✅ Formula used: fust = assembly_amount ÷ bundles_per_fust`);
+                console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
+                console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
+                console.log('═══════════════════════════════════════════════════════════════════');
+                return {
+                    orders: orders,
+                    cartResult: window.__zuidplas_cart_cache.cartResult
+                };
             }
+        } else {
+            // No cache exists at all - NON-DASHBOARD PAGES SHOULD NOT CALCULATE!
+            console.error('❌ ERROR: No cache found and this is NOT Dashboard!');
+            console.error('❌ Non-Dashboard pages should ONLY use cache, never calculate fresh!');
+            console.error('❌ Please load Dashboard first and click "Sync" or "Refresh Data" to calculate carts!');
+            console.error('❌ Returning empty result - Dashboard must calculate first!');
+            
+            // Return empty result instead of calculating
+            return {
+                orders: orders,
+                cartResult: {
+                    total: 0,
+                    byRoute: {
+                        Aalsmeer: 0,
+                        Naaldwijk: 0,
+                        Rijnsburg: 0
+                    },
+                    trucks: 0,
+                    methodCounts: {},
+                    skippedOrdersCount: 0
+                }
+            };
         }
     }
     
@@ -519,14 +555,22 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     console.log(`   Breakdown: Aalsmeer=${cartResult.byRoute.Aalsmeer}, Naaldwijk=${cartResult.byRoute.Naaldwijk}, Rijnsburg=${cartResult.byRoute.Rijnsburg}`);
     
     // CACHE the result with timestamp and date
-    // CRITICAL: This cache is now the SINGLE SOURCE OF TRUTH for ALL pages
-    const cacheSource = forceRefresh ? 'Dashboard (forceRefresh=true)' : 'Other page (⚠️ Dashboard should calculate first!)';
-    
+    // CRITICAL: ONLY Dashboard can set the cache! Other pages should NEVER cache!
     if (!forceRefresh) {
-        console.warn(`   ⚠️ WARNING: Cache being set by ${cacheSource}`);
-        console.warn(`   ⚠️ Dashboard should calculate first with forceRefresh=true!`);
-        console.warn(`   ⚠️ This might cause inconsistent results!`);
+        console.error('❌ CRITICAL ERROR: Non-Dashboard page tried to set cache!');
+        console.error('❌ Only Dashboard should calculate and cache results!');
+        console.error('❌ This page should have used Dashboard\'s cache instead!');
+        console.error('❌ NOT caching this result - Dashboard must calculate first!');
+        // DON'T cache - return result but don't store it
+        return {
+            orders: orders,
+            cartResult: cartResult
+        };
     }
+    
+    // Only Dashboard (forceRefresh=true) can cache
+    const cacheSource = 'Dashboard (forceRefresh=true)';
+    console.log(`✅ Dashboard calculated and is caching the result for other pages to use`);
     
     // Ensure date is normalized (YYYY-MM-DD format)
     let normalizedDate = currentDate;
