@@ -537,33 +537,42 @@
             updateSummary();
         }
 
-        // Update summary - USE SINGLE SOURCE OF TRUTH
+        // Update summary - INDEPENDENT calculation for Orders page
         function updateSummary() {
-            console.log('📊 Orders page: Updating cart summary using SINGLE SOURCE OF TRUTH...');
+            console.log('📊 Orders page: Calculating cart summary INDEPENDENTLY...');
             
-            // CRITICAL: Use getGlobalOrdersAndCarts() - SAME AS ALL OTHER PAGES!
-            if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
-                console.log('🛒 Orders page: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
-                const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
-                const cartResult = globalData.cartResult;
-                const orders = globalData.orders;
+            // CRITICAL: Orders page works INDEPENDENTLY - calculates its own carts!
+            // It uses the SAME FUST formula as Dashboard, but calculates fresh for its own date
+            if (!orderManager || !orderManager.orders || orderManager.orders.length === 0) {
+                console.log('⚠️ No orders loaded yet - showing 0');
+                document.getElementById('standard-carts-summary').textContent = '0';
+                document.getElementById('danish-carts-summary').textContent = '0';
+                document.getElementById('special-handling-summary').textContent = '0';
+                return;
+            }
+            
+            // Use the SAME FUST calculation function as Dashboard
+            if (window.CartCalculation && window.CartCalculation.calculateCarts) {
+                console.log('🧮 Orders page: Calculating carts using SAME FUST formula as Dashboard...');
+                const cartResult = window.CartCalculation.calculateCarts(orderManager.orders);
                 
                 const cartTypes = calculateCartTypes(cartResult);
                 
-                console.log('✅ Orders page cart calculation (from SINGLE SOURCE):');
-                console.log(`   Orders: ${orders.length}`);
+                console.log('✅ Orders page cart calculation (INDEPENDENT):');
+                console.log(`   Orders: ${orderManager.orders.length}`);
                 console.log(`   Total carts: ${cartResult.total}`);
                 console.log(`   Standard: ${cartTypes.standard}`);
                 console.log(`   Danish: ${cartTypes.danish}`);
                 console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
+                console.log(`   ✅ Using SAME FUST formula: fust = assembly_amount ÷ bundles_per_fust, carts = fust ÷ fust_capacity`);
                 
-                // Update UI with CORRECT values
+                // Update UI with calculated values
                 document.getElementById('standard-carts-summary').textContent = cartTypes.standard;
                 document.getElementById('danish-carts-summary').textContent = cartTypes.danish;
                 document.getElementById('special-handling-summary').textContent = '0'; // TODO: Calculate special handling
             } else {
-                console.error('❌ getGlobalOrdersAndCarts() NOT AVAILABLE! This should never happen!');
-                // Don't use fallback - show error
+                console.error('❌ CartCalculation.calculateCarts() NOT AVAILABLE!');
+                // Show error
                 document.getElementById('standard-carts-summary').textContent = 'ERROR';
                 document.getElementById('danish-carts-summary').textContent = 'ERROR';
                 document.getElementById('special-handling-summary').textContent = 'ERROR';
@@ -611,54 +620,36 @@
             }
         }
 
-        // Auto-load on page load (try global state first, then API)
+        // Auto-load on page load - INDEPENDENT operation
         document.addEventListener('DOMContentLoaded', async () => {
-            // Wait for orderManager and appState to be initialized
+            // Wait for orderManager to be initialized
             function checkAndLoadOrders() {
-                if (typeof orderManager === 'undefined' || typeof window.appState === 'undefined') {
+                if (typeof orderManager === 'undefined') {
                     setTimeout(checkAndLoadOrders, 100);
                     return;
                 }
                 
-                // PRIORITY 1: Try loading from SINGLE SOURCE OF TRUTH
-                if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
-                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
-                    const globalOrders = globalData.orders;
-                    
-                    if (globalOrders && globalOrders.length > 0) {
-                        console.log(`✅ Orders page: Loaded ${globalOrders.length} orders from SINGLE SOURCE`);
-                        orderManager.orders = globalOrders;
-                        orderManager.filteredOrders = [...globalOrders];
-                        // DISABLED: orderManager.assignCarts() - using FUST-based calculation in updateSummary()
-                        orderManager.updateOrderCount();
-                        orderManager.displayOrders();
-                        updateSummary(); // This now uses getGlobalOrdersAndCarts()
-                        updateOrdersDate();
-                        return; // Exit early, don't fetch from API
-                    }
+                // CRITICAL: Orders page works INDEPENDENTLY - always fetch from API for selected date
+                // It does NOT use Dashboard's cache - it calculates its own carts for its own date
+                console.log('📋 Orders page: Initializing INDEPENDENTLY (not using Dashboard cache)...');
+                
+                // Set default date to today if not set
+                const datePicker = document.getElementById('order-date-picker');
+                if (datePicker && !datePicker.value) {
+                    const today = new Date().toISOString().split('T')[0];
+                    datePicker.value = today;
+                    console.log(`📅 Set default date to: ${today}`);
                 }
                 
-                // PRIORITY 2: Try appState (fallback)
-                const globalOrders = window.appState ? window.appState.getOrders() : [];
-                if (globalOrders && globalOrders.length > 0) {
-                    console.log(`✅ Orders page: Loaded ${globalOrders.length} orders from appState`);
-                    orderManager.orders = globalOrders;
-                    orderManager.filteredOrders = [...globalOrders];
-                    orderManager.updateOrderCount();
-                    orderManager.displayOrders();
-                    updateSummary();
-                    updateOrdersDate();
-                } else {
-                    // PRIORITY 2: Fetch from API
-                    console.log('🔄 Orders page: No global state, fetching from API...');
-                    setTimeout(async () => {
-                        try {
-                            await window.syncOrders();
-                        } catch (error) {
-                            console.error('Auto-load error:', error);
-                        }
-                    }, 500);
-                }
+                // Fetch orders from API for the selected date
+                console.log('🔄 Orders page: Fetching orders from API for selected date...');
+                setTimeout(async () => {
+                    try {
+                        await window.syncOrders();
+                    } catch (error) {
+                        console.error('Auto-load error:', error);
+                    }
+                }, 500);
             }
             
             checkAndLoadOrders();
