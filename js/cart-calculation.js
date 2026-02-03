@@ -43,15 +43,31 @@ function getRoute(order) {
     if (window.RouteMapping && window.RouteMapping.getRouteForCustomer) {
         const customerName = order.customer_name || order.order?.customer_name || '';
         const route = window.RouteMapping.getRouteForCustomer(customerName);
-        // Convert to proper case for consistency
-        return route === 'rijnsburg' ? 'Rijnsburg' : 
-               route === 'aalsmeer' ? 'Aalsmeer' : 
-               route === 'naaldwijk' ? 'Naaldwijk' : 'Rijnsburg';
+        // CRITICAL: Convert to proper case for consistency with fustByRouteAndType keys
+        // fustByRouteAndType uses 'Aalsmeer', 'Naaldwijk', 'Rijnsburg' (proper case)
+        const properCaseRoute = route === 'rijnsburg' ? 'Rijnsburg' : 
+                                route === 'aalsmeer' ? 'Aalsmeer' : 
+                                route === 'naaldwijk' ? 'Naaldwijk' : 
+                                route === 'late_delivery' ? 'Rijnsburg' : 'Rijnsburg';
+        
+        // Log route assignment for debugging
+        if (!customerName) {
+            console.warn(`⚠️ Order ${order.id || 'unknown'} has no customer_name, defaulting to Rijnsburg`);
+        }
+        
+        return properCaseRoute;
     }
     
     // Fallback: Use location_id (old method, less reliable)
     const locId = order.delivery_location_id || order.order?.delivery_location_id;
-    return LOCATION_ID_TO_ROUTE[locId] || 'Rijnsburg';
+    const routeFromLocation = LOCATION_ID_TO_ROUTE[locId];
+    if (routeFromLocation) {
+        // Convert to proper case
+        return routeFromLocation === 'rijnsburg' ? 'Rijnsburg' :
+               routeFromLocation === 'aalsmeer' ? 'Aalsmeer' :
+               routeFromLocation === 'naaldwijk' ? 'Naaldwijk' : 'Rijnsburg';
+    }
+    return 'Rijnsburg'; // Default
 }
 
 /**
