@@ -304,20 +304,6 @@ function showUnmappedCustomersSummary() {
   }
 }
 
-// Export to window
-if (typeof window !== 'undefined') {
-  window.RouteMapping = {
-    getRouteForCustomer: getRouteForCustomer,
-    usesDanishCarts: usesDanishCarts,
-    getDepartureTime: getDepartureTime,
-    getCartCapacity: getCartCapacity,
-    showUnmappedCustomersSummary: showUnmappedCustomersSummary,
-    CLIENT_ROUTE_MAPPING: CLIENT_ROUTE_MAPPING,
-    DANISH_CART_CLIENTS: DANISH_CART_CLIENTS,
-    ROUTE_DEPARTURE_TIMES: ROUTE_DEPARTURE_TIMES,
-    LATE_DELIVERY_CLIENTS: LATE_DELIVERY_CLIENTS
-  };
-
 /**
  * Check if customer uses Danish carts
  */
@@ -376,6 +362,7 @@ if (typeof window !== 'undefined') {
     usesDanishCarts: usesDanishCarts,
     getDepartureTime: getDepartureTime,
     getCartCapacity: getCartCapacity,
+    showUnmappedCustomersSummary: showUnmappedCustomersSummary,
     CLIENT_ROUTE_MAPPING: CLIENT_ROUTE_MAPPING,
     DANISH_CART_CLIENTS: DANISH_CART_CLIENTS,
     ROUTE_DEPARTURE_TIMES: ROUTE_DEPARTURE_TIMES,
