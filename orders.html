@@ -257,13 +257,14 @@
                         <tr>
                             <th data-i18n="orders.orderId">Order ID</th>
                             <th data-i18n="orders.customer">Customer</th>
+                            <th>🎯 Assigned Route</th>
+                            <th>🕐 Departure</th>
                             <th data-i18n="orders.deliveryLocation">Delivery Location</th>
                             <th data-i18n="orders.productType">Product Type</th>
                             <th data-i18n="orders.quantity">Quantity</th>
                             <th data-i18n="orders.crateType">Crate Type</th>
                             <th data-i18n="orders.cartType">Cart Type</th>
                             <th data-i18n="orders.cartsNeeded">Carts Needed</th>
-                            <th data-i18n="orders.assignedRoute">Assigned Route</th>
                             <th data-i18n="orders.status">Status</th>
                         </tr>
                     </thead>
@@ -579,24 +580,50 @@
                     return;
                 }
                 
+                // Route colors for visual distinction
+                const routeColors = {
+                    'rijnsburg': '#10b981',   // Green
+                    'aalsmeer': '#3b82f6',    // Blue
+                    'naaldwijk': '#f59e0b'    // Orange
+                };
+                
                 // Add rows
                 this.orders.forEach((order, index) => {
                     const row = document.createElement('tr');
                     
                     const orderObj = order.order || {};
                     const fustType = this.extractFustType(order);
-                    const route = this.getRoute(order);
+                    const customerName = order.customer_name || 'Unknown';
+                    
+                    // Get route assignment using RouteMapping (same as calculation)
+                    let route = 'rijnsburg';
+                    let departureTime = '09:00';
+                    if (window.RouteMapping && window.RouteMapping.getRouteForCustomer) {
+                        route = window.RouteMapping.getRouteForCustomer(customerName);
+                        departureTime = window.RouteMapping.getDepartureTime(route);
+                    } else {
+                        // Fallback to old method
+                        route = this.getRoute(order);
+                        const routeNames = { 'Aalsmeer': 'aalsmeer', 'Naaldwijk': 'naaldwijk', 'Rijnsburg': 'rijnsburg' };
+                        route = routeNames[route] || 'rijnsburg';
+                    }
+                    
+                    const routeColor = routeColors[route] || '#6b7280';
+                    const routeDisplay = route.charAt(0).toUpperCase() + route.slice(1);
                     
                     row.innerHTML = `
                         <td>${order.id || orderObj.id || index + 1}</td>
-                        <td>${order.customer_name || 'Unknown'}</td>
+                        <td>${customerName}</td>
+                        <td style="background: ${routeColor}; color: white; font-weight: bold; text-align: center; border-radius: 4px; padding: 4px 8px;">
+                            ${routeDisplay}
+                        </td>
+                        <td style="font-weight: bold; text-align: center;">${departureTime}</td>
                         <td>${order.location_name || '-'}</td>
                         <td>${order.product_name || '-'}</td>
                         <td>${order.assembly_amount || 0}</td>
                         <td>${fustType}</td>
                         <td>${this.getCartType(order)}</td>
                         <td>${this.calculateCartsForOrder(order)}</td>
-                        <td>${route}</td>
                         <td><span class="status-${order.state || 'pending'}">${order.state || 'Pending'}</span></td>
                     `;
                     

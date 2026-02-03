@@ -1323,3 +1323,132 @@ body {
 .cart-item.standard {
     border-left-color: #3b82f6;
 }
+
+/* ============================================
+   Route Summary Cards Styling
+   ============================================ */
+
+.route-summary {
+    margin: 2rem 0;
+}
+
+.route-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.route-summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-left: 6px solid;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.route-summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.route-summary-card.rijnsburg {
+    border-left-color: #10b981;
+}
+
+.route-summary-card.aalsmeer {
+    border-left-color: #3b82f6;
+}
+
+.route-summary-card.naaldwijk {
+    border-left-color: #f59e0b;
+}
+
+.route-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.route-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.departure-time {
+    background: #f3f4f6;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: bold;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.route-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.route-stats .stat {
+    text-align: center;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.route-stats .stat label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.route-stats .stat span {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #111827;
+}
+
+.danish-indicator {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 0.5rem;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.875rem;
+    margin: 1rem 0;
+    font-weight: 500;
+}
+
+.btn-view-details {
+    width: 100%;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-top: 1rem;
+}
+
+.btn-view-details:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.btn-view-details:active {
+    transform: translateY(0);
+}

@@ -219,6 +219,107 @@
             </div>
         </div>
 
+        <!-- Route Summary by Departure Time -->
+        <div class="card route-summary">
+            <h2>📍 Route Breakdown by Departure Time</h2>
+            <div class="route-cards-grid">
+                <!-- Route 1: Rijnsburg -->
+                <div class="route-summary-card rijnsburg">
+                    <div class="route-header">
+                        <h3>🚛 Route 1: Rijnsburg</h3>
+                        <span class="departure-time">🕐 09:00</span>
+                    </div>
+                    <div class="route-stats">
+                        <div class="stat">
+                            <label>Orders</label>
+                            <span id="rijnsburg-orders">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Customers</label>
+                            <span id="rijnsburg-customers">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Carts</label>
+                            <span id="rijnsburg-carts">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Trucks</label>
+                            <span id="rijnsburg-trucks">0</span>
+                        </div>
+                    </div>
+                    <button class="btn-view-details" onclick="viewRouteDetails('rijnsburg')">
+                        View Customer List
+                    </button>
+                </div>
+                
+                <!-- Route 2: Aalsmeer -->
+                <div class="route-summary-card aalsmeer">
+                    <div class="route-header">
+                        <h3>🚛 Route 2: Aalsmeer</h3>
+                        <span class="departure-time">🕐 10:00</span>
+                    </div>
+                    <div class="route-stats">
+                        <div class="stat">
+                            <label>Orders</label>
+                            <span id="aalsmeer-orders">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Customers</label>
+                            <span id="aalsmeer-customers">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Carts</label>
+                            <span id="aalsmeer-carts">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Trucks</label>
+                            <span id="aalsmeer-trucks">0</span>
+                        </div>
+                    </div>
+                    <div class="danish-indicator">
+                        🇩🇰 Includes Danish Cart Clients
+                    </div>
+                    <button class="btn-view-details" onclick="viewRouteDetails('aalsmeer')">
+                        View Customer List
+                    </button>
+                </div>
+                
+                <!-- Route 3: Naaldwijk -->
+                <div class="route-summary-card naaldwijk">
+                    <div class="route-header">
+                        <h3>🚛 Route 3: Naaldwijk</h3>
+                        <span class="departure-time">🕐 11:00</span>
+                    </div>
+                    <div class="route-stats">
+                        <div class="stat">
+                            <label>Orders</label>
+                            <span id="naaldwijk-orders">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Customers</label>
+                            <span id="naaldwijk-customers">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Carts</label>
+                            <span id="naaldwijk-carts">0</span>
+                        </div>
+                        <div class="stat">
+                            <label>Trucks</label>
+                            <span id="naaldwijk-trucks">0</span>
+                        </div>
+                    </div>
+                    <button class="btn-view-details" onclick="viewRouteDetails('naaldwijk')">
+                        View Customer List
+                    </button>
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <button id="validate-routes-btn" class="btn btn-secondary" style="padding: 10px 20px;">
+                    ✅ Validate Route Assignments
+                </button>
+            </div>
+        </div>
+
         <!-- Route Overview Cards -->
         <div class="card">
             <h2 data-i18n="dashboard.routeOverview">Route Overview</h2>
@@ -865,6 +966,9 @@
                 }));
                 console.log(`📝 Dashboard result stored for verification (date: ${currentDate}): ${totalCarts} carts`);
                 
+                // Update route summary cards
+                updateRouteSummary(actualOrders, cartResult);
+                
                 // Use actualOrders for route overview too
                 orders = actualOrders;
             } else {
@@ -1179,6 +1283,198 @@
             }, 1500);
         });
     
+        // Update route summary cards with order and cart data
+        function updateRouteSummary(orders, cartData) {
+            if (!orders || !cartData || !window.RouteMapping) {
+                console.warn('⚠️ Cannot update route summary - missing data');
+                return;
+            }
+            
+            const routes = ['rijnsburg', 'aalsmeer', 'naaldwijk'];
+            
+            routes.forEach(route => {
+                // Count orders for this route
+                const routeOrders = orders.filter(o => {
+                    const customerName = o.customer_name || o.order?.customer_name || '';
+                    return window.RouteMapping.getRouteForCustomer(customerName) === route;
+                });
+                
+                // Count unique customers
+                const uniqueCustomers = new Set(routeOrders.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean));
+                
+                // Get carts for this route (convert route name to proper case)
+                const routeName = route.charAt(0).toUpperCase() + route.slice(1);
+                const carts = cartData.byRoute[routeName] || 0;
+                const trucks = Math.ceil(carts / 17);
+                
+                // Update UI
+                const ordersEl = document.getElementById(`${route}-orders`);
+                const customersEl = document.getElementById(`${route}-customers`);
+                const cartsEl = document.getElementById(`${route}-carts`);
+                const trucksEl = document.getElementById(`${route}-trucks`);
+                
+                if (ordersEl) ordersEl.textContent = routeOrders.length;
+                if (customersEl) customersEl.textContent = uniqueCustomers.size;
+                if (cartsEl) cartsEl.textContent = carts;
+                if (trucksEl) trucksEl.textContent = trucks;
+            });
+            
+            console.log('✅ Route summary cards updated');
+        }
+        
+        // View route details - show customer list
+        function viewRouteDetails(route) {
+            const ordersInMemory = window.__zuidplas_orders_memory || [];
+            if (ordersInMemory.length === 0) {
+                alert('No orders loaded. Please sync data first.');
+                return;
+            }
+            
+            if (!window.RouteMapping) {
+                alert('Route mapping not available.');
+                return;
+            }
+            
+            const routeOrders = ordersInMemory.filter(o => {
+                const customerName = o.customer_name || o.order?.customer_name || '';
+                return window.RouteMapping.getRouteForCustomer(customerName) === route;
+            });
+            
+            const customers = [...new Set(routeOrders.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean))].sort();
+            const departureTime = window.RouteMapping.getDepartureTime(route);
+            const cartsEl = document.getElementById(route + '-carts');
+            const carts = cartsEl ? cartsEl.textContent : '0';
+            
+            const message = `📍 ${route.toUpperCase()} ROUTE\n` +
+                `🕐 Departure: ${departureTime}\n\n` +
+                `👥 Customers with orders today (${customers.length}):\n\n` +
+                customers.map((c, i) => `${i + 1}. ${c}`).join('\n') +
+                `\n\n📦 Total Orders: ${routeOrders.length}\n` +
+                `🚛 Carts Needed: ${carts}`;
+            
+            alert(message);
+        }
+        
+        // Validate route assignments
+        function validateRouteAssignments() {
+            const ordersInMemory = window.__zuidplas_orders_memory || [];
+            if (ordersInMemory.length === 0) {
+                alert('No orders loaded. Please sync data first.');
+                return;
+            }
+            
+            if (!window.RouteMapping) {
+                alert('Route mapping not available. Please refresh the page.');
+                return;
+            }
+            
+            const report = {
+                total: ordersInMemory.length,
+                matched: 0,
+                defaulted: 0,
+                unknown: new Set(),
+                routeBreakdown: {
+                    rijnsburg: new Set(),
+                    aalsmeer: new Set(),
+                    naaldwijk: new Set()
+                }
+            };
+            
+            ordersInMemory.forEach(order => {
+                const customerName = order.customer_name || order.order?.customer_name || '';
+                if (!customerName) return;
+                
+                // Temporarily capture warnings
+                let wasDefaulted = false;
+                const originalWarn = console.warn;
+                console.warn = (msg) => {
+                    if (typeof msg === 'string' && msg.includes(customerName) && msg.includes('not found')) {
+                        wasDefaulted = true;
+                    }
+                    originalWarn(msg);
+                };
+                
+                const route = window.RouteMapping.getRouteForCustomer(customerName);
+                console.warn = originalWarn;
+                
+                if (wasDefaulted) {
+                    report.defaulted++;
+                    report.unknown.add(customerName);
+                } else {
+                    report.matched++;
+                }
+                
+                report.routeBreakdown[route].add(customerName);
+            });
+            
+            // Convert Sets to Arrays
+            const unknownArray = Array.from(report.unknown);
+            const routeBreakdown = {
+                rijnsburg: Array.from(report.routeBreakdown.rijnsburg),
+                aalsmeer: Array.from(report.routeBreakdown.aalsmeer),
+                naaldwijk: Array.from(report.routeBreakdown.naaldwijk)
+            };
+            
+            // Generate report
+            const successRate = report.total > 0 ? ((report.matched / report.total) * 100).toFixed(1) : 0;
+            
+            let reportText = `╔════════════════════════════════════════════╗\n` +
+                `║     ROUTE ASSIGNMENT VALIDATION REPORT     ║\n` +
+                `╚════════════════════════════════════════════╝\n\n` +
+                `📊 SUMMARY:\n` +
+                `   Total Orders: ${report.total}\n` +
+                `   ✅ Matched: ${report.matched} (${successRate}%)\n` +
+                `   ⚠️ Defaulted to Rijnsburg: ${report.defaulted}\n\n` +
+                `📍 ROUTE BREAKDOWN:\n` +
+                `   Rijnsburg: ${routeBreakdown.rijnsburg.length} unique customers\n` +
+                `   Aalsmeer: ${routeBreakdown.aalsmeer.length} unique customers\n` +
+                `   Naaldwijk: ${routeBreakdown.naaldwijk.length} unique customers\n\n`;
+            
+            if (unknownArray.length > 0) {
+                reportText += `⚠️ UNKNOWN CUSTOMERS (not in mapping):\n` +
+                    unknownArray.slice(0, 10).map((c, i) => `   ${i + 1}. ${c}`).join('\n');
+                if (unknownArray.length > 10) {
+                    reportText += `\n   ... and ${unknownArray.length - 10} more`;
+                }
+                reportText += `\n\nACTION NEEDED:\nAdd these customer names to js/route-mapping.js\n\n`;
+            } else {
+                reportText += `✅ All customers successfully matched!\n\n`;
+            }
+            
+            reportText += successRate >= 90 ? '✅ Route mapping is working well!' : '⚠️ Route mapping needs improvement!';
+            
+            // Show in alert
+            alert(reportText);
+            
+            // Also download as text file
+            try {
+                const blob = new Blob([reportText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `route-validation-${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                console.warn('Could not download report file:', e);
+            }
+        }
+        
+        // Make functions globally accessible
+        window.updateRouteSummary = updateRouteSummary;
+        window.viewRouteDetails = viewRouteDetails;
+        window.validateRouteAssignments = validateRouteAssignments;
+        
+        // Attach event listener to validate button
+        document.addEventListener('DOMContentLoaded', () => {
+            const validateBtn = document.getElementById('validate-routes-btn');
+            if (validateBtn) {
+                validateBtn.addEventListener('click', validateRouteAssignments);
+            }
+        });
+        
         // Logout function - MUST BE GLOBAL
         function handleLogout() {
             const confirmMsg = typeof i18n !== 'undefined' 
