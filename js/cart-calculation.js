@@ -432,27 +432,63 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         // Skip to calculation - don't check cache at all!
     } else {
         // Only check cache if NOT forceRefresh (other pages)
-        console.log(`🔍 getGlobalOrdersAndCarts: Checking cache...`);
+        // CRITICAL: Check ALL possible cache locations!
+        console.log(`🔍 getGlobalOrdersAndCarts: Checking cache in ALL locations...`);
         console.log(`   Orders count: ${orders.length}`);
         console.log(`   Current date: ${currentDate}`);
-        console.log(`   Cache exists? ${!!window.__zuidplas_cart_cache}`);
-        if (window.__zuidplas_cart_cache) {
-            console.log(`   ✅ Cache found!`);
+        
+        // Try to find cache in any location
+        let cachedCartResult = null;
+        let cacheSource = null;
+        let cacheDate = '';
+        
+        // Location 1: Primary cache (window.__zuidplas_cart_cache)
+        if (window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.cartResult) {
+            cachedCartResult = window.__zuidplas_cart_cache.cartResult;
+            cacheSource = 'window.__zuidplas_cart_cache';
+            cacheDate = window.__zuidplas_cart_cache.date || '';
+            console.log(`   ✅ Found cache in window.__zuidplas_cart_cache`);
             console.log(`   Cache hash: ${window.__zuidplas_cart_cache.ordersHash}`);
-            console.log(`   Cache date: ${window.__zuidplas_cart_cache.date || 'unknown'}`);
-            console.log(`   Cache orders count: ${window.__zuidplas_cart_cache.orders.length}`);
-            console.log(`   Cache result: ${window.__zuidplas_cart_cache.cartResult?.total || 'unknown'} carts`);
+            console.log(`   Cache date: ${cacheDate || 'unknown'}`);
+            console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
             console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
             console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
-        } else {
-            console.log(`   ❌ No cache found in window.__zuidplas_cart_cache`);
-            console.log(`   Checking if cache exists in other locations...`);
-            console.log(`   window.__zuidplas_cart_cache type: ${typeof window.__zuidplas_cart_cache}`);
         }
+        // Location 2: appState.cartResult (for compatibility)
+        else if (window.appState && window.appState.cartResult) {
+            cachedCartResult = window.appState.cartResult;
+            cacheSource = 'window.appState.cartResult';
+            console.log(`   ✅ Found cache in window.appState.cartResult`);
+            console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
+        }
+        // Location 3: localStorage (for persistence)
+        else {
+            try {
+                const localStorageCache = localStorage.getItem('cachedCartResult');
+                if (localStorageCache) {
+                    cachedCartResult = JSON.parse(localStorageCache);
+                    cacheSource = 'localStorage';
+                    const timestamp = localStorage.getItem('cachedCartResultTimestamp');
+                    console.log(`   ✅ Found cache in localStorage`);
+                    console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
+                    console.log(`   Cached at: ${timestamp || 'unknown'}`);
+                }
+            } catch (e) {
+                console.warn(`   ⚠️ Could not read from localStorage:`, e);
+            }
+        }
+        
+        if (!cachedCartResult) {
+            console.log(`   ❌ No cache found in ANY location!`);
+            console.log(`   Checked: window.__zuidplas_cart_cache, window.appState.cartResult, localStorage`);
+        }
+        
         console.log(`   Current hash: ${ordersHash}`);
         
         // Normalize cache date for comparison
-        let cacheDate = window.__zuidplas_cart_cache?.date || '';
+        if (!cacheDate && window.__zuidplas_cart_cache) {
+            cacheDate = window.__zuidplas_cart_cache.date || '';
+        }
         if (cacheDate instanceof Date) {
             cacheDate = cacheDate.toISOString().split('T')[0];
         } else if (typeof cacheDate === 'string' && cacheDate.includes('GMT')) {
@@ -464,32 +500,45 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         }
         
         // Use cache if it exists (even if hash doesn't match - Dashboard will recalculate when user syncs)
-        if (window.__zuidplas_cart_cache) {
-            // Check if cache matches
-            const hashMatch = window.__zuidplas_cart_cache.ordersHash === ordersHash;
-            const countMatch = window.__zuidplas_cart_cache.orders.length === orders.length;
-            const dateMatch = cacheDate === currentDate;
+        if (cachedCartResult) {
+            // Check if cache matches (only if we have full cache object)
+            let hashMatch = false;
+            let countMatch = false;
+            let dateMatch = false;
+            
+            if (window.__zuidplas_cart_cache) {
+                hashMatch = window.__zuidplas_cart_cache.ordersHash === ordersHash;
+                countMatch = window.__zuidplas_cart_cache.orders.length === orders.length;
+                dateMatch = cacheDate === currentDate;
+            } else {
+                // Cache from appState or localStorage - assume it matches (can't verify hash)
+                hashMatch = true;
+                countMatch = true;
+                dateMatch = true;
+            }
             
             if (hashMatch && countMatch && dateMatch) {
                 // Perfect match - use cache
                 console.log('═══════════════════════════════════════════════════════════════════');
-            console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result');
-            console.log('═══════════════════════════════════════════════════════════════════');
-            console.log(`   🔵 This result was calculated using FUST (not stems!)`);
-            console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
-            console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
-            console.log(`   Cached date: ${cacheDate || 'unknown'}`);
-            console.log(`   Current date: ${currentDate}`);
-            console.log(`   Cached result: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
-            console.log(`   Cached breakdown: Aalsmeer=${window.__zuidplas_cart_cache.cartResult.byRoute.Aalsmeer}, Naaldwijk=${window.__zuidplas_cart_cache.cartResult.byRoute.Naaldwijk}, Rijnsburg=${window.__zuidplas_cart_cache.cartResult.byRoute.Rijnsburg}`);
-            console.log(`   ✅ Formula used: fust = assembly_amount ÷ bundles_per_fust`);
-            console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
-            console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
-            console.log('═══════════════════════════════════════════════════════════════════');
-            return {
-                orders: orders,
-                cartResult: window.__zuidplas_cart_cache.cartResult
-            };
+                console.log(`✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result from ${cacheSource}`);
+                console.log('═══════════════════════════════════════════════════════════════════');
+                console.log(`   🔵 This result was calculated using FUST (not stems!)`);
+                if (window.__zuidplas_cart_cache) {
+                    console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+                    console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
+                    console.log(`   Cached date: ${cacheDate || 'unknown'}`);
+                }
+                console.log(`   Current date: ${currentDate}`);
+                console.log(`   Cached result: ${cachedCartResult.total} carts`);
+                console.log(`   Cached breakdown: Aalsmeer=${cachedCartResult.byRoute.Aalsmeer}, Naaldwijk=${cachedCartResult.byRoute.Naaldwijk}, Rijnsburg=${cachedCartResult.byRoute.Rijnsburg}`);
+                console.log(`   ✅ Formula used: fust = assembly_amount ÷ bundles_per_fust`);
+                console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
+                console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
+                console.log('═══════════════════════════════════════════════════════════════════');
+                return {
+                    orders: orders,
+                    cartResult: cachedCartResult
+                };
             } else {
                 // Cache exists but doesn't match - USE IT ANYWAY (don't recalculate!)
                 console.warn('⚠️ WARNING: Cache exists but doesn\'t match current orders/date');
@@ -498,22 +547,24 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 console.warn(`   ⚠️ Using Dashboard's cache anyway - Dashboard will recalculate when you sync!`);
                 console.warn(`   ⚠️ Non-Dashboard pages should NEVER recalculate - only Dashboard can!`);
                 console.log('═══════════════════════════════════════════════════════════════════');
-                console.log('✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result (cache mismatch but using anyway)');
+                console.log(`✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result from ${cacheSource} (cache mismatch but using anyway)`);
                 console.log('═══════════════════════════════════════════════════════════════════');
                 console.log(`   🔵 This result was calculated using FUST (not stems!)`);
-                console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
-                console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
-                console.log(`   Cached date: ${cacheDate || 'unknown'}`);
+                if (window.__zuidplas_cart_cache) {
+                    console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+                    console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
+                    console.log(`   Cached date: ${cacheDate || 'unknown'}`);
+                }
                 console.log(`   Current date: ${currentDate}`);
-                console.log(`   Cached result: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
-                console.log(`   Cached breakdown: Aalsmeer=${window.__zuidplas_cart_cache.cartResult.byRoute.Aalsmeer}, Naaldwijk=${window.__zuidplas_cart_cache.cartResult.byRoute.Naaldwijk}, Rijnsburg=${window.__zuidplas_cart_cache.cartResult.byRoute.Rijnsburg}`);
+                console.log(`   Cached result: ${cachedCartResult.total} carts`);
+                console.log(`   Cached breakdown: Aalsmeer=${cachedCartResult.byRoute.Aalsmeer}, Naaldwijk=${cachedCartResult.byRoute.Naaldwijk}, Rijnsburg=${cachedCartResult.byRoute.Rijnsburg}`);
                 console.log(`   ✅ Formula used: fust = assembly_amount ÷ bundles_per_fust`);
                 console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
                 console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
                 console.log('═══════════════════════════════════════════════════════════════════');
                 return {
                     orders: orders,
-                    cartResult: window.__zuidplas_cart_cache.cartResult
+                    cartResult: cachedCartResult
                 };
             }
         } else {
@@ -584,6 +635,8 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         }
     }
     
+    // CRITICAL: Save to MULTIPLE locations for compatibility!
+    // Location 1: Primary cache (window.__zuidplas_cart_cache)
     window.__zuidplas_cart_cache = {
         ordersHash: ordersHash,
         orders: orders,
@@ -594,13 +647,28 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         source: cacheSource
     };
     
+    // Location 2: appState.cartResult (for compatibility with old code)
+    if (!window.appState) {
+        window.appState = {};
+    }
+    window.appState.cartResult = cartResult;
+    
+    // Location 3: localStorage (for persistence across page reloads)
+    try {
+        localStorage.setItem('cachedCartResult', JSON.stringify(cartResult));
+        localStorage.setItem('cachedCartResultTimestamp', new Date().toISOString());
+    } catch (e) {
+        console.warn('⚠️ Could not save to localStorage:', e);
+    }
+    
     console.log(`✅ getGlobalOrdersAndCarts: Result calculated and CACHED at ${new Date().toISOString()}`);
     console.log(`   Cached by: ${cacheSource}`);
     console.log(`   Cache hash: ${ordersHash}`);
     console.log(`   Cache date: ${normalizedDate}`);
     console.log(`   Cache orders count: ${orders.length}`);
     console.log(`   Cache result: ${cartResult.total} carts`);
-    console.log(`   ✅ Other pages can now use this cache!`);
+    console.log(`   ✅ Saved to 3 locations: window.__zuidplas_cart_cache, window.appState.cartResult, localStorage`);
+    console.log(`   ✅ Other pages can now use this cache from ANY location!`);
     console.log(`   Date: ${currentDate}`);
     console.log(`   Total: ${cartResult.total} carts, ${cartResult.trucks} trucks`);
     console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
