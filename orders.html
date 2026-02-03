@@ -447,76 +447,187 @@
             updateOrdersDate();
         }
 
-        // Sync orders - USE SELECTED DATE
-        // Make it globally accessible
-        window.syncOrders = async function syncOrders() {
-            try {
-                console.log('🔄 syncOrders() called');
-                
-                // Show loading state
-                const syncBtn = document.getElementById('sync-orders-btn');
-                if (syncBtn) {
-                    syncBtn.disabled = true;
-                    syncBtn.textContent = '⏳ Syncing...';
-                }
-                
-                // Check if orderManager is initialized
-                if (typeof orderManager === 'undefined' || !orderManager) {
-                    console.error('❌ orderManager is not initialized!');
-                    showError('Order manager not initialized. Please refresh the page.');
+        // Orders page - Independent data fetching
+        class OrdersPageManager {
+            constructor() {
+                this.orders = [];
+                this.cartResult = null;
+                this.currentDate = null;
+            }
+            
+            async syncOrders(date) {
+                try {
+                    console.log(`📋 Orders page: Syncing data for ${date}...`);
+                    
+                    // Show loading state
+                    const syncBtn = document.getElementById('sync-orders-btn');
+                    if (syncBtn) {
+                        syncBtn.disabled = true;
+                        syncBtn.textContent = '⏳ Syncing...';
+                    }
+                    
+                    // Authenticate first
+                    if (typeof florinetAPI === 'undefined') {
+                        throw new Error('FlorinetAPI not available');
+                    }
+                    
+                    await florinetAPI.authenticate();
+                    console.log('✅ Authenticated');
+                    
+                    // Fetch orders for this specific date
+                    console.log(`📦 Fetching orders for date: ${date}`);
+                    const enrichedOrders = await florinetAPI.getOrders(date);
+                    
+                    console.log(`✅ Fetched ${enrichedOrders.length} orderrows`);
+                    
+                    // Store orders
+                    this.orders = enrichedOrders;
+                    this.currentDate = date;
+                    
+                    // Calculate carts using SAME formula as Dashboard
+                    if (window.CartCalculation && window.CartCalculation.calculateCarts) {
+                        console.log('🧮 Calculating carts using SAME FUST formula as Dashboard...');
+                        this.cartResult = window.CartCalculation.calculateCarts(enrichedOrders);
+                        console.log(`✅ Orders page calculated: ${this.cartResult.total} carts`);
+                    } else {
+                        console.error('❌ CartCalculation.calculateCarts() not available!');
+                        throw new Error('Cart calculation not available');
+                    }
+                    
+                    // Update UI
+                    this.displayOrders();
+                    this.updateCartSummary();
+                    
+                    // Hide error message if it exists
+                    const errorMsg = document.getElementById('error-message');
+                    if (errorMsg) {
+                        errorMsg.style.display = 'none';
+                    }
+                    
+                    console.log('✅ Sync complete!');
+                    
+                } catch (error) {
+                    console.error('❌ Orders page sync failed:', error);
+                    showError('Failed to fetch orders: ' + error.message);
+                } finally {
+                    // Restore button state
+                    const syncBtn = document.getElementById('sync-orders-btn');
                     if (syncBtn) {
                         syncBtn.disabled = false;
                         syncBtn.textContent = '🔄 Sync Now';
                     }
+                }
+            }
+            
+            displayOrders() {
+                const tableBody = document.getElementById('orders-table-body');
+                
+                if (!tableBody) {
+                    console.error('❌ Table body not found');
                     return;
                 }
                 
-                const datePicker = document.getElementById('order-date-picker');
-                let selectedDate = null;
+                // Clear table
+                tableBody.innerHTML = '';
                 
-                if (datePicker && datePicker.value) {
-                    selectedDate = datePicker.value; // YYYY-MM-DD format
-                    console.log('📅 Fetching orders for selected date:', selectedDate);
-                } else {
-                    // Default to today
-                    selectedDate = new Date().toISOString().split('T')[0];
-                    if (datePicker) {
-                        datePicker.value = selectedDate;
-                    }
-                    console.log('📅 Using today as default:', selectedDate);
+                if (this.orders.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No orders found for this date</td></tr>';
+                    return;
                 }
                 
-                console.log('📦 Calling orderManager.fetchOrders...');
-                const orders = await orderManager.fetchOrders(selectedDate);
-                console.log('✅ Fetched', orders.length, 'orders');
+                // Add rows
+                this.orders.forEach((order, index) => {
+                    const row = document.createElement('tr');
+                    
+                    const orderObj = order.order || {};
+                    const fustType = this.extractFustType(order);
+                    const route = this.getRoute(order);
+                    
+                    row.innerHTML = `
+                        <td>${order.id || orderObj.id || index + 1}</td>
+                        <td>${order.customer_name || 'Unknown'}</td>
+                        <td>${order.location_name || '-'}</td>
+                        <td>${order.product_name || '-'}</td>
+                        <td>${order.assembly_amount || 0}</td>
+                        <td>${fustType}</td>
+                        <td>${this.getCartType(order)}</td>
+                        <td>${this.calculateCartsForOrder(order)}</td>
+                        <td>${route}</td>
+                        <td><span class="status-${order.state || 'pending'}">${order.state || 'Pending'}</span></td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
                 
-                // DISABLED: orderManager.assignCarts() uses OLD buggy calculation
-                // Cart calculation now happens in updateSummary() using CartCalculation.calculateTotalCarts()
-                console.log('🔧 Skipping old assignCarts() - using FUST-based calculation instead...');
+                console.log(`✅ Displayed ${this.orders.length} orders in table`);
+            }
+            
+            updateCartSummary() {
+                if (!this.cartResult) return;
                 
-                console.log('📊 Updating summary with FUST-based calculation...');
-                updateSummary();
-                updateOrdersDate(); // Update displayed date
+                const cartTypes = calculateCartTypes(this.cartResult);
                 
-                // Hide error message if it exists
-                const errorMsg = document.getElementById('error-message');
-                if (errorMsg) {
-                    errorMsg.style.display = 'none';
+                document.getElementById('standard-carts-summary').textContent = cartTypes.standard;
+                document.getElementById('danish-carts-summary').textContent = cartTypes.danish;
+                document.getElementById('special-handling-summary').textContent = '0';
+                
+                console.log('✅ Cart summary updated:', {
+                    total: this.cartResult.total,
+                    standard: cartTypes.standard,
+                    danish: cartTypes.danish,
+                    routes: this.cartResult.byRoute
+                });
+            }
+            
+            extractFustType(order) {
+                const properties = order.properties || [];
+                const fustProp = properties.find(p => p.code === '901');
+                return fustProp?.pivot?.value || fustProp?.value || '612';
+            }
+            
+            getCartType(order) {
+                const customerName = (order.customer_name || '').toLowerCase();
+                if (customerName.includes('superflora') || customerName.includes('flamingo')) {
+                    return 'Danish';
                 }
-                
-                console.log('✅ Sync complete!');
-                
-            } catch (error) {
-                console.error('❌ Sync error:', error);
-                showError('Failed to sync orders: ' + error.message);
-            } finally {
-                // Restore button state
-                const syncBtn = document.getElementById('sync-orders-btn');
-                if (syncBtn) {
-                    syncBtn.disabled = false;
-                    syncBtn.textContent = '🔄 Sync Now';
+                return 'Standard';
+            }
+            
+            calculateCartsForOrder(order) {
+                const assemblyAmount = order.assembly_amount || 0;
+                const bundlesPerFust = parseInt(order.bundles_per_fust) || 5;
+                const fust = assemblyAmount / bundlesPerFust;
+                const fustType = this.extractFustType(order);
+                const capacity = (window.CartCalculation && window.CartCalculation.FUST_CAPACITY && window.CartCalculation.FUST_CAPACITY[fustType]) || 72;
+                return Math.ceil(fust / capacity);
+            }
+            
+            getRoute(order) {
+                const locationId = order.delivery_location_id || order.order?.delivery_location_id;
+                const routes = { 32: 'Aalsmeer', 34: 'Naaldwijk', 36: 'Rijnsburg' };
+                return routes[locationId] || 'Rijnsburg';
+            }
+        }
+        
+        // Initialize OrdersPageManager
+        const ordersPageManager = new OrdersPageManager();
+        
+        // Make syncOrders globally accessible
+        window.syncOrders = async function syncOrders() {
+            const datePicker = document.getElementById('order-date-picker');
+            let selectedDate = null;
+            
+            if (datePicker && datePicker.value) {
+                selectedDate = datePicker.value; // YYYY-MM-DD format
+            } else {
+                // Default to today
+                selectedDate = new Date().toISOString().split('T')[0];
+                if (datePicker) {
+                    datePicker.value = selectedDate;
                 }
             }
+            
+            await ordersPageManager.syncOrders(selectedDate);
         };
 
         // Apply filters
@@ -537,45 +648,16 @@
             updateSummary();
         }
 
-        // Update summary - INDEPENDENT calculation for Orders page
+        // Update summary - uses OrdersPageManager's cart result
         function updateSummary() {
-            console.log('📊 Orders page: Calculating cart summary INDEPENDENTLY...');
-            
-            // CRITICAL: Orders page works INDEPENDENTLY - calculates its own carts!
-            // It uses the SAME FUST formula as Dashboard, but calculates fresh for its own date
-            if (!orderManager || !orderManager.orders || orderManager.orders.length === 0) {
-                console.log('⚠️ No orders loaded yet - showing 0');
+            // Use OrdersPageManager's cart result if available
+            if (ordersPageManager && ordersPageManager.cartResult) {
+                ordersPageManager.updateCartSummary();
+            } else {
+                // No data yet
                 document.getElementById('standard-carts-summary').textContent = '0';
                 document.getElementById('danish-carts-summary').textContent = '0';
                 document.getElementById('special-handling-summary').textContent = '0';
-                return;
-            }
-            
-            // Use the SAME FUST calculation function as Dashboard
-            if (window.CartCalculation && window.CartCalculation.calculateCarts) {
-                console.log('🧮 Orders page: Calculating carts using SAME FUST formula as Dashboard...');
-                const cartResult = window.CartCalculation.calculateCarts(orderManager.orders);
-                
-                const cartTypes = calculateCartTypes(cartResult);
-                
-                console.log('✅ Orders page cart calculation (INDEPENDENT):');
-                console.log(`   Orders: ${orderManager.orders.length}`);
-                console.log(`   Total carts: ${cartResult.total}`);
-                console.log(`   Standard: ${cartTypes.standard}`);
-                console.log(`   Danish: ${cartTypes.danish}`);
-                console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
-                console.log(`   ✅ Using SAME FUST formula: fust = assembly_amount ÷ bundles_per_fust, carts = fust ÷ fust_capacity`);
-                
-                // Update UI with calculated values
-                document.getElementById('standard-carts-summary').textContent = cartTypes.standard;
-                document.getElementById('danish-carts-summary').textContent = cartTypes.danish;
-                document.getElementById('special-handling-summary').textContent = '0'; // TODO: Calculate special handling
-            } else {
-                console.error('❌ CartCalculation.calculateCarts() NOT AVAILABLE!');
-                // Show error
-                document.getElementById('standard-carts-summary').textContent = 'ERROR';
-                document.getElementById('danish-carts-summary').textContent = 'ERROR';
-                document.getElementById('special-handling-summary').textContent = 'ERROR';
             }
         }
         
@@ -620,18 +702,14 @@
             }
         }
 
-        // Auto-load on page load - INDEPENDENT operation
+        // Auto-load today's orders on page load
         document.addEventListener('DOMContentLoaded', async () => {
-            // Wait for orderManager to be initialized
+            // Wait for API to be ready
             function checkAndLoadOrders() {
-                if (typeof orderManager === 'undefined') {
+                if (typeof florinetAPI === 'undefined') {
                     setTimeout(checkAndLoadOrders, 100);
                     return;
                 }
-                
-                // CRITICAL: Orders page works INDEPENDENTLY - always fetch from API for selected date
-                // It does NOT use Dashboard's cache - it calculates its own carts for its own date
-                console.log('📋 Orders page: Initializing INDEPENDENTLY (not using Dashboard cache)...');
                 
                 // Set default date to today if not set
                 const datePicker = document.getElementById('order-date-picker');
@@ -642,7 +720,7 @@
                 }
                 
                 // Fetch orders from API for the selected date
-                console.log('🔄 Orders page: Fetching orders from API for selected date...');
+                console.log('🔄 Orders page: Auto-loading orders for selected date...');
                 setTimeout(async () => {
                     try {
                         await window.syncOrders();
