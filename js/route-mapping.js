@@ -7,6 +7,7 @@
 const CLIENT_ROUTE_MAPPING = {
   // ========================================
   // RIJNSBURG ROUTE (09:00 departure)
+  // 27 clients from Rijnsburg sheet
   // ========================================
   'rijnsburg': [
     'A. Heemskerk',
@@ -39,61 +40,45 @@ const CLIENT_ROUTE_MAPPING = {
   ],
   
   // ========================================
-  // AALSMEER ROUTE (10:00 departure)
+  // AALSMEER ROUTE (10:00 departure)  
+  // 30 clients from Aalsmeer sheet
   // ========================================
   'aalsmeer': [
-    'Akkus',
-    'Albert Heijn',
-    'Behne Blumen',
-    'By Special',
-    'Bloomon',
-    'Directflor',
-    'Divflo',
-    'Fleura Metz',
-    'Flora Service',
-    'EZ Flower',
-    'Floral Connection',
-    'Floris Holland',
-    'Floral Charm',
-    'Hans Visser',
-    'Hans Visser P',
-    'Hans Visser B',
-    'Greenflor',
-    'hilverda de boer',
-    'holex',
-    'Hoekhuis Aalsmeer',
-    'Intratuin',
-    'IBH',
-    'Lem',
-    'F.T.C. Aalsmeer',
-    'KUB Flowers',
-    'Hoorn',
-    'OZ Zurel',
-    'Nijssen',
-    'PS Flowers',
-    'Roelofs',
-    'salaba/barile',
-    'Slikweid',
-    'Spaargaren',
-    'Transfleur',
-    'Thom Slootman',
-    'Tuning',
-    'verbeek en bol',
-    'Vliet',
-    'Vimex',
-    'Verdnatura',
-    'waterdrinker',
-    'Willemsen',
-    'WM',
-    'Zandbergen',
-    'MM Flowers',
+    'BBI Blomstertorget',
+    'Bloemen Buro',
+    'Bloomenet',
+    'Blooming Direct',
+    'Carsea',
     'Dijk Flora',
+    'Eurofleur Export',
+    'Flamingo',
+    'Floramondo',
+    'Florette',
+    'Flori Culture',
+    'Floripac',
+    'Floris Holland',
+    'Flora Nova',
+    'Flower Point',
+    'Flower Trade Consult',
+    'FTD',
+    'Hans Visser',
+    'Harrewijn',
+    'Hoekhuis Aalsmeer',
+    'Imex',
+    'KLOK Aalsmeer',
+    'MM Flowers',
+    'Passie Bloemen',
+    'PB Flowerbulbs',
+    'Plantion',
+    'Royal Lemkes',
+    'Stolk Flora',
     'Superflora',
-    'Flamingo'
+    'Xaverius'
   ],
   
   // ========================================
   // NAALDWIJK ROUTE (11:00 departure)
+  // 29 clients from Naaldwijk sheet
   // ========================================
   'naaldwijk': [
     'Astrafund',
@@ -132,7 +117,8 @@ const CLIENT_ROUTE_MAPPING = {
 const DANISH_CART_CLIENTS = [
   'Superflora',
   'Flamingo',
-  'Flower Trade Consult Bleiswijk',
+  'Flamingo Flowers',
+  'Flower Trade Consult',
   'MM Flowers',
   'Dijk Flora'
 ];
@@ -153,69 +139,100 @@ const LATE_DELIVERY_CLIENTS = [
 ];
 
 /**
- * Get route for a customer using FUZZY MATCHING
+ * Get route for a customer using IMPROVED FUZZY MATCHING
  * API customer names might be slightly different from planning sheet
+ * Handles variations like: "Floripac Swiss plant BV" → "Floripac"
  */
 function getRouteForCustomer(customerName) {
-  if (!customerName) {
-    console.warn('⚠️ No customer name provided, defaulting to Rijnsburg');
-    return 'rijnsburg'; // Default
-  }
+  if (!customerName) return 'rijnsburg'; // Default
   
-  const nameLower = customerName.toLowerCase().trim();
+  // Clean the customer name for better matching
+  const cleanName = (name) => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ')           // Normalize spaces
+      .replace(/[&]/g, ' ')           // Remove ampersands
+      .replace(/\./g, '')             // Remove periods
+      .replace(/b\.v\.|bv/g, '')      // Remove BV suffix
+      .replace(/export/g, '')         // Remove "Export"
+      .replace(/flowers?/g, '')       // Remove "Flower(s)"
+      .replace(/\(.*?\)/g, '')        // Remove content in parentheses like (MINI)
+      .replace(/swiss plant/g, '')    // Remove "swiss plant"
+      .trim();
+  };
+  
+  const nameClean = cleanName(customerName);
+  const nameWords = nameClean.split(/\s+/).filter(w => w.length > 2);
   
   // Check late delivery clients first
-  for (const lateClient of LATE_DELIVERY_CLIENTS) {
-    const lateClientLower = lateClient.toLowerCase();
-    if (nameLower.includes(lateClientLower) || lateClientLower.includes(nameLower)) {
+  const LATE_DELIVERY = ['rheinmaas', 'plantion', 'algemeen'];
+  for (const late of LATE_DELIVERY) {
+    if (nameClean.includes(late)) {
       console.log(`✅ Late delivery client: "${customerName}" → late_delivery`);
       return 'late_delivery';
     }
   }
   
-  // Check each route
+  // Search through all routes
   for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
     for (const client of clients) {
-      const clientLower = client.toLowerCase().trim();
+      const clientClean = cleanName(client);
+      const clientWords = clientClean.split(/\s+/).filter(w => w.length > 2);
       
-      // Method 1: Exact match
-      if (nameLower === clientLower) {
-        console.log(`✅ Exact match: "${customerName}" → ${route}`);
+      // Method 1: Exact match after cleaning
+      if (nameClean === clientClean) {
+        console.log(`✅ Exact match: "${customerName}" = "${client}" → ${route}`);
         return route;
       }
       
       // Method 2: Customer name contains client name
-      if (nameLower.includes(clientLower)) {
+      if (nameClean.includes(clientClean) && clientClean.length > 3) {
         console.log(`✅ Contains match: "${customerName}" contains "${client}" → ${route}`);
         return route;
       }
       
       // Method 3: Client name contains customer name
-      if (clientLower.includes(nameLower)) {
-        console.log(`✅ Reverse match: "${client}" contains "${customerName}" → ${route}`);
+      if (clientClean.includes(nameClean) && nameClean.length > 3) {
+        console.log(`✅ Reverse contains: "${client}" contains "${customerName}" → ${route}`);
         return route;
       }
       
-      // Method 4: Partial word match (for names like "H. Star" vs "H Star Naaldwijk")
-      const customerWords = nameLower.split(/[\s\.\-]+/).filter(w => w.length > 2);
-      const clientWords = clientLower.split(/[\s\.\-]+/).filter(w => w.length > 2);
-      
+      // Method 4: Word-based matching (match if 2+ significant words match)
       let matchCount = 0;
-      for (const cw of customerWords) {
-        if (clientWords.some(clw => clw.includes(cw) || cw.includes(clw))) {
-          matchCount++;
+      for (const nw of nameWords) {
+        for (const cw of clientWords) {
+          // Check if words match or contain each other
+          if (nw.length > 2 && cw.length > 2) {
+            if (nw === cw || nw.includes(cw) || cw.includes(nw)) {
+              matchCount++;
+              break; // Count each word only once
+            }
+          }
         }
       }
       
-      // If at least 2 words match, consider it a match
+      // If at least 2 significant words match, consider it a match
       if (matchCount >= 2) {
         console.log(`✅ Word match (${matchCount} words): "${customerName}" ≈ "${client}" → ${route}`);
         return route;
       }
+      
+      // Method 5: Partial word matching for short names
+      // For names like "V/D PLAS" vs "Plas van der"
+      if (clientWords.length === 2 && nameWords.length >= 2) {
+        const matches = clientWords.filter(cw => 
+          nameWords.some(nw => nw.includes(cw) || cw.includes(nw))
+        );
+        if (matches.length >= 2) {
+          console.log(`✅ Partial word match: "${customerName}" ≈ "${client}" → ${route}`);
+          return route;
+        }
+      }
     }
   }
   
-  // No match found - log warning and default to rijnsburg
+  // No match found
   console.warn(`⚠️ Customer "${customerName}" not found in any route mapping, defaulting to Rijnsburg`);
   return 'rijnsburg';
 }
@@ -284,9 +301,14 @@ if (typeof window !== 'undefined') {
     LATE_DELIVERY_CLIENTS: LATE_DELIVERY_CLIENTS
   };
   
-  console.log('✅ Route mapping loaded:', Object.keys(CLIENT_ROUTE_MAPPING).length, 'routes');
+  console.log('✅ Route mapping loaded successfully!');
   console.log('   Rijnsburg:', CLIENT_ROUTE_MAPPING.rijnsburg.length, 'clients');
   console.log('   Aalsmeer:', CLIENT_ROUTE_MAPPING.aalsmeer.length, 'clients');
   console.log('   Naaldwijk:', CLIENT_ROUTE_MAPPING.naaldwijk.length, 'clients');
+  console.log('   TOTAL:', 
+    CLIENT_ROUTE_MAPPING.rijnsburg.length + 
+    CLIENT_ROUTE_MAPPING.aalsmeer.length + 
+    CLIENT_ROUTE_MAPPING.naaldwijk.length, 
+    'permanent client assignments');
   console.log('   Danish cart clients:', DANISH_CART_CLIENTS.length);
 }
