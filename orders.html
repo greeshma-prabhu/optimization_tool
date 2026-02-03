@@ -475,20 +475,32 @@
                     await florinetAPI.authenticate();
                     console.log('✅ Authenticated');
                     
-                    // Fetch orders for this specific date
-                    console.log(`📦 Fetching orders for date: ${date}`);
-                    const enrichedOrders = await florinetAPI.getOrders(date);
+                    // CRITICAL: Use SAME API method as Dashboard
+                    // Dashboard uses fetchOrdersForDate() which does enrichment and returns ready-to-use orders
+                    console.log(`📦 Fetching orders for date: ${date} (using SAME method as Dashboard)...`);
+                    const dateObj = new Date(date);
+                    const apiOrders = await florinetAPI.fetchOrdersForDate(dateObj);
                     
-                    console.log(`✅ Fetched ${enrichedOrders.length} orderrows`);
+                    if (!apiOrders || apiOrders.length === 0) {
+                        console.warn('⚠️ No orders returned from API');
+                        this.orders = [];
+                        this.cartResult = null;
+                        this.displayOrders();
+                        this.updateCartSummary();
+                        return;
+                    }
+                    
+                    console.log(`✅ Fetched ${apiOrders.length} orders from API (same method as Dashboard)`);
                     
                     // CRITICAL: Validate orders using SAME validator as Dashboard
                     // This ensures we filter out invalid/test/cancelled/duplicates the SAME way
-                    let validatedOrders = enrichedOrders;
+                    let validatedOrders = apiOrders;
                     if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
                         console.log('🔍 Orders page: Validating orders (same as Dashboard)...');
-                        const validationResult = window.OrderValidator.validateOrders(enrichedOrders);
+                        const validationResult = window.OrderValidator.validateOrders(apiOrders);
                         validatedOrders = validationResult.orders;
-                        console.log(`✅ Orders page: ${validatedOrders.length} valid orders (filtered from ${enrichedOrders.length})`);
+                        console.log(`✅ Orders page: ${validatedOrders.length} valid orders (filtered from ${apiOrders.length})`);
+                        console.log(`   Dashboard would also filter to ${validatedOrders.length} orders`);
                     } else {
                         console.warn('⚠️ OrderValidator not available - using all orders without validation');
                     }
@@ -501,13 +513,26 @@
                     // Orders page works for ANY date, so it calculates fresh (not from cache)
                     // But uses the EXACT SAME calculation logic as Dashboard
                     if (window.CartCalculation && window.CartCalculation.calculateCarts) {
-                        console.log('🧮 Orders page: Calculating carts using SAME FUST formula as Dashboard...');
+                        console.log('═══════════════════════════════════════════════════════════════════');
+                        console.log('🧮 Orders page: Calculating carts using SAME FUST formula as Dashboard');
+                        console.log('═══════════════════════════════════════════════════════════════════');
                         console.log(`   Date: ${date}`);
-                        console.log(`   Orders: ${validatedOrders.length}`);
-                        console.log(`   🔵 Using calculateCarts() - SAME function as Dashboard!`);
+                        console.log(`   Validated orders: ${validatedOrders.length}`);
+                        console.log(`   🔵 Using calculateCarts() - EXACT SAME function as Dashboard!`);
+                        console.log(`   🔵 Using SAME validation - OrderValidator.validateOrders()!`);
+                        console.log(`   🔵 Using SAME API method - fetchOrdersForDate()!`);
+                        console.log('');
+                        
                         this.cartResult = window.CartCalculation.calculateCarts(validatedOrders);
+                        
+                        console.log('');
+                        console.log('═══════════════════════════════════════════════════════════════════');
                         console.log(`✅ Orders page calculated: ${this.cartResult.total} carts`);
-                        console.log(`   Aalsmeer: ${this.cartResult.byRoute.Aalsmeer}, Naaldwijk: ${this.cartResult.byRoute.Naaldwijk}, Rijnsburg: ${this.cartResult.byRoute.Rijnsburg}`);
+                        console.log(`   Aalsmeer: ${this.cartResult.byRoute.Aalsmeer}`);
+                        console.log(`   Naaldwijk: ${this.cartResult.byRoute.Naaldwijk}`);
+                        console.log(`   Rijnsburg: ${this.cartResult.byRoute.Rijnsburg}`);
+                        console.log(`   Trucks: ${this.cartResult.trucks || 0}`);
+                        console.log('═══════════════════════════════════════════════════════════════════');
                     } else {
                         console.error('❌ CartCalculation.calculateCarts() not available!');
                         throw new Error('Cart calculation not available');
