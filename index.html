@@ -1352,9 +1352,21 @@
                 // Count unique customers
                 const uniqueCustomers = new Set(routeOrders.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean));
                 
-                // Get carts for this route (convert route name to proper case)
+                // Get carts for this route - check both proper case and lowercase
                 const routeName = route.charAt(0).toUpperCase() + route.slice(1);
-                const carts = cartData.byRoute[routeName] || 0;
+                let carts = cartData.byRoute[routeName] || cartData.byRoute[route] || 0;
+                
+                // CRITICAL: If we have orders but no carts, or vice versa, recalculate for this route
+                if (routeOrders.length > 0 && carts === 0) {
+                    console.warn(`⚠️ Route ${route} has ${routeOrders.length} orders but 0 carts - recalculating...`);
+                    // Recalculate carts for this route's orders
+                    if (window.CartCalculation && window.CartCalculation.calculateCarts) {
+                        const routeCartResult = window.CartCalculation.calculateCarts(routeOrders);
+                        carts = routeCartResult.byRoute[routeName] || routeCartResult.byRoute[route] || 0;
+                        console.log(`   Recalculated: ${carts} carts for ${routeOrders.length} orders`);
+                    }
+                }
+                
                 const trucks = Math.ceil(carts / 17);
                 
                 // Update UI
@@ -1367,6 +1379,8 @@
                 if (customersEl) customersEl.textContent = uniqueCustomers.size;
                 if (cartsEl) cartsEl.textContent = carts;
                 if (trucksEl) trucksEl.textContent = trucks;
+                
+                console.log(`✅ Route ${route}: ${routeOrders.length} orders, ${uniqueCustomers.size} customers, ${carts} carts, ${trucks} trucks`);
             });
             
             console.log('✅ Route summary cards updated');
@@ -1423,7 +1437,7 @@
                 </div>
                 <div class="customer-list-container">
                     <ol>
-                        ${customers.map(customer => `<li>${customer}</li>`).join('')}
+                        ${customers.map((customer, index) => `<li>${index + 1}. ${customer}</li>`).join('')}
                     </ol>
                 </div>
                 <button class="modal-close-btn" onclick="this.closest('.customer-list-modal').remove(); document.querySelector('.modal-backdrop').remove()">
