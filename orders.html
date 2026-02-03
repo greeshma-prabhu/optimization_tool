@@ -25,6 +25,36 @@
             pointer-events: auto;
         }
         
+        /* Make customer names visible and scrollable */
+        #orders-table {
+            width: 100%;
+            table-layout: auto; /* Allow columns to expand */
+        }
+        
+        #orders-table td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px; /* Prevent super wide columns */
+            padding: 8px;
+        }
+        
+        #orders-table td:hover {
+            white-space: normal; /* Show full text on hover */
+            overflow: visible;
+            background: #f0f0f0;
+            position: relative;
+            z-index: 10;
+            max-width: none;
+        }
+        
+        /* Make customer name column wider */
+        #orders-table th:nth-child(2),
+        #orders-table td:nth-child(2) {
+            min-width: 150px;
+            max-width: 250px;
+        }
+        
         /* When button is clicked, ensure date input doesn't get focus */
         #sync-orders-btn:active,
         #export-orders-btn:active {
@@ -493,17 +523,23 @@
                     
                     console.log(`✅ Fetched ${apiOrders.length} orders from API (same method as Dashboard)`);
                     
-                    // CRITICAL: Validate orders using SAME validator as Dashboard
+                    // STEP 1: Filter by actual delivery date (7am-7am window)
+                    const filteredByDate = this.filterOrdersByDeliveryDate(apiOrders, date);
+                    console.log(`📅 Filtered by delivery date: ${apiOrders.length} → ${filteredByDate.length} orders`);
+                    
+                    // STEP 2: Validate orders using SAME validator as Dashboard
                     // This ensures we filter out invalid/test/cancelled/duplicates the SAME way
-                    let validatedOrders = apiOrders;
+                    let validatedOrders = filteredByDate;
                     if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
                         console.log('🔍 Orders page: Validating orders (same as Dashboard)...');
-                        const validationResult = window.OrderValidator.validateOrders(apiOrders);
+                        const validationResult = window.OrderValidator.validateOrders(filteredByDate);
                         validatedOrders = validationResult.orders;
-                        console.log(`✅ Orders page: ${validatedOrders.length} valid orders (filtered from ${apiOrders.length})`);
+                        console.log(`✅ Orders page: ${validatedOrders.length} valid orders (filtered from ${filteredByDate.length})`);
                         console.log(`   Dashboard would also filter to ${validatedOrders.length} orders`);
                     } else {
                         console.warn('⚠️ OrderValidator not available - using all orders without validation');
+                        // Fallback: Basic validation
+                        validatedOrders = this.validateAndCleanOrders(filteredByDate);
                     }
                     
                     // Store validated orders
@@ -572,6 +608,16 @@
                         throw new Error('Cart calculation not available');
                     }
                     
+                    // Show unmapped customers summary
+                    if (window.RouteMapping && window.RouteMapping.showUnmappedCustomersSummary) {
+                        window.RouteMapping.showUnmappedCustomersSummary();
+                    }
+                    
+                    // Clear unmapped customers for next sync
+                    if (window.unmappedCustomers) {
+                        window.unmappedCustomers.clear();
+                    }
+                    
                     // Update UI
                     this.displayOrders();
                     this.updateCartSummary();
@@ -595,6 +641,98 @@
                         syncBtn.textContent = '🔄 Sync Now';
                     }
                 }
+            }
+            
+            /**
+             * Filter orders by actual delivery date
+             * Only show orders where delivery_date matches the selected day
+             */
+            filterOrdersByDeliveryDate(orderrows, targetDate) {
+                // Format target date as DD-MM-YYYY
+                const formatDateToDD_MM_YYYY = (dateStr) => {
+                    if (!dateStr) return null;
+                    const d = new Date(dateStr);
+                    if (isNaN(d.getTime())) return null;
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const year = d.getFullYear();
+                    return `${day}-${month}-${year}`;
+                };
+                
+                const targetDateObj = new Date(targetDate);
+                const targetDateStr = formatDateToDD_MM_YYYY(targetDate);
+                
+                if (!targetDateStr) {
+                    console.warn('⚠️ Invalid target date, returning all orders');
+                    return orderrows;
+                }
+                
+                const filtered = orderrows.filter(row => {
+                    const deliveryDate = row.order?.delivery_date || row.delivery_date;
+                    
+                    if (!deliveryDate) {
+                        // Skip orders without delivery_date
+                        return false;
+                    }
+                    
+                    // Extract date from "2026-02-03T14:00:00.000000Z" or "03-02-2026"
+                    let orderDateStr = null;
+                    if (deliveryDate.includes('T')) {
+                        // ISO format: "2026-02-03T14:00:00.000000Z"
+                        orderDateStr = formatDateToDD_MM_YYYY(deliveryDate.split('T')[0]);
+                    } else {
+                        // Already in DD-MM-YYYY format
+                        orderDateStr = deliveryDate;
+                    }
+                    
+                    return orderDateStr === targetDateStr;
+                });
+                
+                console.log(`📅 Filtered by delivery date (${targetDateStr}): ${orderrows.length} → ${filtered.length} orders`);
+                return filtered;
+            }
+            
+            /**
+             * Validate and clean orders - filter out invalid/duplicate orders
+             */
+            validateAndCleanOrders(orderrows) {
+                const valid = [];
+                const seen = new Set();
+                
+                orderrows.forEach(row => {
+                    // Skip if no order data
+                    if (!row.order || !row.order.id) {
+                        console.warn('⚠️ Skipping orderrow without order data:', row.id);
+                        return;
+                    }
+                    
+                    // Skip if state is cancelled/void
+                    const state = row.state || row.order?.state || '';
+                    if (state === 'Geannuleerd' || state === 'Void' || state === 'Cancelled') {
+                        console.warn('⚠️ Skipping cancelled order:', row.id);
+                        return;
+                    }
+                    
+                    // Skip if assembly_amount is 0 or missing
+                    if (!row.assembly_amount || row.assembly_amount <= 0) {
+                        console.warn('⚠️ Skipping zero-quantity order:', row.id);
+                        return;
+                    }
+                    
+                    // Skip duplicates (same orderrow ID)
+                    if (seen.has(row.id)) {
+                        console.warn('⚠️ Skipping duplicate orderrow:', row.id);
+                        return;
+                    }
+                    seen.add(row.id);
+                    
+                    valid.push(row);
+                });
+                
+                console.log(`✅ Validation: ${orderrows.length} → ${valid.length} valid orders`);
+                console.log(`   Removed: ${orderrows.length - valid.length} invalid/duplicate orders`);
+                
+                return valid;
             }
             
             displayOrders() {

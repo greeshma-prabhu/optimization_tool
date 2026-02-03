@@ -274,10 +274,49 @@ function getRouteForCustomer(customerName) {
     }
   }
   
-  // No match found
-  console.warn(`⚠️ Customer "${customerName}" not found in any route mapping, defaulting to Rijnsburg`);
+  // No match found - track unmapped customers
+  console.warn(`⚠️ UNMAPPED CUSTOMER: "${customerName}"`);
+  console.warn(`   Please add this customer to route-mapping.js`);
+  console.warn(`   Defaulting to: Rijnsburg`);
+  
+  // Track unmapped customers globally
+  if (typeof window !== 'undefined') {
+    if (!window.unmappedCustomers) {
+      window.unmappedCustomers = new Set();
+    }
+    window.unmappedCustomers.add(customerName);
+  }
+  
   return 'rijnsburg';
 }
+
+/**
+ * Show summary of unmapped customers
+ */
+function showUnmappedCustomersSummary() {
+  if (typeof window !== 'undefined' && window.unmappedCustomers && window.unmappedCustomers.size > 0) {
+    console.warn('\n⚠️⚠️⚠️ UNMAPPED CUSTOMERS SUMMARY ⚠️⚠️⚠️');
+    console.warn(`Found ${window.unmappedCustomers.size} customers not in route mapping:`);
+    Array.from(window.unmappedCustomers).sort().forEach((name, i) => {
+      console.warn(`  ${i+1}. "${name}"`);
+    });
+    console.warn('Please add these to js/route-mapping.js in the correct route\n');
+  }
+}
+
+// Export to window
+if (typeof window !== 'undefined') {
+  window.RouteMapping = {
+    getRouteForCustomer: getRouteForCustomer,
+    usesDanishCarts: usesDanishCarts,
+    getDepartureTime: getDepartureTime,
+    getCartCapacity: getCartCapacity,
+    showUnmappedCustomersSummary: showUnmappedCustomersSummary,
+    CLIENT_ROUTE_MAPPING: CLIENT_ROUTE_MAPPING,
+    DANISH_CART_CLIENTS: DANISH_CART_CLIENTS,
+    ROUTE_DEPARTURE_TIMES: ROUTE_DEPARTURE_TIMES,
+    LATE_DELIVERY_CLIENTS: LATE_DELIVERY_CLIENTS
+  };
 
 /**
  * Check if customer uses Danish carts
