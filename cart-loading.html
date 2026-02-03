@@ -660,19 +660,34 @@
              */
             getAllCarts() {
                 console.log('═══════════════════════════════════════════════════════════════════');
-                console.log('📦 CART CALCULATION (matches Dashboard - using cart-calculation.js)');
+                console.log('📦 CART CALCULATION (using CACHED result from Dashboard)');
                 console.log('═══════════════════════════════════════════════════════════════════');
                 
-                // Use the CORRECT calculation from cart-calculation.js
-                if (window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
-                    const cartResult = window.CartCalculation.calculateTotalCarts(this.orders);
+                // CRITICAL: Use CACHED result from Dashboard, NEVER calculate independently!
+                let cartResult = null;
+                if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts(); // NO forceRefresh - only reads cache!
+                    cartResult = globalData.cartResult;
                     
-                    console.log('✅ Using CORRECT calculation:');
+                    console.log('✅ Using CACHED result from Dashboard:');
                     console.log(`   Total carts: ${cartResult.total}`);
                     console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
                     console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
                     console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
                     console.log(`   Trucks: ${cartResult.trucks}`);
+                    console.log(`   ✅ This is the SAME result as Dashboard - SINGLE SOURCE OF TRUTH!`);
+                } else {
+                    console.error('❌ getGlobalOrdersAndCarts() not available! Cannot get cached result!');
+                    console.error('❌ Please load Dashboard first and click "Sync" or "Refresh Data"!');
+                    // Return empty result
+                    return [];
+                }
+                
+                if (!cartResult || cartResult.total === 0) {
+                    console.warn('⚠️ WARNING: Got 0 carts from cache - Dashboard may not have calculated yet!');
+                    console.warn('⚠️ Please load Dashboard and click "Sync" or "Refresh Data" to calculate carts!');
+                    return [];
+                }
                     
                     // Convert breakdown to cart objects for the UI
                     const allCarts = [];
@@ -2250,13 +2265,26 @@
         }
 
         function updateSummaryStats(result) {
+            // CRITICAL: Use CACHED cart count from Dashboard, not allCarts.length!
+            let totalCartsFromCache = 0;
+            if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts(); // NO forceRefresh - only reads cache!
+                totalCartsFromCache = globalData.cartResult.total || 0;
+                console.log(`✅ updateSummaryStats: Using cached cart count: ${totalCartsFromCache} carts`);
+            } else {
+                // Fallback to result.allCarts.length if cache not available
+                totalCartsFromCache = result.allCarts ? result.allCarts.length : 0;
+                console.warn(`⚠️ updateSummaryStats: Cache not available, using allCarts.length: ${totalCartsFromCache}`);
+            }
+            
             const allCarts = result.allCarts;
             const truck1Capacity = cartLoadingOptimizer.getTruckCapacity('truck1');
             const truck2Capacity = cartLoadingOptimizer.getTruckCapacity('truck2');
             const totalOverflow = truck1Capacity.overflow + truck2Capacity.overflow;
             const routesCovered = new Set([...result.truck1.routes, ...result.truck2.routes]).size;
 
-            document.getElementById('total-carts').textContent = allCarts.length;
+            // Use cached cart count (from Dashboard) instead of allCarts.length
+            document.getElementById('total-carts').textContent = totalCartsFromCache;
             document.getElementById('carts-assigned').textContent = result.truck1.carts.length + result.truck2.carts.length;
             document.getElementById('overflow-count').textContent = totalOverflow;
             document.getElementById('routes-covered').textContent = `${routesCovered}/3`;
@@ -2592,6 +2620,19 @@
                     console.log(`📦 Found ${orders.length} orders in global state, loading...`);
                     orderManager.orders = orders;
                     orderManager.filteredOrders = [...orders];
+                    
+                    // CRITICAL: Update UI with CACHED cart count immediately!
+                    if (cartResult && cartResult.total > 0) {
+                        console.log(`✅ Updating UI with cached cart count: ${cartResult.total} carts`);
+                        const totalCartsEl = document.getElementById('total-carts');
+                        if (totalCartsEl) {
+                            totalCartsEl.textContent = cartResult.total;
+                            console.log(`✅ Updated total-carts element to ${cartResult.total}`);
+                        }
+                    } else {
+                        console.warn('⚠️ No cached cart result available - Dashboard may not have calculated yet!');
+                        console.warn('⚠️ Please load Dashboard and click "Sync" or "Refresh Data" to calculate carts!');
+                    }
                     
                     // CRITICAL: Update cart counts using CartDisplayManager
                     // Use cartResult from SINGLE SOURCE if available
