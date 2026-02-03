@@ -1652,13 +1652,6 @@
             const modal = document.createElement('div');
             modal.className = 'mismatch-report-modal';
             
-            // Group warnings by route for display
-            const byRoute = {
-                'rijnsburg': warnings.filter(c => c.suggestedRoute === 'rijnsburg' || !c.suggestedRoute),
-                'aalsmeer': warnings.filter(c => c.suggestedRoute === 'aalsmeer'),
-                'naaldwijk': warnings.filter(c => c.suggestedRoute === 'naaldwijk')
-            };
-            
             modal.innerHTML = `
                 <h3>⚠️ Customer Route Analysis Report</h3>
                 <div class="modal-stats">
