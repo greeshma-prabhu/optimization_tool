@@ -1878,41 +1878,18 @@
                             <thead>
                                 <tr>
                                     <th>Customer</th>
-                                    <th>Current Route</th>
-                                    <th>Suggested Route</th>
+                                    <th>Defaulted Route</th>
                                     <th>Orders</th>
-                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${warnings.map(c => {
-                                    let suggestedRouteText = '';
-                                    let actionText = '';
-                                    
-                                    if (c.excelSuggestedRoute && c.excelSuggestedRoute !== 'NOT_IN_EXCEL') {
-                                        // Found in Excel - show the route
-                                        suggestedRouteText = c.excelSuggestedRoute;
-                                        if (c.excelSuggestedRoute === c.routes[0]) {
-                                            actionText = 'Add name variation to route-mapping.js';
-                                        } else {
-                                            actionText = `Change to ${c.excelSuggestedRoute}`;
-                                        }
-                                    } else {
-                                        // Not in Excel - just show defaulted route
-                                        suggestedRouteText = c.routes[0];
-                                        actionText = `Defaulted to ${c.routes[0]}`;
-                                    }
-                                    
-                                    return `
+                                ${warnings.map(c => `
                                     <tr>
                                         <td><strong>${c.customer}</strong></td>
                                         <td>${c.routes[0]}</td>
-                                        <td>${suggestedRouteText}</td>
                                         <td>${c.orderCount}</td>
-                                        <td style="color: #f59e0b; font-size: 0.85rem;">${actionText}</td>
                                     </tr>
-                                `;
-                                }).join('')}
+                                `).join('')}
                             </tbody>
                         </table>
                     ` : ''}
