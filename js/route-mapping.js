@@ -94,10 +94,37 @@ const CLIENT_ROUTE_MAPPING = {
   
   // ========================================
   // NAALDWIJK ROUTE (11:00 departure)
-  // TODO: Add client names from Naaldwijk tab in Excel file
   // ========================================
   'naaldwijk': [
-    // Will be filled from CSV Naaldwijk section when available
+    'Astrafund',
+    'Bloomer Flowers',
+    'Bachetle',
+    'Bloom Bouqet',
+    'Capitol fl.',
+    'D vd Vijver',
+    'Diva Flowers',
+    'E- Flowers',
+    'Euroveiling',
+    'Flowering Direct',
+    'Florca Westland',
+    'Flowers All-inn',
+    'Flowerportal',
+    'FSF',
+    'Flamingo Flowers',
+    'Goldman',
+    'H. Star',
+    'MD Agro Import',
+    'Kontikiflor',
+    'Kuipers',
+    'Leeuwenburg',
+    'Lion Fleurex',
+    'Premium',
+    'Sjaak vd vijver',
+    'SQ Flora',
+    'v Vliet',
+    'Webshopflower',
+    'West Flora Export',
+    'What If'
   ]
 };
 
