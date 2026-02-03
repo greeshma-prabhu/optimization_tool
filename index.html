@@ -854,6 +854,17 @@
                 document.getElementById('total-carts-needed').textContent = totalCarts;
                 console.log(`✅ Dashboard updated with SINGLE SOURCE calculation: ${totalCarts} carts`);
                 
+                // Store verification data for Orders page comparison
+                const currentDate = window.appState?.currentDate || new Date().toISOString().split('T')[0];
+                const cacheKey = `cart_verification_${currentDate}`;
+                sessionStorage.setItem(cacheKey, JSON.stringify({
+                    page: 'Dashboard',
+                    total: totalCarts,
+                    date: currentDate,
+                    byRoute: cartResult.byRoute
+                }));
+                console.log(`📝 Dashboard result stored for verification (date: ${currentDate}): ${totalCarts} carts`);
+                
                 // Use actualOrders for route overview too
                 orders = actualOrders;
             } else {
