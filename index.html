@@ -1716,21 +1716,6 @@
                                 `).join('')}
                             </tbody>
                         </table>
-                        <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px;">
-                            <strong>💡 Suggested Code to Add:</strong>
-                            <pre style="background: white; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; margin-top: 10px;">
-${byRoute.rijnsburg.length > 0 ? `'rijnsburg': [
-  // ... existing ...
-${byRoute.rijnsburg.slice(0, 5).map(c => `  '${c.customer}',  // ${c.orderCount} orders`).join('\n')}
-],\n` : ''}${byRoute.aalsmeer.length > 0 ? `'aalsmeer': [
-  // ... existing ...
-${byRoute.aalsmeer.slice(0, 5).map(c => `  '${c.customer}',  // ${c.orderCount} orders`).join('\n')}
-],\n` : ''}${byRoute.naaldwijk.length > 0 ? `'naaldwijk': [
-  // ... existing ...
-${byRoute.naaldwijk.slice(0, 5).map(c => `  '${c.customer}',  // ${c.orderCount} orders`).join('\n')}
-],` : ''}
-                            </pre>
-                        </div>
                     ` : ''}
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
