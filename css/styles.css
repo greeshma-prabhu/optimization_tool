@@ -1452,3 +1452,124 @@ body {
 .btn-view-details:active {
     transform: translateY(0);
 }
+
+/* Customer list modal - scrollable popup */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    backdrop-filter: blur(2px);
+}
+
+.customer-list-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    max-height: 80vh; /* Maximum 80% of screen height */
+    width: 90%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.customer-list-modal h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #1f2937;
+    font-size: 1.5rem;
+    border-bottom: 2px solid #ff6b00;
+    padding-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.customer-list-modal .modal-stats {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.customer-list-modal .modal-stats p {
+    margin: 5px 0;
+    font-size: 0.95rem;
+    color: #4b5563;
+}
+
+.customer-list-modal .customer-list-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-bottom: 20px;
+    padding-right: 10px;
+}
+
+.customer-list-modal .customer-list-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.customer-list-modal .customer-list-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.customer-list-modal .customer-list-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.customer-list-modal .customer-list-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.customer-list-modal ol {
+    margin: 0;
+    padding-left: 25px;
+    list-style: decimal;
+}
+
+.customer-list-modal li {
+    padding: 10px 0;
+    border-bottom: 1px solid #e5e7eb;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.customer-list-modal li:last-child {
+    border-bottom: none;
+}
+
+.customer-list-modal .modal-close-btn {
+    margin-top: auto;
+    padding: 12px 30px;
+    background: #ff6b00;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.2s;
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.customer-list-modal .modal-close-btn:hover {
+    background: #e55a00;
+    transform: translateY(-1px);
+}
+
+.customer-list-modal .modal-close-btn:active {
+    transform: translateY(0);
+}

@@ -1315,7 +1315,7 @@
             console.log('✅ Route summary cards updated');
         }
         
-        // View route details - show customer list
+        // View route details - show customer list in scrollable modal
         function viewRouteDetails(route) {
             const ordersInMemory = window.__zuidplas_orders_memory || [];
             if (ordersInMemory.length === 0) {
@@ -1338,14 +1338,65 @@
             const cartsEl = document.getElementById(route + '-carts');
             const carts = cartsEl ? cartsEl.textContent : '0';
             
-            const message = `📍 ${route.toUpperCase()} ROUTE\n` +
-                `🕐 Departure: ${departureTime}\n\n` +
-                `👥 Customers with orders today (${customers.length}):\n\n` +
-                customers.map((c, i) => `${i + 1}. ${c}`).join('\n') +
-                `\n\n📦 Total Orders: ${routeOrders.length}\n` +
-                `🚛 Carts Needed: ${carts}`;
+            // Remove any existing modals
+            const existingModal = document.querySelector('.customer-list-modal');
+            const existingBackdrop = document.querySelector('.modal-backdrop');
+            if (existingModal) existingModal.remove();
+            if (existingBackdrop) existingBackdrop.remove();
             
-            alert(message);
+            // Create backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop';
+            
+            // Create modal
+            const modal = document.createElement('div');
+            modal.className = 'customer-list-modal';
+            
+            // Route name with proper case
+            const routeName = route.charAt(0).toUpperCase() + route.slice(1);
+            
+            // Add content
+            modal.innerHTML = `
+                <h3>📍 Route: ${routeName} - All Customers</h3>
+                <div class="modal-stats">
+                    <p><strong>🕐 Departure:</strong> ${departureTime}</p>
+                    <p><strong>📦 Total Orders:</strong> ${routeOrders.length}</p>
+                    <p><strong>🚛 Carts Needed:</strong> ${carts}</p>
+                    <p><strong>👥 Customers:</strong> ${customers.length}</p>
+                </div>
+                <div class="customer-list-container">
+                    <ol>
+                        ${customers.map(customer => `<li>${customer}</li>`).join('')}
+                    </ol>
+                </div>
+                <button class="modal-close-btn" onclick="this.closest('.customer-list-modal').remove(); document.querySelector('.modal-backdrop').remove()">
+                    Close
+                </button>
+            `;
+            
+            // Add to page
+            document.body.appendChild(backdrop);
+            document.body.appendChild(modal);
+            
+            // Close on backdrop click
+            backdrop.onclick = (e) => {
+                if (e.target === backdrop) {
+                    modal.remove();
+                    backdrop.remove();
+                }
+            };
+            
+            // Close on Escape key
+            const escapeHandler = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    backdrop.remove();
+                    document.removeEventListener('keydown', escapeHandler);
+                }
+            };
+            document.addEventListener('keydown', escapeHandler);
+            
+            console.log(`✅ Showing ${customers.length} customers for ${route}`);
         }
         
         // Make functions globally accessible
