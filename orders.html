@@ -518,12 +518,24 @@
                         console.log('🧮 Orders page: Calculating carts using SAME FUST formula as Dashboard');
                         console.log('═══════════════════════════════════════════════════════════════════');
                         console.log(`   Date: ${date}`);
+                        console.log(`   API orders fetched: ${apiOrders.length}`);
                         console.log(`   Validated orders: ${validatedOrders.length}`);
                         console.log(`   🔵 Using calculateCarts() - EXACT SAME function as Dashboard!`);
                         console.log(`   🔵 Using SAME validation - OrderValidator.validateOrders()!`);
                         console.log(`   🔵 Using SAME API method - fetchOrdersForDate()!`);
                         console.log('');
                         
+                        // Log sample orders for debugging
+                        console.log('📋 Sample orders (first 3, for debugging):');
+                        validatedOrders.slice(0, 3).forEach((o, i) => {
+                            const customerName = o.customer_name || 'Unknown';
+                            const assembly = o.assembly_amount || 0;
+                            const locationId = o.delivery_location_id || o.order?.delivery_location_id || 'N/A';
+                            console.log(`   ${i + 1}. Customer: "${customerName}", Assembly: ${assembly}, Location ID: ${locationId}`);
+                        });
+                        console.log('');
+                        
+                        // Calculate carts using EXACT SAME function
                         this.cartResult = window.CartCalculation.calculateCarts(validatedOrders);
                         
                         console.log('');
@@ -533,6 +545,27 @@
                         console.log(`   Naaldwijk: ${this.cartResult.byRoute.Naaldwijk}`);
                         console.log(`   Rijnsburg: ${this.cartResult.byRoute.Rijnsburg}`);
                         console.log(`   Trucks: ${this.cartResult.trucks || 0}`);
+                        console.log('');
+                        
+                        // Compare with Dashboard if same date
+                        const dashboardCache = window.__zuidplas_cart_cache;
+                        if (dashboardCache && dashboardCache.date === date) {
+                            console.log('🔍 COMPARING WITH DASHBOARD (same date):');
+                            console.log(`   Dashboard: ${dashboardCache.cartResult?.total || 'unknown'} carts`);
+                            console.log(`   Orders page: ${this.cartResult.total} carts`);
+                            if (dashboardCache.cartResult?.total !== this.cartResult.total) {
+                                console.error('❌❌❌ MISMATCH DETECTED! ❌❌❌');
+                                console.error(`   Dashboard: ${dashboardCache.cartResult?.total} carts`);
+                                console.error(`   Orders page: ${this.cartResult.total} carts`);
+                                console.error(`   Dashboard orders: ${dashboardCache.ordersCount || 'unknown'}`);
+                                console.error(`   Orders page orders: ${validatedOrders.length}`);
+                                console.error('   ⚠️ Both should show SAME numbers for same date!');
+                            } else {
+                                console.log('   ✅ Numbers match!');
+                            }
+                        } else {
+                            console.log('ℹ️ Dashboard cache not found or different date - cannot compare');
+                        }
                         console.log('═══════════════════════════════════════════════════════════════════');
                     } else {
                         console.error('❌ CartCalculation.calculateCarts() not available!');
