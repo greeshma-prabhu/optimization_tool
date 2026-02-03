@@ -1712,7 +1712,13 @@
                     // WARNING: Customer not found in mapping, defaulted to Rijnsburg
                     const locationIdArray = Array.from(data.locationIds);
                     const LOCATION_ID_TO_ROUTE = { 32: 'aalsmeer', 34: 'naaldwijk', 36: 'rijnsburg' };
-                    const suggestedRoute = locationIdArray.length > 0 ? LOCATION_ID_TO_ROUTE[locationIdArray[0]] : null;
+                    const locationSuggestedRoute = locationIdArray.length > 0 ? LOCATION_ID_TO_ROUTE[locationIdArray[0]] : null;
+                    
+                    // Use smart suggestion function to check Excel data
+                    const excelSuggestedRoute = suggestCorrectRoute(customer, routesArray[0]);
+                    
+                    // Prefer Excel suggestion over location_id
+                    const finalSuggestedRoute = excelSuggestedRoute !== 'NOT_IN_EXCEL' ? excelSuggestedRoute : locationSuggestedRoute;
                     
                     problematicCustomers.push({
                         customer,
@@ -1720,9 +1726,12 @@
                         orderCount: data.orderCount,
                         orders: data.orders,
                         locationIds: locationIdArray,
-                        suggestedRoute: suggestedRoute,
+                        suggestedRoute: finalSuggestedRoute,
+                        excelSuggestedRoute: excelSuggestedRoute,
                         severity: 'WARNING',
-                        issue: `Customer not found in route mapping, defaulted to ${routesArray[0]}. Location ID suggests: ${suggestedRoute || 'unknown'}`
+                        issue: excelSuggestedRoute !== 'NOT_IN_EXCEL' 
+                            ? `Customer not found in route mapping, defaulted to ${routesArray[0]}. Excel data suggests: ${excelSuggestedRoute}`
+                            : `Customer not found in route mapping or Excel, defaulted to ${routesArray[0]}. Location ID suggests: ${locationSuggestedRoute || 'unknown'}`
                     });
                 } else {
                     wellMatchedCustomers.push({
