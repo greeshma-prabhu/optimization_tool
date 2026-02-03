@@ -499,10 +499,6 @@
 
         // Sync data for selected date - uses date picker
         // Make it available globally immediately
-        function syncDataForDate() {
-            return window.syncDataForDate();
-        }
-        
         window.syncDataForDate = async function() {
             if (window.isRefreshing) {
                 console.log('Sync already in progress...');
@@ -1350,59 +1346,6 @@
                 `🚛 Carts Needed: ${carts}`;
             
             alert(message);
-        }
-        
-            const routeBreakdown = {
-                rijnsburg: Array.from(report.routeBreakdown.rijnsburg),
-                aalsmeer: Array.from(report.routeBreakdown.aalsmeer),
-                naaldwijk: Array.from(report.routeBreakdown.naaldwijk)
-            };
-            
-            // Generate report
-            const successRate = report.total > 0 ? ((report.matched / report.total) * 100).toFixed(1) : 0;
-            
-            let reportText = `╔════════════════════════════════════════════╗\n` +
-                `║     ROUTE ASSIGNMENT VALIDATION REPORT     ║\n` +
-                `╚════════════════════════════════════════════╝\n\n` +
-                `📊 SUMMARY:\n` +
-                `   Total Orders: ${report.total}\n` +
-                `   ✅ Matched: ${report.matched} (${successRate}%)\n` +
-                `   ⚠️ Defaulted to Rijnsburg: ${report.defaulted}\n\n` +
-                `📍 ROUTE BREAKDOWN:\n` +
-                `   Rijnsburg: ${routeBreakdown.rijnsburg.length} unique customers\n` +
-                `   Aalsmeer: ${routeBreakdown.aalsmeer.length} unique customers\n` +
-                `   Naaldwijk: ${routeBreakdown.naaldwijk.length} unique customers\n\n`;
-            
-            if (unknownArray.length > 0) {
-                reportText += `⚠️ UNKNOWN CUSTOMERS (not in mapping):\n` +
-                    unknownArray.slice(0, 10).map((c, i) => `   ${i + 1}. ${c}`).join('\n');
-                if (unknownArray.length > 10) {
-                    reportText += `\n   ... and ${unknownArray.length - 10} more`;
-                }
-                reportText += `\n\nACTION NEEDED:\nAdd these customer names to js/route-mapping.js\n\n`;
-            } else {
-                reportText += `✅ All customers successfully matched!\n\n`;
-            }
-            
-            reportText += successRate >= 90 ? '✅ Route mapping is working well!' : '⚠️ Route mapping needs improvement!';
-            
-            // Show in alert
-            alert(reportText);
-            
-            // Also download as text file
-            try {
-                const blob = new Blob([reportText], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `route-validation-${new Date().toISOString().split('T')[0]}.txt`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            } catch (e) {
-                console.warn('Could not download report file:', e);
-            }
         }
         
         // Make functions globally accessible
