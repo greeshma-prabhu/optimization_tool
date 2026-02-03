@@ -676,18 +676,12 @@
                     console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
                     console.log(`   Trucks: ${cartResult.trucks}`);
                     console.log(`   ✅ This is the SAME result as Dashboard - SINGLE SOURCE OF TRUTH!`);
-                } else {
-                    console.error('❌ getGlobalOrdersAndCarts() not available! Cannot get cached result!');
-                    console.error('❌ Please load Dashboard first and click "Sync" or "Refresh Data"!');
-                    // Return empty result
-                    return [];
-                }
-                
-                if (!cartResult || cartResult.total === 0) {
-                    console.warn('⚠️ WARNING: Got 0 carts from cache - Dashboard may not have calculated yet!');
-                    console.warn('⚠️ Please load Dashboard and click "Sync" or "Refresh Data" to calculate carts!');
-                    return [];
-                }
+                    
+                    if (!cartResult || cartResult.total === 0) {
+                        console.warn('⚠️ WARNING: Got 0 carts from cache - Dashboard may not have calculated yet!');
+                        console.warn('⚠️ Please load Dashboard and click "Sync" or "Refresh Data" to calculate carts!');
+                        return [];
+                    }
                     
                     // Convert breakdown to cart objects for the UI
                     const allCarts = [];
@@ -704,32 +698,39 @@
                     });
                     
                     // Create cart objects based on the breakdown
-                    cartResult.breakdown.forEach(routeData => {
-                        const route = routeData.route.toLowerCase();
-                        routeData.fustBreakdown.forEach(fustData => {
-                            // Create carts for this fust type
-                            for (let i = 0; i < fustData.carts; i++) {
-                                // Find a customer for this route
-                                const customerName = Object.keys(ordersByCustomer).find(cust => {
-                                    const order = ordersByCustomer[cust][0];
-                                    const orderRoute = this.cartManager.determineRoute(order).toLowerCase();
-                                    return orderRoute === route;
-                                }) || 'Unknown';
-                                
-                                allCarts.push({
-                                    id: `cart-${cartIdCounter++}`,
-                                    client: customerName,
-                                    customer: customerName,
-                                    route: route,
-                                    type: 'standard', // TODO: Determine Danish vs Standard
-                                    orders: ordersByCustomer[customerName] || [],
-                                    cartNumber: i + 1,
-                                    totalCarts: fustData.carts,
-                                    fustType: fustData.fustType
+                    if (cartResult.breakdown && Array.isArray(cartResult.breakdown)) {
+                        cartResult.breakdown.forEach(routeData => {
+                            const route = routeData.route.toLowerCase();
+                            if (routeData.fustBreakdown && Array.isArray(routeData.fustBreakdown)) {
+                                routeData.fustBreakdown.forEach(fustData => {
+                                    // Create carts for this fust type
+                                    for (let i = 0; i < fustData.carts; i++) {
+                                        // Find a customer for this route
+                                        const customerName = Object.keys(ordersByCustomer).find(cust => {
+                                            const order = ordersByCustomer[cust][0];
+                                            if (order && this.cartManager && this.cartManager.determineRoute) {
+                                                const orderRoute = this.cartManager.determineRoute(order).toLowerCase();
+                                                return orderRoute === route;
+                                            }
+                                            return false;
+                                        }) || 'Unknown';
+                                        
+                                        allCarts.push({
+                                            id: `cart-${cartIdCounter++}`,
+                                            client: customerName,
+                                            customer: customerName,
+                                            route: route,
+                                            type: 'standard', // TODO: Determine Danish vs Standard
+                                            orders: ordersByCustomer[customerName] || [],
+                                            cartNumber: i + 1,
+                                            totalCarts: fustData.carts,
+                                            fustType: fustData.fustType
+                                        });
+                                    }
                                 });
                             }
                         });
-                    });
+                    }
                     
                     console.log(`   Standard: ${allCarts.filter(c => c.type === 'standard').length}`);
                     console.log(`   Danish: ${allCarts.filter(c => c.type === 'danish').length}`);
