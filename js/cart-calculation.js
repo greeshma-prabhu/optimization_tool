@@ -284,12 +284,18 @@ function calculateCarts(orders) {
         'Rijnsburg': 0
     };
     
+    // Track standard and danish carts separately
+    let totalStandardCarts = 0;
+    let totalDanishCarts = 0;
+    
     const breakdown = [];
     
     Object.entries(fustByRouteAndType).forEach(([route, fustTypes]) => {
         console.log(`\n${route}:`);
         
         let routeTotalCarts = 0;
+        let routeStandardCarts = 0;
+        let routeDanishCarts = 0;
         const routeBreakdown = [];
         
         // Calculate carts for each fust type in this route
@@ -307,6 +313,7 @@ function calculateCarts(orders) {
                 const danishCapacity = window.RouteMapping.getCartCapacity(fustType, true);
                 const danishCarts = Math.ceil(danishFust / danishCapacity);
                 totalCarts += danishCarts;
+                routeDanishCarts += danishCarts;
                 routeBreakdown.push({
                     fustType: `${fustType} (Danish)`,
                     totalFust: parseFloat(danishFust.toFixed(2)),
@@ -322,6 +329,7 @@ function calculateCarts(orders) {
                     : (FUST_CAPACITY[fustType] || FUST_CAPACITY['default']);
                 const standardCarts = Math.ceil(standardFust / standardCapacity);
                 totalCarts += standardCarts;
+                routeStandardCarts += standardCarts;
                 capacity = standardCapacity; // For logging
                 carts = standardCarts; // For logging
                 routeBreakdown.push({
@@ -339,6 +347,7 @@ function calculateCarts(orders) {
                     : (FUST_CAPACITY[fustType] || FUST_CAPACITY['default']);
                 carts = Math.ceil(totalFust / capacity);
                 totalCarts = carts;
+                routeStandardCarts += carts;
                 routeBreakdown.push({
                     fustType,
                     totalFust: parseFloat(totalFust.toFixed(2)),
@@ -356,17 +365,33 @@ function calculateCarts(orders) {
         });
         
         cartsByRoute[route] = routeTotalCarts;
+        totalStandardCarts += routeStandardCarts;
+        totalDanishCarts += routeDanishCarts;
+        
         breakdown.push({
             route,
             carts: routeTotalCarts,
+            standardCarts: routeStandardCarts,
+            danishCarts: routeDanishCarts,
             fustBreakdown: routeBreakdown
         });
         
-        console.log(`  ✅ ${route} TOTAL: ${routeTotalCarts} carts`);
+        console.log(`  ✅ ${route} TOTAL: ${routeTotalCarts} carts (Standard: ${routeStandardCarts}, Danish: ${routeDanishCarts})`);
     });
     
     const totalCarts = cartsByRoute.Aalsmeer + cartsByRoute.Naaldwijk + cartsByRoute.Rijnsburg;
     const totalTrucks = calculateTrucks(totalCarts);
+    
+    // CRITICAL: Verify total = standard + danish
+    const calculatedTotal = totalStandardCarts + totalDanishCarts;
+    if (totalCarts !== calculatedTotal) {
+        console.error('❌❌❌ CALCULATION ERROR: totalCarts !== standardCarts + danishCarts ❌❌❌');
+        console.error(`   totalCarts: ${totalCarts}`);
+        console.error(`   standardCarts: ${totalStandardCarts}`);
+        console.error(`   danishCarts: ${totalDanishCarts}`);
+        console.error(`   calculatedTotal: ${calculatedTotal}`);
+        console.error(`   Difference: ${Math.abs(totalCarts - calculatedTotal)}`);
+    }
     
     console.log('');
     console.log('═══════════════════════════════════════════════════════════════════');
@@ -375,11 +400,16 @@ function calculateCarts(orders) {
     console.log(`   Naaldwijk: ${cartsByRoute.Naaldwijk} carts`);
     console.log(`   Rijnsburg: ${cartsByRoute.Rijnsburg} carts`);
     console.log(`   TOTAL: ${totalCarts} carts`);
+    console.log(`   Standard: ${totalStandardCarts} carts`);
+    console.log(`   Danish: ${totalDanishCarts} carts`);
+    console.log(`   Verification: ${totalStandardCarts} + ${totalDanishCarts} = ${calculatedTotal} (should equal ${totalCarts})`);
     console.log(`   TRUCKS: ${totalTrucks}`);
     console.log('═══════════════════════════════════════════════════════════════════');
     
     return {
         total: totalCarts,
+        standard: totalStandardCarts,
+        danish: totalDanishCarts,
         trucks: totalTrucks,
         byRoute: cartsByRoute,
         breakdown: breakdown

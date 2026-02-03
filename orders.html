@@ -669,19 +669,36 @@
             updateCartSummary() {
                 if (!this.cartResult) return;
                 
-                const cartTypes = calculateCartTypes(this.cartResult);
+                // CRITICAL: Use standard and danish directly from calculation result
+                // calculateCarts() now returns these values directly
+                const standardCarts = this.cartResult.standard || 0;
+                const danishCarts = this.cartResult.danish || 0;
+                const totalCarts = this.cartResult.total || 0;
                 
-                document.getElementById('standard-carts-summary').textContent = cartTypes.standard;
-                document.getElementById('danish-carts-summary').textContent = cartTypes.danish;
+                // Verify: total should equal standard + danish
+                const calculatedTotal = standardCarts + danishCarts;
+                if (totalCarts !== calculatedTotal) {
+                    console.error('❌❌❌ CARTS MISMATCH IN ORDERS PAGE! ❌❌❌');
+                    console.error(`   total: ${totalCarts}`);
+                    console.error(`   standard: ${standardCarts}`);
+                    console.error(`   danish: ${danishCarts}`);
+                    console.error(`   calculatedTotal: ${calculatedTotal}`);
+                    console.error(`   Difference: ${Math.abs(totalCarts - calculatedTotal)}`);
+                    console.error('   ⚠️ This should never happen - total should equal standard + danish!');
+                }
+                
+                document.getElementById('standard-carts-summary').textContent = standardCarts;
+                document.getElementById('danish-carts-summary').textContent = danishCarts;
                 document.getElementById('special-handling-summary').textContent = '0';
                 
                 // CRITICAL: Verify this matches Dashboard
                 this.verifySameCalculation('Orders', this.cartResult);
                 
                 console.log('✅ Cart summary updated:', {
-                    total: this.cartResult.total,
-                    standard: cartTypes.standard,
-                    danish: cartTypes.danish,
+                    total: totalCarts,
+                    standard: standardCarts,
+                    danish: danishCarts,
+                    verification: `${standardCarts} + ${danishCarts} = ${calculatedTotal} (should equal ${totalCarts})`,
                     routes: this.cartResult.byRoute
                 });
             }
@@ -807,8 +824,20 @@
         }
         
         // Calculate cart types from breakdown
-        // CRITICAL: Use same logic as Dashboard - check if fust is marked as Danish
+        // DEPRECATED: calculateCarts() now returns standard and danish directly
+        // This function is kept for backward compatibility but should not be used
         function calculateCartTypes(cartResult) {
+            // CRITICAL: Use standard and danish directly from calculation result
+            // calculateCarts() now returns these values directly, no need to parse breakdown
+            if (cartResult && typeof cartResult.standard !== 'undefined' && typeof cartResult.danish !== 'undefined') {
+                return {
+                    standard: cartResult.standard || 0,
+                    danish: cartResult.danish || 0
+                };
+            }
+            
+            // Fallback: Parse breakdown if standard/danish not available (shouldn't happen)
+            console.warn('⚠️ calculateCartTypes: Using fallback parsing - calculateCarts() should return standard/danish directly!');
             if (!cartResult || !cartResult.breakdown) {
                 return { standard: 0, danish: 0 };
             }
@@ -817,14 +846,22 @@
             let danishCarts = 0;
             
             cartResult.breakdown.forEach(routeData => {
-                routeData.fustBreakdown.forEach(fust => {
-                    // Check if fust type string contains "(Danish)" - this is how cart-calculation.js marks them
-                    if (fust.fustType && fust.fustType.includes('(Danish)')) {
-                        danishCarts += fust.carts;
-                    } else {
-                        standardCarts += fust.carts;
-                    }
-                });
+                // Use route-level standard/danish if available
+                if (typeof routeData.standardCarts !== 'undefined') {
+                    standardCarts += routeData.standardCarts || 0;
+                }
+                if (typeof routeData.danishCarts !== 'undefined') {
+                    danishCarts += routeData.danishCarts || 0;
+                } else {
+                    // Fallback: Parse fust breakdown
+                    routeData.fustBreakdown?.forEach(fust => {
+                        if (fust.fustType && fust.fustType.includes('(Danish)')) {
+                            danishCarts += fust.carts || 0;
+                        } else {
+                            standardCarts += fust.carts || 0;
+                        }
+                    });
+                }
             });
             
             return { standard: standardCarts, danish: danishCarts };
