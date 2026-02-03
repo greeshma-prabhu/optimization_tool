@@ -17,7 +17,9 @@ const CLIENT_ROUTE_MAPPING = {
     'C van Klaveren',
     'C.W de Mooij',
     'Floral Sourcing',
+    'Floral Sourcing B.V.',
     'H. Star',
+    'H. Star Naaldwijk',  // H. Star appears in multiple routes
     'Hermes Bloemen',
     'Heyer',
     'Hoek groothandel',
@@ -33,8 +35,11 @@ const CLIENT_ROUTE_MAPPING = {
     'Sorisso Verde',
     'Star T.',
     'Star v/d Gugten',
+    'Star & v.d Gugten',
+    'Star & v.d. Gugten',
     'V/D PLAS',
     'V&E Export',
+    'V & E Bloemenexport BV',
     'Vianen',
     'St. Gabriel'
   ],
@@ -56,16 +61,23 @@ const CLIENT_ROUTE_MAPPING = {
     'Florette',
     'Flori Culture',
     'Floripac',
+    'Floripac Swiss plant BV',
     'Floris Holland',
     'Flora Nova',
     'Flower Point',
     'Flower Trade Consult',
+    'Flower Trade Consult Bleiswijk',
     'FTD',
     'Hans Visser',
     'Harrewijn',
     'Hoekhuis Aalsmeer',
+    'Hoekhuis Aalsmeer Zuidplas',
     'Imex',
+    'Imex Flower B.V.',
+    'Vimex Flower B.V.',
     'KLOK Aalsmeer',
+    'Klok Aalsmeer (GERBERA)',
+    'Klok Aalsmeer (MINI)',
     'MM Flowers',
     'Passie Bloemen',
     'PB Flowerbulbs',
@@ -88,7 +100,10 @@ const CLIENT_ROUTE_MAPPING = {
     'Capitol fl.',
     'D vd Vijver',
     'Diva Flowers',
+    'Divflo BV',
+    'Duivenvoorden-Driessen',
     'E- Flowers',
+    'EZ Flower B.V.',
     'Euroveiling',
     'Flowering Direct',
     'Florca Westland',
@@ -98,15 +113,21 @@ const CLIENT_ROUTE_MAPPING = {
     'Flamingo Flowers',
     'Goldman',
     'H. Star',
+    'Hilverda de Boer',
+    'IBH Export Aalsmeer (webshop)',
     'MD Agro Import',
     'Kontikiflor',
+    'Klok Naaldwijk (GERBERA)',
+    'Klok Naaldwijk (MINI)',
     'Kuipers',
     'Leeuwenburg',
     'Lion Fleurex',
     'Premium',
     'Sjaak vd vijver',
     'SQ Flora',
+    'SQ Flora B.V.',
     'v Vliet',
+    'Verbeek & Bol VOF (retail)',
     'Webshopflower',
     'West Flora Export',
     'What If'
@@ -154,11 +175,12 @@ function getRouteForCustomer(customerName) {
       .replace(/\s+/g, ' ')           // Normalize spaces
       .replace(/[&]/g, ' ')           // Remove ampersands
       .replace(/\./g, '')             // Remove periods
-      .replace(/b\.v\.|bv/g, '')      // Remove BV suffix
-      .replace(/export/g, '')         // Remove "Export"
-      .replace(/flowers?/g, '')       // Remove "Flower(s)"
+      .replace(/b\.v\.|bv|b v/gi, '')      // Remove all BV variations
+      .replace(/\s+(export|flowers?|bloemen|plant|swiss)\s*/gi, ' ')  // Remove common suffixes
       .replace(/\(.*?\)/g, '')        // Remove content in parentheses like (MINI)
-      .replace(/swiss plant/g, '')    // Remove "swiss plant"
+      .replace(/webshop/gi, '')        // Remove "webshop"
+      .replace(/retail/gi, '')         // Remove "retail"
+      .replace(/-/g, ' ')              // Replace hyphens with spaces
       .trim();
   };
   

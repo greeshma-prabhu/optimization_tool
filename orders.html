@@ -485,13 +485,30 @@
                     this.orders = enrichedOrders;
                     this.currentDate = date;
                     
-                    // Calculate carts using SAME formula as Dashboard
-                    if (window.CartCalculation && window.CartCalculation.calculateCarts) {
-                        console.log('🧮 Calculating carts using SAME FUST formula as Dashboard...');
-                        this.cartResult = window.CartCalculation.calculateCarts(enrichedOrders);
-                        console.log(`✅ Orders page calculated: ${this.cartResult.total} carts`);
+                    // CRITICAL: Use Dashboard's cached result if available (SAME calculation!)
+                    // This ensures Orders page shows IDENTICAL numbers as Dashboard
+                    if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                        console.log('🔍 Orders page: Checking for Dashboard cached result...');
+                        const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false); // NO forceRefresh - use cache!
+                        
+                        if (globalData.cartResult && globalData.cartResult.total > 0) {
+                            // Use Dashboard's cached result (SAME calculation!)
+                            this.cartResult = globalData.cartResult;
+                            console.log(`✅ Orders page: Using Dashboard's cached result: ${this.cartResult.total} carts`);
+                            console.log(`   This ensures IDENTICAL numbers as Dashboard!`);
+                        } else {
+                            // No cache available - calculate independently
+                            console.log('⚠️ No Dashboard cache found - calculating independently...');
+                            if (window.CartCalculation.calculateCarts) {
+                                this.cartResult = window.CartCalculation.calculateCarts(enrichedOrders);
+                                console.log(`✅ Orders page calculated independently: ${this.cartResult.total} carts`);
+                            } else {
+                                console.error('❌ CartCalculation.calculateCarts() not available!');
+                                throw new Error('Cart calculation not available');
+                            }
+                        }
                     } else {
-                        console.error('❌ CartCalculation.calculateCarts() not available!');
+                        console.error('❌ CartCalculation.getGlobalOrdersAndCarts() not available!');
                         throw new Error('Cart calculation not available');
                     }
                     
@@ -572,12 +589,42 @@
                 document.getElementById('danish-carts-summary').textContent = cartTypes.danish;
                 document.getElementById('special-handling-summary').textContent = '0';
                 
+                // CRITICAL: Verify this matches Dashboard
+                this.verifySameCalculation('Orders', this.cartResult);
+                
                 console.log('✅ Cart summary updated:', {
                     total: this.cartResult.total,
                     standard: cartTypes.standard,
                     danish: cartTypes.danish,
                     routes: this.cartResult.byRoute
                 });
+            }
+            
+            verifySameCalculation(pageName, cartData) {
+                const cacheKey = `cart_verification_${this.currentDate || new Date().toISOString().split('T')[0]}`;
+                const cached = sessionStorage.getItem(cacheKey);
+                
+                if (cached) {
+                    const cachedData = JSON.parse(cached);
+                    if (cachedData.total !== cartData.total) {
+                        console.error(`❌❌❌ CALCULATION MISMATCH! ❌❌❌`);
+                        console.error(`  ${cachedData.page}: ${cachedData.total} carts`);
+                        console.error(`  ${pageName}: ${cartData.total} carts`);
+                        console.error(`  BOTH PAGES MUST SHOW SAME NUMBER!`);
+                        console.error(`  Aalsmeer: ${cachedData.page}=${cachedData.byRoute?.Aalsmeer}, ${pageName}=${cartData.byRoute?.Aalsmeer}`);
+                        console.error(`  Naaldwijk: ${cachedData.page}=${cachedData.byRoute?.Naaldwijk}, ${pageName}=${cartData.byRoute?.Naaldwijk}`);
+                        console.error(`  Rijnsburg: ${cachedData.page}=${cachedData.byRoute?.Rijnsburg}, ${pageName}=${cartData.byRoute?.Rijnsburg}`);
+                    } else {
+                        console.log(`✅ ${pageName} matches ${cachedData.page}: ${cartData.total} carts`);
+                    }
+                } else {
+                    sessionStorage.setItem(cacheKey, JSON.stringify({
+                        page: pageName,
+                        total: cartData.total,
+                        date: this.currentDate || new Date().toISOString().split('T')[0],
+                        byRoute: cartData.byRoute
+                    }));
+                }
             }
             
             extractFustType(order) {
@@ -662,7 +709,8 @@
             }
         }
         
-        // Calculate cart types from breakdown (same logic as CartDisplayManager)
+        // Calculate cart types from breakdown
+        // CRITICAL: Use same logic as Dashboard - check if fust is marked as Danish
         function calculateCartTypes(cartResult) {
             if (!cartResult || !cartResult.breakdown) {
                 return { standard: 0, danish: 0 };
@@ -673,12 +721,11 @@
             
             cartResult.breakdown.forEach(routeData => {
                 routeData.fustBreakdown.forEach(fust => {
-                    // Standard: 612 (Gerbera box 12cm), 614 (Gerbera mini)
-                    if (fust.fustType === '612' || fust.fustType === '614') {
-                        standardCarts += fust.carts;
-                    } else {
-                        // Danish/Other: 575, 902, 588, 996, 856, 821
+                    // Check if fust type string contains "(Danish)" - this is how cart-calculation.js marks them
+                    if (fust.fustType && fust.fustType.includes('(Danish)')) {
                         danishCarts += fust.carts;
+                    } else {
+                        standardCarts += fust.carts;
                     }
                 });
             });
