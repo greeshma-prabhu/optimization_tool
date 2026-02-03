@@ -34,11 +34,24 @@ const LOCATION_ID_TO_ROUTE = {
 };
 
 /**
- * Get route from delivery_location_id
+ * Get route from customer name mapping
+ * Uses RouteMapping.getRouteForCustomer() which maps client names to routes
+ * Falls back to location_id if RouteMapping is not available
  */
 function getRoute(order) {
+    // Priority 1: Use customer name mapping (more reliable - customer names never change)
+    if (window.RouteMapping && window.RouteMapping.getRouteForCustomer) {
+        const customerName = order.customer_name || order.order?.customer_name || '';
+        const route = window.RouteMapping.getRouteForCustomer(customerName);
+        // Convert to proper case for consistency
+        return route === 'rijnsburg' ? 'Rijnsburg' : 
+               route === 'aalsmeer' ? 'Aalsmeer' : 
+               route === 'naaldwijk' ? 'Naaldwijk' : 'Rijnsburg';
+    }
+    
+    // Fallback: Use location_id (old method, less reliable)
     const locId = order.delivery_location_id || order.order?.delivery_location_id;
-    return LOCATION_ID_TO_ROUTE[locId] || 'Aalsmeer';
+    return LOCATION_ID_TO_ROUTE[locId] || 'Rijnsburg';
 }
 
 /**
