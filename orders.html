@@ -481,34 +481,35 @@
                     
                     console.log(`✅ Fetched ${enrichedOrders.length} orderrows`);
                     
-                    // Store orders
-                    this.orders = enrichedOrders;
+                    // CRITICAL: Validate orders using SAME validator as Dashboard
+                    // This ensures we filter out invalid/test/cancelled/duplicates the SAME way
+                    let validatedOrders = enrichedOrders;
+                    if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
+                        console.log('🔍 Orders page: Validating orders (same as Dashboard)...');
+                        const validationResult = window.OrderValidator.validateOrders(enrichedOrders);
+                        validatedOrders = validationResult.orders;
+                        console.log(`✅ Orders page: ${validatedOrders.length} valid orders (filtered from ${enrichedOrders.length})`);
+                    } else {
+                        console.warn('⚠️ OrderValidator not available - using all orders without validation');
+                    }
+                    
+                    // Store validated orders
+                    this.orders = validatedOrders;
                     this.currentDate = date;
                     
-                    // CRITICAL: Use Dashboard's cached result if available (SAME calculation!)
-                    // This ensures Orders page shows IDENTICAL numbers as Dashboard
-                    if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
-                        console.log('🔍 Orders page: Checking for Dashboard cached result...');
-                        const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false); // NO forceRefresh - use cache!
-                        
-                        if (globalData.cartResult && globalData.cartResult.total > 0) {
-                            // Use Dashboard's cached result (SAME calculation!)
-                            this.cartResult = globalData.cartResult;
-                            console.log(`✅ Orders page: Using Dashboard's cached result: ${this.cartResult.total} carts`);
-                            console.log(`   This ensures IDENTICAL numbers as Dashboard!`);
-                        } else {
-                            // No cache available - calculate independently
-                            console.log('⚠️ No Dashboard cache found - calculating independently...');
-                            if (window.CartCalculation.calculateCarts) {
-                                this.cartResult = window.CartCalculation.calculateCarts(enrichedOrders);
-                                console.log(`✅ Orders page calculated independently: ${this.cartResult.total} carts`);
-                            } else {
-                                console.error('❌ CartCalculation.calculateCarts() not available!');
-                                throw new Error('Cart calculation not available');
-                            }
-                        }
+                    // CRITICAL: Calculate independently using SAME function as Dashboard
+                    // Orders page works for ANY date, so it calculates fresh (not from cache)
+                    // But uses the EXACT SAME calculation logic as Dashboard
+                    if (window.CartCalculation && window.CartCalculation.calculateCarts) {
+                        console.log('🧮 Orders page: Calculating carts using SAME FUST formula as Dashboard...');
+                        console.log(`   Date: ${date}`);
+                        console.log(`   Orders: ${validatedOrders.length}`);
+                        console.log(`   🔵 Using calculateCarts() - SAME function as Dashboard!`);
+                        this.cartResult = window.CartCalculation.calculateCarts(validatedOrders);
+                        console.log(`✅ Orders page calculated: ${this.cartResult.total} carts`);
+                        console.log(`   Aalsmeer: ${this.cartResult.byRoute.Aalsmeer}, Naaldwijk: ${this.cartResult.byRoute.Naaldwijk}, Rijnsburg: ${this.cartResult.byRoute.Rijnsburg}`);
                     } else {
-                        console.error('❌ CartCalculation.getGlobalOrdersAndCarts() not available!');
+                        console.error('❌ CartCalculation.calculateCarts() not available!');
                         throw new Error('Cart calculation not available');
                     }
                     
@@ -601,29 +602,40 @@
             }
             
             verifySameCalculation(pageName, cartData) {
-                const cacheKey = `cart_verification_${this.currentDate || new Date().toISOString().split('T')[0]}`;
+                // Only verify if same date as Dashboard
+                const currentDate = this.currentDate || new Date().toISOString().split('T')[0];
+                const cacheKey = `cart_verification_${currentDate}`;
                 const cached = sessionStorage.getItem(cacheKey);
                 
                 if (cached) {
                     const cachedData = JSON.parse(cached);
-                    if (cachedData.total !== cartData.total) {
-                        console.error(`❌❌❌ CALCULATION MISMATCH! ❌❌❌`);
-                        console.error(`  ${cachedData.page}: ${cachedData.total} carts`);
-                        console.error(`  ${pageName}: ${cartData.total} carts`);
-                        console.error(`  BOTH PAGES MUST SHOW SAME NUMBER!`);
-                        console.error(`  Aalsmeer: ${cachedData.page}=${cachedData.byRoute?.Aalsmeer}, ${pageName}=${cartData.byRoute?.Aalsmeer}`);
-                        console.error(`  Naaldwijk: ${cachedData.page}=${cachedData.byRoute?.Naaldwijk}, ${pageName}=${cartData.byRoute?.Naaldwijk}`);
-                        console.error(`  Rijnsburg: ${cachedData.page}=${cachedData.byRoute?.Rijnsburg}, ${pageName}=${cartData.byRoute?.Rijnsburg}`);
+                    // Only compare if same date
+                    if (cachedData.date === currentDate) {
+                        if (cachedData.total !== cartData.total) {
+                            console.error(`❌❌❌ CALCULATION MISMATCH FOR SAME DATE! ❌❌❌`);
+                            console.error(`  Date: ${currentDate}`);
+                            console.error(`  ${cachedData.page}: ${cachedData.total} carts`);
+                            console.error(`  ${pageName}: ${cartData.total} carts`);
+                            console.error(`  BOTH PAGES MUST SHOW SAME NUMBER FOR SAME DATE!`);
+                            console.error(`  Aalsmeer: ${cachedData.page}=${cachedData.byRoute?.Aalsmeer}, ${pageName}=${cartData.byRoute?.Aalsmeer}`);
+                            console.error(`  Naaldwijk: ${cachedData.page}=${cachedData.byRoute?.Naaldwijk}, ${pageName}=${cartData.byRoute?.Naaldwijk}`);
+                            console.error(`  Rijnsburg: ${cachedData.page}=${cachedData.byRoute?.Rijnsburg}, ${pageName}=${cartData.byRoute?.Rijnsburg}`);
+                            console.error(`  ⚠️ Both pages use SAME validation and SAME calculation - why different?`);
+                        } else {
+                            console.log(`✅ ${pageName} matches ${cachedData.page} for ${currentDate}: ${cartData.total} carts`);
+                        }
                     } else {
-                        console.log(`✅ ${pageName} matches ${cachedData.page}: ${cartData.total} carts`);
+                        console.log(`ℹ️ ${pageName} date (${currentDate}) differs from ${cachedData.page} date (${cachedData.date}) - no comparison`);
                     }
                 } else {
+                    // Store this page's result for future comparison
                     sessionStorage.setItem(cacheKey, JSON.stringify({
                         page: pageName,
                         total: cartData.total,
-                        date: this.currentDate || new Date().toISOString().split('T')[0],
+                        date: currentDate,
                         byRoute: cartData.byRoute
                     }));
+                    console.log(`📝 ${pageName} result stored for date ${currentDate}: ${cartData.total} carts`);
                 }
             }
             
