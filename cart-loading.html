@@ -956,7 +956,17 @@
             }
         }
 
-        function optimizeCartLoading() {
+        // Make function globally accessible
+        window.optimizeCartLoading = function optimizeCartLoading() {
+            console.log('🚀 optimizeCartLoading() called');
+            
+            // Ensure orderManager exists
+            if (typeof orderManager === 'undefined') {
+                console.error('❌ orderManager is not defined!');
+                alert('Error: Order manager not initialized. Please refresh the page.');
+                return;
+            }
+            
             // CRITICAL: Check if orders are available (from global state or orderManager)
             const hasOrders = orderManager && orderManager.orders && orderManager.orders.length > 0;
             const hasGlobalStateOrders = typeof window.appState !== 'undefined' && window.appState.hasOrders();
@@ -965,13 +975,18 @@
             if (!hasOrders && hasGlobalStateOrders) {
                 console.log('📦 Loading orders from global state...');
                 const orders = window.appState.getOrders();
+                if (!orderManager) {
+                    console.error('❌ orderManager is still not defined after checking appState!');
+                    alert('Error: Order manager not initialized. Please refresh the page.');
+                    return;
+                }
                 orderManager.orders = orders;
                 orderManager.filteredOrders = [...orders];
                 console.log(`✅ Loaded ${orders.length} orders from global state`);
             }
             
             // Final check - if still no orders, show error
-            if (!orderManager.orders || orderManager.orders.length === 0) {
+            if (!orderManager || !orderManager.orders || orderManager.orders.length === 0) {
                 // Show clear message - orders must be loaded first
                 // Use i18n for proper language support
                 const message = typeof i18n !== 'undefined' 
