@@ -803,9 +803,9 @@
                                 }
                                 console.log('');
                             } else {
-                                // Fallback if validator not loaded
-                                orders = apiOrders;
-                                console.log('⚠️ Order validator not available, using all orders');
+                                // Fallback if validator not loaded - use filtered orders
+                                orders = filteredByDate;
+                                console.log('⚠️ Order validator not available, using filtered orders');
                             }
                             
                             console.log('✅ Processing', orders.length, 'valid orders');
