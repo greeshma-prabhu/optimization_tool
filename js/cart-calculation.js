@@ -299,6 +299,8 @@ function calculateCarts(orders) {
             const standardFust = totalFust - danishFust; // Standard = total - danish
             
             let totalCarts = 0;
+            let capacity = FUST_CAPACITY[fustType] || FUST_CAPACITY['default']; // Default capacity
+            let carts = 0; // Will be calculated
             
             // Calculate Danish carts if any
             if (danishFust > 0 && window.RouteMapping && window.RouteMapping.getCartCapacity) {
@@ -320,6 +322,8 @@ function calculateCarts(orders) {
                     : (FUST_CAPACITY[fustType] || FUST_CAPACITY['default']);
                 const standardCarts = Math.ceil(standardFust / standardCapacity);
                 totalCarts += standardCarts;
+                capacity = standardCapacity; // For logging
+                carts = standardCarts; // For logging
                 routeBreakdown.push({
                     fustType: `${fustType} (Standard)`,
                     totalFust: parseFloat(standardFust.toFixed(2)),
@@ -330,10 +334,10 @@ function calculateCarts(orders) {
             
             // If no Danish fust, use simple standard calculation
             if (danishFust === 0 && totalFust > 0) {
-                const capacity = window.RouteMapping && window.RouteMapping.getCartCapacity
+                capacity = window.RouteMapping && window.RouteMapping.getCartCapacity
                     ? window.RouteMapping.getCartCapacity(fustType, false)
                     : (FUST_CAPACITY[fustType] || FUST_CAPACITY['default']);
-                const carts = Math.ceil(totalFust / capacity);
+                carts = Math.ceil(totalFust / capacity);
                 totalCarts = carts;
                 routeBreakdown.push({
                     fustType,
@@ -345,7 +349,10 @@ function calculateCarts(orders) {
             
             routeTotalCarts += totalCarts;
             
-            console.log(`  Fust ${fustType}: ${totalFust.toFixed(2)} total FUST ÷ ${capacity} capacity = ${carts} carts`);
+            // Only log if we calculated carts
+            if (totalCarts > 0) {
+                console.log(`  Fust ${fustType}: ${totalFust.toFixed(2)} total FUST ÷ ${capacity} capacity = ${totalCarts} carts`);
+            }
         });
         
         cartsByRoute[route] = routeTotalCarts;
