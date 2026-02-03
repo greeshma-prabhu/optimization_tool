@@ -497,6 +497,50 @@
         
         // OrderManager is provided by ordermanager-shim.js - DO NOT DECLARE IT HERE!
 
+        // CRITICAL: Filter orders by delivery_date (same as Orders page)
+        function filterOrdersByDeliveryDate(orderrows, targetDate) {
+            // Format target date as DD-MM-YYYY
+            const formatDateToDD_MM_YYYY = (dateStr) => {
+                if (!dateStr) return null;
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return null;
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                return `${day}-${month}-${year}`;
+            };
+            
+            const targetDateStr = formatDateToDD_MM_YYYY(targetDate);
+            
+            if (!targetDateStr) {
+                console.warn('⚠️ Invalid target date, returning all orders');
+                return orderrows;
+            }
+            
+            const filtered = orderrows.filter(row => {
+                const deliveryDate = row.order?.delivery_date || row.delivery_date;
+                
+                if (!deliveryDate) {
+                    // Skip orders without delivery_date
+                    return false;
+                }
+                
+                // Extract date from "2026-02-03T14:00:00.000000Z" or "03-02-2026"
+                let orderDateStr = null;
+                if (deliveryDate.includes('T')) {
+                    // ISO format: "2026-02-03T14:00:00.000000Z"
+                    orderDateStr = formatDateToDD_MM_YYYY(deliveryDate.split('T')[0]);
+                } else {
+                    // Already in DD-MM-YYYY format
+                    orderDateStr = deliveryDate;
+                }
+                
+                return orderDateStr === targetDateStr;
+            });
+            
+            return filtered;
+        }
+        
         // Sync data for selected date - uses date picker
         // Make it available globally immediately
         window.syncDataForDate = async function() {
@@ -578,10 +622,15 @@
                 if (apiOrders && apiOrders.length > 0) {
                     console.log('✅ Loaded', apiOrders.length, 'raw orders from API');
                     
+                    // CRITICAL: Filter by delivery_date FIRST (same as Orders page)
+                    const selectedDateStr = selectedDate.toISOString().split('T')[0];
+                    const filteredByDate = filterOrdersByDeliveryDate(apiOrders, selectedDateStr);
+                    console.log(`📅 Dashboard: Filtered by delivery date: ${apiOrders.length} → ${filteredByDate.length} orders`);
+                    
                     // VALIDATE ORDERS - filter out invalid/test/cancelled/duplicates
-                    let orders = apiOrders;
+                    let orders = filteredByDate;
                     if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
-                        const validationResult = window.OrderValidator.validateOrders(apiOrders);
+                        const validationResult = window.OrderValidator.validateOrders(filteredByDate);
                         orders = validationResult.orders;
                         console.log('✅ Processing', orders.length, 'valid orders after validation');
                     } else {
@@ -731,9 +780,14 @@
                         if (apiOrders && apiOrders.length > 0) {
                             console.log('✅ Loaded', apiOrders.length, 'raw orders from API');
                             
+                            // CRITICAL: Filter by delivery_date FIRST (same as Orders page)
+                            const selectedDateStr = selectedDate.toISOString().split('T')[0];
+                            const filteredByDate = filterOrdersByDeliveryDate(apiOrders, selectedDateStr);
+                            console.log(`📅 Dashboard: Filtered by delivery date: ${apiOrders.length} → ${filteredByDate.length} orders`);
+                            
                             // VALIDATE ORDERS - filter out invalid/test/cancelled/duplicates
                             if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
-                                const validationResult = window.OrderValidator.validateOrders(apiOrders);
+                                const validationResult = window.OrderValidator.validateOrders(filteredByDate);
                                 orders = validationResult.orders;
                                 
                                 // Get statistics
