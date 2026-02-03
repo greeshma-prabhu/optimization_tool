@@ -314,6 +314,9 @@
                 </div>
             </div>
             <div style="margin-top: 1.5rem; text-align: center;">
+                <button id="check-mismatches-btn" class="btn btn-secondary" style="padding: 10px 20px; margin-top: 1rem;">
+                    🔍 Check Mismatched Orders
+                </button>
             </div>
         </div>
 
@@ -1453,9 +1456,258 @@
             console.log(`✅ Showing ${customers.length} customers for ${route}`);
         }
         
+        // Check for mismatched orders - compare route assignment vs cart calculation
+        function checkMismatchedOrders() {
+            const ordersInMemory = window.__zuidplas_orders_memory || [];
+            if (ordersInMemory.length === 0) {
+                alert('No orders loaded. Please sync data first.');
+                return;
+            }
+            
+            if (!window.RouteMapping || !window.CartCalculation) {
+                alert('Route mapping or cart calculation not available.');
+                return;
+            }
+            
+            const mismatches = [];
+            const routeFromMapping = {};
+            const routeFromLocation = {};
+            const routeFromCartCalc = {};
+            
+            console.log('🔍 Checking for mismatched orders...');
+            console.log(`   Total orders: ${ordersInMemory.length}`);
+            
+            // First pass: Get route from mapping and location_id for each order
+            ordersInMemory.forEach(order => {
+                const orderId = order.id || order.order?.id || 'unknown';
+                const customerName = order.customer_name || order.order?.customer_name || '';
+                const locationId = order.delivery_location_id || order.order?.delivery_location_id;
+                
+                // Route from customer name mapping
+                const routeFromCustomer = window.RouteMapping.getRouteForCustomer(customerName);
+                routeFromMapping[orderId] = routeFromCustomer;
+                
+                // Route from location_id
+                const LOCATION_ID_TO_ROUTE = { 32: 'aalsmeer', 34: 'naaldwijk', 36: 'rijnsburg' };
+                const routeFromLocId = LOCATION_ID_TO_ROUTE[locationId] || null;
+                routeFromLocation[orderId] = routeFromLocId;
+            });
+            
+            // Second pass: Get route used in cart calculation
+            // We need to simulate what getRoute() does in cart-calculation.js
+            ordersInMemory.forEach(order => {
+                const orderId = order.id || order.order?.id || 'unknown';
+                const customerName = order.customer_name || order.order?.customer_name || '';
+                const locationId = order.delivery_location_id || order.order?.delivery_location_id;
+                
+                // This is what getRoute() does in cart-calculation.js
+                let routeFromCalc = 'rijnsburg'; // default
+                if (window.RouteMapping && window.RouteMapping.getRouteForCustomer) {
+                    const route = window.RouteMapping.getRouteForCustomer(customerName);
+                    routeFromCalc = route === 'rijnsburg' ? 'Rijnsburg' : 
+                                   route === 'aalsmeer' ? 'Aalsmeer' : 
+                                   route === 'naaldwijk' ? 'Naaldwijk' : 'Rijnsburg';
+                } else {
+                    const LOCATION_ID_TO_ROUTE = { 32: 'Aalsmeer', 34: 'Naaldwijk', 36: 'Rijnsburg' };
+                    routeFromCalc = LOCATION_ID_TO_ROUTE[locationId] || 'Rijnsburg';
+                }
+                
+                routeFromCartCalc[orderId] = routeFromCalc;
+            });
+            
+            // Third pass: Find mismatches
+            ordersInMemory.forEach(order => {
+                const orderId = order.id || order.order?.id || 'unknown';
+                const customerName = order.customer_name || order.order?.customer_name || '';
+                const locationId = order.delivery_location_id || order.order?.delivery_location_id;
+                const assemblyAmount = order.assembly_amount || 0;
+                
+                const routeFromCustomer = routeFromMapping[orderId];
+                const routeFromLocId = routeFromLocation[orderId];
+                const routeFromCalc = routeFromCartCalc[orderId];
+                
+                // Convert to lowercase for comparison
+                const routeFromCustomerLower = routeFromCustomer ? routeFromCustomer.toLowerCase() : null;
+                const routeFromLocIdLower = routeFromLocId ? routeFromLocId.toLowerCase() : null;
+                const routeFromCalcLower = routeFromCalc ? routeFromCalc.toLowerCase() : null;
+                
+                // Check for mismatches
+                let hasMismatch = false;
+                let mismatchReason = '';
+                
+                if (routeFromLocId && routeFromCustomerLower !== routeFromLocIdLower) {
+                    hasMismatch = true;
+                    mismatchReason = `Customer mapping (${routeFromCustomer}) ≠ Location ID ${locationId} (${routeFromLocId})`;
+                }
+                
+                if (routeFromCalcLower !== routeFromCustomerLower) {
+                    hasMismatch = true;
+                    mismatchReason += mismatchReason ? '; ' : '';
+                    mismatchReason += `Cart calc uses ${routeFromCalc} but mapping says ${routeFromCustomer}`;
+                }
+                
+                if (hasMismatch) {
+                    mismatches.push({
+                        orderId: orderId,
+                        customerName: customerName,
+                        locationId: locationId,
+                        assemblyAmount: assemblyAmount,
+                        routeFromCustomer: routeFromCustomer,
+                        routeFromLocation: routeFromLocId,
+                        routeFromCartCalc: routeFromCalc,
+                        reason: mismatchReason
+                    });
+                }
+            });
+            
+            // Generate report
+            if (mismatches.length === 0) {
+                alert('✅ No mismatched orders found! All orders are correctly assigned.');
+                console.log('✅ No mismatched orders - all routes match correctly');
+                return;
+            }
+            
+            console.warn(`⚠️ Found ${mismatches.length} mismatched orders out of ${ordersInMemory.length}`);
+            
+            // Create report text
+            let reportText = `╔══════════════════════════════════════════════════════════════╗\n`;
+            reportText += `║          MISMATCHED ORDERS REPORT                            ║\n`;
+            reportText += `╚══════════════════════════════════════════════════════════════╝\n\n`;
+            reportText += `📅 Date: ${new Date().toLocaleDateString()}\n`;
+            reportText += `📊 Total Orders: ${ordersInMemory.length}\n`;
+            reportText += `⚠️ Mismatched Orders: ${mismatches.length}\n`;
+            reportText += `✅ Correct Orders: ${ordersInMemory.length - mismatches.length}\n\n`;
+            reportText += `═══════════════════════════════════════════════════════════════\n\n`;
+            
+            mismatches.forEach((m, i) => {
+                reportText += `${i + 1}. Order ID: ${m.orderId}\n`;
+                reportText += `   Customer: ${m.customerName || 'Unknown'}\n`;
+                reportText += `   Location ID: ${m.locationId || 'N/A'}\n`;
+                reportText += `   Assembly Amount: ${m.assemblyAmount}\n`;
+                reportText += `   Route from Customer Mapping: ${m.routeFromCustomer}\n`;
+                reportText += `   Route from Location ID: ${m.routeFromLocation || 'N/A'}\n`;
+                reportText += `   Route used in Cart Calculation: ${m.routeFromCartCalc}\n`;
+                reportText += `   ⚠️ Issue: ${m.reason}\n`;
+                reportText += `\n`;
+            });
+            
+            reportText += `═══════════════════════════════════════════════════════════════\n\n`;
+            reportText += `ACTION NEEDED:\n`;
+            reportText += `1. Review these orders manually\n`;
+            reportText += `2. Check if customer should be in different route\n`;
+            reportText += `3. Update route-mapping.js if customer mapping is wrong\n`;
+            reportText += `4. Check location_id if it suggests different route\n\n`;
+            
+            // Show in modal
+            const existingModal = document.querySelector('.mismatch-report-modal');
+            const existingBackdrop = document.querySelector('.modal-backdrop');
+            if (existingModal) existingModal.remove();
+            if (existingBackdrop) existingBackdrop.remove();
+            
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop';
+            
+            const modal = document.createElement('div');
+            modal.className = 'mismatch-report-modal';
+            
+            modal.innerHTML = `
+                <h3>⚠️ Mismatched Orders Report</h3>
+                <div class="modal-stats">
+                    <p><strong>Total Orders:</strong> ${ordersInMemory.length}</p>
+                    <p><strong>⚠️ Mismatched:</strong> ${mismatches.length}</p>
+                    <p><strong>✅ Correct:</strong> ${ordersInMemory.length - mismatches.length}</p>
+                </div>
+                <div class="mismatch-list-container">
+                    <table class="mismatch-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Location ID</th>
+                                <th>Customer Route</th>
+                                <th>Location Route</th>
+                                <th>Cart Calc Route</th>
+                                <th>Issue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${mismatches.map(m => `
+                                <tr>
+                                    <td>${m.orderId}</td>
+                                    <td>${m.customerName || 'Unknown'}</td>
+                                    <td>${m.locationId || 'N/A'}</td>
+                                    <td>${m.routeFromCustomer}</td>
+                                    <td>${m.routeFromLocation || 'N/A'}</td>
+                                    <td>${m.routeFromCartCalc}</td>
+                                    <td style="color: #ef4444; font-size: 0.9rem;">${m.reason}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="modal-close-btn" onclick="this.closest('.mismatch-report-modal').remove(); document.querySelector('.modal-backdrop').remove()">
+                        Close
+                    </button>
+                    <button class="modal-download-btn" onclick="downloadMismatchReport()">
+                        📥 Download Report
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(backdrop);
+            document.body.appendChild(modal);
+            
+            // Store report for download
+            window.mismatchReport = reportText;
+            
+            backdrop.onclick = (e) => {
+                if (e.target === backdrop) {
+                    modal.remove();
+                    backdrop.remove();
+                }
+            };
+            
+            console.log(`✅ Mismatch report generated: ${mismatches.length} mismatched orders`);
+        }
+        
+        // Download mismatch report
+        function downloadMismatchReport() {
+            if (!window.mismatchReport) {
+                alert('No report available. Please run "Check Mismatched Orders" first.');
+                return;
+            }
+            
+            try {
+                const blob = new Blob([window.mismatchReport], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mismatched-orders-${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                console.log('✅ Mismatch report downloaded');
+            } catch (e) {
+                console.error('Failed to download report:', e);
+                alert('Failed to download report: ' + e.message);
+            }
+        }
+        
         // Make functions globally accessible
         window.updateRouteSummary = updateRouteSummary;
         window.viewRouteDetails = viewRouteDetails;
+        window.checkMismatchedOrders = checkMismatchedOrders;
+        window.downloadMismatchReport = downloadMismatchReport;
+        
+        // Attach event listener to mismatch button
+        document.addEventListener('DOMContentLoaded', () => {
+            const mismatchBtn = document.getElementById('check-mismatches-btn');
+            if (mismatchBtn) {
+                mismatchBtn.addEventListener('click', checkMismatchedOrders);
+            }
+        });
         
         // Logout function - MUST BE GLOBAL
         function handleLogout() {

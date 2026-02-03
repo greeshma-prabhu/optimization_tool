@@ -1573,3 +1573,100 @@ body {
 .customer-list-modal .modal-close-btn:active {
     transform: translateY(0);
 }
+
+/* Mismatch report modal */
+.mismatch-report-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    max-height: 85vh;
+    width: 95%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mismatch-report-modal h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #ef4444;
+    font-size: 1.5rem;
+    border-bottom: 2px solid #ef4444;
+    padding-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.mismatch-list-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.mismatch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.mismatch-table thead {
+    background: #f3f4f6;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.mismatch-table th {
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+    color: #374151;
+}
+
+.mismatch-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #4b5563;
+}
+
+.mismatch-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.mismatch-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.mismatch-table tbody tr:nth-child(even):hover {
+    background: #f3f4f6;
+}
+
+.modal-download-btn {
+    padding: 12px 30px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.2s;
+    flex-shrink: 0;
+}
+
+.modal-download-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.modal-download-btn:active {
+    transform: translateY(0);
+}
