@@ -314,9 +314,6 @@
                 </div>
             </div>
             <div style="margin-top: 1.5rem; text-align: center;">
-                <button id="validate-routes-btn" class="btn btn-secondary" style="padding: 10px 20px;">
-                    ✅ Validate Route Assignments
-                </button>
             </div>
         </div>
 
@@ -1355,60 +1352,6 @@
             alert(message);
         }
         
-        // Validate route assignments
-        function validateRouteAssignments() {
-            const ordersInMemory = window.__zuidplas_orders_memory || [];
-            if (ordersInMemory.length === 0) {
-                alert('No orders loaded. Please sync data first.');
-                return;
-            }
-            
-            if (!window.RouteMapping) {
-                alert('Route mapping not available. Please refresh the page.');
-                return;
-            }
-            
-            const report = {
-                total: ordersInMemory.length,
-                matched: 0,
-                defaulted: 0,
-                unknown: new Set(),
-                routeBreakdown: {
-                    rijnsburg: new Set(),
-                    aalsmeer: new Set(),
-                    naaldwijk: new Set()
-                }
-            };
-            
-            ordersInMemory.forEach(order => {
-                const customerName = order.customer_name || order.order?.customer_name || '';
-                if (!customerName) return;
-                
-                // Temporarily capture warnings
-                let wasDefaulted = false;
-                const originalWarn = console.warn;
-                console.warn = (msg) => {
-                    if (typeof msg === 'string' && msg.includes(customerName) && msg.includes('not found')) {
-                        wasDefaulted = true;
-                    }
-                    originalWarn(msg);
-                };
-                
-                const route = window.RouteMapping.getRouteForCustomer(customerName);
-                console.warn = originalWarn;
-                
-                if (wasDefaulted) {
-                    report.defaulted++;
-                    report.unknown.add(customerName);
-                } else {
-                    report.matched++;
-                }
-                
-                report.routeBreakdown[route].add(customerName);
-            });
-            
-            // Convert Sets to Arrays
-            const unknownArray = Array.from(report.unknown);
             const routeBreakdown = {
                 rijnsburg: Array.from(report.routeBreakdown.rijnsburg),
                 aalsmeer: Array.from(report.routeBreakdown.aalsmeer),
@@ -1465,15 +1408,6 @@
         // Make functions globally accessible
         window.updateRouteSummary = updateRouteSummary;
         window.viewRouteDetails = viewRouteDetails;
-        window.validateRouteAssignments = validateRouteAssignments;
-        
-        // Attach event listener to validate button
-        document.addEventListener('DOMContentLoaded', () => {
-            const validateBtn = document.getElementById('validate-routes-btn');
-            if (validateBtn) {
-                validateBtn.addEventListener('click', validateRouteAssignments);
-            }
-        });
         
         // Logout function - MUST BE GLOBAL
         function handleLogout() {

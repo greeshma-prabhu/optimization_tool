@@ -153,7 +153,7 @@ const LATE_DELIVERY_CLIENTS = [
 function getRouteForCustomer(customerName) {
   if (!customerName) return 'rijnsburg'; // Default
   
-  // Clean the customer name for better matching
+  // Clean the customer name for better matching - MORE AGGRESSIVE CLEANING
   const cleanName = (name) => {
     return name
       .toLowerCase()
@@ -161,12 +161,15 @@ function getRouteForCustomer(customerName) {
       .replace(/\s+/g, ' ')           // Normalize spaces
       .replace(/[&]/g, ' ')           // Remove ampersands
       .replace(/\./g, '')             // Remove periods
-      .replace(/b\.v\.|bv|b v/gi, '')      // Remove all BV variations
-      .replace(/\s+(export|flowers?|bloemen|plant|swiss)\s*/gi, ' ')  // Remove common suffixes
+      .replace(/b\.v\.|bv|b v|b\.v/gi, '')      // Remove all BV variations
+      .replace(/\s+(export|flowers?|bloemen|plant|swiss|holland|westland|aalsmeer|naaldwijk|rijnsburg|bleiswijk|klondike|gerbera|mini|webshop|retail|vof|v\.o\.f\.|vof)/gi, ' ')  // Remove common suffixes and location names
       .replace(/\(.*?\)/g, '')        // Remove content in parentheses like (MINI)
       .replace(/webshop/gi, '')        // Remove "webshop"
       .replace(/retail/gi, '')         // Remove "retail"
       .replace(/-/g, ' ')              // Replace hyphens with spaces
+      .replace(/\//g, ' ')             // Replace slashes with spaces (V/D PLAS → V D PLAS)
+      .replace(/van der|vander|vd|v d/gi, ' ')  // Normalize "van der" variations
+      .replace(/de |het |van |der |den /gi, ' ') // Remove common Dutch articles
       .trim();
   };
   
@@ -194,38 +197,67 @@ function getRouteForCustomer(customerName) {
         return route;
       }
       
-      // Method 2: Customer name contains client name
-      if (nameClean.length > 4 && clientClean.length > 4) {
+      // Method 2: Customer name contains client name (IMPROVED - more lenient)
+      if (clientClean.length >= 3) {
         if (nameClean.includes(clientClean)) {
           console.log(`✅ Contains match: "${customerName}" contains "${client}" → ${route}`);
           return route;
         }
         
-        // Method 3: Client name contains customer name
-        if (clientClean.includes(nameClean)) {
+        // Method 3: Client name contains customer name (IMPROVED - more lenient)
+        if (nameClean.length >= 3 && clientClean.includes(nameClean)) {
           console.log(`✅ Reverse contains: "${client}" contains "${customerName}" → ${route}`);
           return route;
         }
       }
       
-      // Method 4: Word-based matching (match if 2+ significant words match)
+      // Method 2b: Partial contains match (if client name is 3+ chars and appears in customer name)
+      if (clientClean.length >= 3) {
+        // Check if any significant part of client name appears in customer name
+        const clientParts = clientClean.split(/\s+/).filter(p => p.length >= 3);
+        for (const part of clientParts) {
+          if (nameClean.includes(part)) {
+            console.log(`✅ Partial contains: "${customerName}" contains "${part}" from "${client}" → ${route}`);
+            return route;
+          }
+        }
+      }
+      
+      // Method 4: Word-based matching (IMPROVED - match if 1+ significant words match)
       let matchCount = 0;
+      let significantMatches = 0;
       for (const nw of nameWords) {
         for (const cw of clientWords) {
           // Check if words match or contain each other
           if (nw.length > 2 && cw.length > 2) {
             if (nw === cw || nw.includes(cw) || cw.includes(nw)) {
               matchCount++;
+              // Count significant matches (longer words are more significant)
+              if (nw.length >= 4 || cw.length >= 4) {
+                significantMatches++;
+              }
               break; // Count each word only once
             }
           }
         }
       }
       
-      // If at least 2 significant words match, consider it a match
-      if (matchCount >= 2) {
-        console.log(`✅ Word match (${matchCount} words): "${customerName}" ≈ "${client}" → ${route}`);
+      // IMPROVED: Match if 1+ significant word OR 2+ any words match
+      if (significantMatches >= 1 || matchCount >= 2) {
+        console.log(`✅ Word match (${matchCount} words, ${significantMatches} significant): "${customerName}" ≈ "${client}" → ${route}`);
         return route;
+      }
+      
+      // Method 4b: Single word match for very short client names (e.g., "L&M", "FSF")
+      if (clientWords.length === 1 && nameWords.length >= 1) {
+        const clientWord = clientWords[0];
+        const matched = nameWords.some(nw => 
+          nw === clientWord || nw.includes(clientWord) || clientWord.includes(nw)
+        );
+        if (matched && clientWord.length >= 2) {
+          console.log(`✅ Single word match: "${customerName}" ≈ "${client}" → ${route}`);
+          return route;
+        }
       }
       
       // Method 5: Partial word matching for short names
