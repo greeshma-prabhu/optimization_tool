@@ -1437,7 +1437,7 @@
                 </div>
                 <div class="customer-list-container">
                     <ol>
-                        ${customers.map((customer, index) => `<li>${index + 1}. ${customer}</li>`).join('')}
+                        ${customers.map(customer => `<li>${customer}</li>`).join('')}
                     </ol>
                 </div>
                 <button class="modal-close-btn" onclick="this.closest('.customer-list-modal').remove(); document.querySelector('.modal-backdrop').remove()">
