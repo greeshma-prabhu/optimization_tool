@@ -1469,6 +1469,175 @@
                 return;
             }
             
+            // OFFICIAL CLIENT ROUTES - From Planningstabel 2.0 Excel (COMPLETE LIST)
+            const OFFICIAL_EXCEL_ROUTES = {
+                'rijnsburg': [
+                    'A. Heemskerk',
+                    'Aad van Duijn',
+                    'Albert Noort',
+                    'Bohemen',
+                    'C van Klaveren',
+                    'C.W de Mooij',
+                    'Floral Sourcing',
+                    'H. Star',
+                    'Hermes Bloemen',
+                    'Heyer',
+                    'Hoek groothandel',
+                    'Hollandirect',
+                    'Kariflex',
+                    'kooter',
+                    'L&M',
+                    'Maat & Zoon',
+                    'Nagel',
+                    'Nic den Heijer',
+                    'Jason Walters',
+                    'Retail Flower',
+                    'Sorisso Verde',
+                    'Star T.',
+                    'Star v/d Gugten',
+                    'V/D PLAS',
+                    'V&E Export',
+                    'Vianen',
+                    'St. Gabriel'
+                ],
+                'aalsmeer': [
+                    'BBI Blomstertorget',
+                    'Bloemen Buro',
+                    'Bloomenet',
+                    'Blooming Direct',
+                    'Carsea',
+                    'Dijk Flora',
+                    'Eurofleur Export',
+                    'Flamingo',
+                    'Floramondo',
+                    'Florette',
+                    'Flori Culture',
+                    'Floripac',
+                    'Floris Holland',
+                    'Flora Nova',
+                    'Flower Point',
+                    'Flower Trade Consult',
+                    'FTD',
+                    'Hans Visser',
+                    'Harrewijn',
+                    'Hoekhuis Aalsmeer',
+                    'Holex Flower',
+                    'Holex Flower BV',
+                    'Imex',
+                    'KLOK Aalsmeer',
+                    'MM Flowers',
+                    'Passie Bloemen',
+                    'PB Flowerbulbs',
+                    'Plantion',
+                    'Royal Lemkes',
+                    'Stolk Flora',
+                    'Superflora',
+                    'Verdnatura Holland BV',
+                    'Xaverius'
+                ],
+                'naaldwijk': [
+                    'Astrafund',
+                    'Bachetle',
+                    'Bloom Bouqet',
+                    'Bloomer Flowers',
+                    'Capitol fl.',
+                    'D vd Vijver',
+                    'Diva Flowers',
+                    'E- Flowers',
+                    'Euroveiling',
+                    'Flamingo Flowers',
+                    'Florca Westland',
+                    'Flowering Direct',
+                    'Flowerportal',
+                    'Flowers All-inn',
+                    'FSF',
+                    'Goldman',
+                    'H. Star',
+                    'Kontikiflor',
+                    'Kontikiflor Zuidplas',
+                    'Kuipers',
+                    'Leeuwenburg',
+                    'Lion Fleurex',
+                    'MD Agro Import',
+                    'Optimum Flora Group B.V.',
+                    'Premium',
+                    'Sjaak vd vijver',
+                    'SQ Flora',
+                    'v Vliet',
+                    'Webshopflower',
+                    'West Flora Export',
+                    'Westflora',
+                    'What If',
+                    'Henk Schreuders',
+                    'Henk Schreuders Bl.export',
+                    'Hoekhuis Naaldwijk',
+                    'Hoekhuis Naaldwijk Klondike'
+                ]
+            };
+            
+            // Smart suggestion function - matches customer names against Excel data
+            function suggestCorrectRoute(customerName, currentRoute) {
+                if (!customerName) return 'UNKNOWN';
+                
+                // Helper function to clean and normalize names for comparison
+                const normalize = (name) => {
+                    return name
+                        .toLowerCase()
+                        .replace(/\s+/g, ' ')
+                        .replace(/[&\.\-]/g, ' ')
+                        .replace(/b\.v\.|bv|b v|b\.v/gi, '')
+                        .replace(/\(.*?\)/g, '')
+                        .replace(/van der|vander|vd|v d/gi, ' ')
+                        .replace(/de |het |van |der |den /gi, ' ')
+                        .trim();
+                };
+                
+                const normalizedCustomer = normalize(customerName);
+                
+                // Search through all Excel routes for a match
+                for (const [route, clients] of Object.entries(OFFICIAL_EXCEL_ROUTES)) {
+                    for (const excelClient of clients) {
+                        const normalizedExcel = normalize(excelClient);
+                        
+                        // Exact match
+                        if (normalizedCustomer === normalizedExcel) {
+                            return route;
+                        }
+                        
+                        // Customer name contains Excel name
+                        if (normalizedCustomer.includes(normalizedExcel) && normalizedExcel.length > 3) {
+                            return route;
+                        }
+                        
+                        // Excel name contains customer name
+                        if (normalizedExcel.includes(normalizedCustomer) && normalizedCustomer.length > 3) {
+                            return route;
+                        }
+                        
+                        // Word-based matching (at least 2 significant words match)
+                        const customerWords = normalizedCustomer.split(' ').filter(w => w.length > 2);
+                        const excelWords = normalizedExcel.split(' ').filter(w => w.length > 2);
+                        
+                        let matches = 0;
+                        for (const cw of customerWords) {
+                            for (const ew of excelWords) {
+                                if (cw === ew || cw.includes(ew) || ew.includes(cw)) {
+                                    matches++;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (matches >= 2) {
+                            return route;
+                        }
+                    }
+                }
+                
+                // Not found in Excel
+                return 'NOT_IN_EXCEL';
+            }
+            
             console.log('🔍 Analyzing customer route assignments...');
             console.log(`   Total orders: ${ordersInMemory.length}`);
             
@@ -1607,7 +1776,14 @@
                     reportText += `${i + 1}. ${c.customer}\n`;
                     reportText += `   Currently defaulted to: ${c.routes[0]}\n`;
                     reportText += `   Orders affected: ${c.orderCount}\n`;
-                    if (c.suggestedRoute) {
+                    if (c.excelSuggestedRoute && c.excelSuggestedRoute !== 'NOT_IN_EXCEL') {
+                        reportText += `   ✅ Excel data suggests: ${c.excelSuggestedRoute}\n`;
+                    } else if (c.excelSuggestedRoute === 'NOT_IN_EXCEL') {
+                        reportText += `   ⚠️ NOT FOUND IN EXCEL - Manual review needed\n`;
+                        if (c.suggestedRoute && c.suggestedRoute !== 'NOT_IN_EXCEL') {
+                            reportText += `   Location ID suggests: ${c.suggestedRoute}\n`;
+                        }
+                    } else if (c.suggestedRoute) {
                         reportText += `   Location ID suggests: ${c.suggestedRoute}\n`;
                     }
                     reportText += `   Issue: ${c.issue}\n\n`;
@@ -1698,15 +1874,45 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${warnings.map(c => `
+                                ${warnings.map(c => {
+                                    let suggestedRouteText = '';
+                                    let actionText = '';
+                                    
+                                    if (c.excelSuggestedRoute && c.excelSuggestedRoute !== 'NOT_IN_EXCEL') {
+                                        // Found in Excel
+                                        suggestedRouteText = `✅ ${c.excelSuggestedRoute}`;
+                                        if (c.excelSuggestedRoute === c.routes[0]) {
+                                            actionText = 'Add name variation to route-mapping.js';
+                                        } else {
+                                            actionText = `Change to ${c.excelSuggestedRoute}`;
+                                        }
+                                    } else if (c.excelSuggestedRoute === 'NOT_IN_EXCEL') {
+                                        // Not found in Excel
+                                        suggestedRouteText = '⚠️ NOT IN EXCEL';
+                                        if (c.suggestedRoute && c.suggestedRoute !== 'NOT_IN_EXCEL') {
+                                            actionText = `Location suggests: ${c.suggestedRoute} (manual review needed)`;
+                                        } else {
+                                            actionText = 'Manual review needed - Contact Jeroen';
+                                        }
+                                    } else if (c.suggestedRoute) {
+                                        // Fallback to location_id suggestion
+                                        suggestedRouteText = c.suggestedRoute;
+                                        actionText = `Add to ${c.suggestedRoute}`;
+                                    } else {
+                                        suggestedRouteText = 'UNKNOWN';
+                                        actionText = 'Manual review needed';
+                                    }
+                                    
+                                    return `
                                     <tr>
                                         <td><strong>${c.customer}</strong></td>
                                         <td>${c.routes[0]}</td>
-                                        <td>${c.suggestedRoute || 'Check Excel'}</td>
+                                        <td>${suggestedRouteText}</td>
                                         <td>${c.orderCount}</td>
-                                        <td style="color: #f59e0b; font-size: 0.85rem;">Add to ${c.suggestedRoute || 'route-mapping.js'}</td>
+                                        <td style="color: #f59e0b; font-size: 0.85rem;">${actionText}</td>
                                     </tr>
-                                `).join('')}
+                                `;
+                                }).join('')}
                             </tbody>
                         </table>
                     ` : ''}
