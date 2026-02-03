@@ -1456,7 +1456,7 @@
             console.log(`✅ Showing ${customers.length} customers for ${route}`);
         }
         
-        // Check for mismatched orders - compare route assignment vs cart calculation
+        // Check for mismatched orders - CUSTOMER-BASED analysis
         function checkMismatchedOrders() {
             const ordersInMemory = window.__zuidplas_orders_memory || [];
             if (ordersInMemory.length === 0) {
@@ -1464,139 +1464,217 @@
                 return;
             }
             
-            if (!window.RouteMapping || !window.CartCalculation) {
-                alert('Route mapping or cart calculation not available.');
+            if (!window.RouteMapping) {
+                alert('Route mapping not available.');
                 return;
             }
             
-            const mismatches = [];
-            const routeFromMapping = {};
-            const routeFromLocation = {};
-            const routeFromCartCalc = {};
-            
-            console.log('🔍 Checking for mismatched orders...');
+            console.log('🔍 Analyzing customer route assignments...');
             console.log(`   Total orders: ${ordersInMemory.length}`);
             
-            // First pass: Get route from mapping and location_id for each order
-            ordersInMemory.forEach(order => {
-                const orderId = order.id || order.order?.id || 'unknown';
-                const customerName = order.customer_name || order.order?.customer_name || '';
-                const locationId = order.delivery_location_id || order.order?.delivery_location_id;
-                
-                // Route from customer name mapping
-                const routeFromCustomer = window.RouteMapping.getRouteForCustomer(customerName);
-                routeFromMapping[orderId] = routeFromCustomer;
-                
-                // Route from location_id
-                const LOCATION_ID_TO_ROUTE = { 32: 'aalsmeer', 34: 'naaldwijk', 36: 'rijnsburg' };
-                const routeFromLocId = LOCATION_ID_TO_ROUTE[locationId] || null;
-                routeFromLocation[orderId] = routeFromLocId;
-            });
+            // Track route assignments per customer
+            const customerRoutes = {};
             
-            // Second pass: Get route used in cart calculation
-            // We need to simulate what getRoute() does in cart-calculation.js
             ordersInMemory.forEach(order => {
-                const orderId = order.id || order.order?.id || 'unknown';
                 const customerName = order.customer_name || order.order?.customer_name || '';
-                const locationId = order.delivery_location_id || order.order?.delivery_location_id;
+                if (!customerName) return;
                 
-                // This is what getRoute() does in cart-calculation.js
-                let routeFromCalc = 'rijnsburg'; // default
-                if (window.RouteMapping && window.RouteMapping.getRouteForCustomer) {
-                    const route = window.RouteMapping.getRouteForCustomer(customerName);
-                    routeFromCalc = route === 'rijnsburg' ? 'Rijnsburg' : 
-                                   route === 'aalsmeer' ? 'Aalsmeer' : 
-                                   route === 'naaldwijk' ? 'Naaldwijk' : 'Rijnsburg';
-                } else {
-                    const LOCATION_ID_TO_ROUTE = { 32: 'Aalsmeer', 34: 'Naaldwijk', 36: 'Rijnsburg' };
-                    routeFromCalc = LOCATION_ID_TO_ROUTE[locationId] || 'Rijnsburg';
-                }
-                
-                routeFromCartCalc[orderId] = routeFromCalc;
-            });
-            
-            // Third pass: Find mismatches
-            ordersInMemory.forEach(order => {
                 const orderId = order.id || order.order?.id || 'unknown';
-                const customerName = order.customer_name || order.order?.customer_name || '';
                 const locationId = order.delivery_location_id || order.order?.delivery_location_id;
                 const assemblyAmount = order.assembly_amount || 0;
                 
-                const routeFromCustomer = routeFromMapping[orderId];
-                const routeFromLocId = routeFromLocation[orderId];
-                const routeFromCalc = routeFromCartCalc[orderId];
-                
-                // Convert to lowercase for comparison
-                const routeFromCustomerLower = routeFromCustomer ? routeFromCustomer.toLowerCase() : null;
-                const routeFromLocIdLower = routeFromLocId ? routeFromLocId.toLowerCase() : null;
-                const routeFromCalcLower = routeFromCalc ? routeFromCalc.toLowerCase() : null;
-                
-                // Check for mismatches
-                let hasMismatch = false;
-                let mismatchReason = '';
-                
-                if (routeFromLocId && routeFromCustomerLower !== routeFromLocIdLower) {
-                    hasMismatch = true;
-                    mismatchReason = `Customer mapping (${routeFromCustomer}) ≠ Location ID ${locationId} (${routeFromLocId})`;
+                if (!customerRoutes[customerName]) {
+                    customerRoutes[customerName] = {
+                        routes: new Set(),
+                        orderCount: 0,
+                        orders: [],
+                        locationIds: new Set(),
+                        wasDefaulted: false
+                    };
                 }
                 
-                if (routeFromCalcLower !== routeFromCustomerLower) {
-                    hasMismatch = true;
-                    mismatchReason += mismatchReason ? '; ' : '';
-                    mismatchReason += `Cart calc uses ${routeFromCalc} but mapping says ${routeFromCustomer}`;
+                // Get route from customer mapping
+                const route = window.RouteMapping.getRouteForCustomer(customerName);
+                customerRoutes[customerName].routes.add(route);
+                customerRoutes[customerName].orderCount++;
+                customerRoutes[customerName].orders.push({
+                    orderId: orderId,
+                    route: route,
+                    locationId: locationId,
+                    assemblyAmount: assemblyAmount
+                });
+                if (locationId) {
+                    customerRoutes[customerName].locationIds.add(locationId);
                 }
                 
-                if (hasMismatch) {
-                    mismatches.push({
-                        orderId: orderId,
-                        customerName: customerName,
-                        locationId: locationId,
-                        assemblyAmount: assemblyAmount,
-                        routeFromCustomer: routeFromCustomer,
-                        routeFromLocation: routeFromLocId,
-                        routeFromCartCalc: routeFromCalc,
-                        reason: mismatchReason
+                // Check if defaulted (route is rijnsburg and customer not in mapping)
+                if (route === 'rijnsburg') {
+                    // Check if customer is actually in rijnsburg list
+                    const inMapping = window.RouteMapping.CLIENT_ROUTE_MAPPING.rijnsburg.some(c => {
+                        const clean = (n) => n.toLowerCase().trim();
+                        return clean(c) === clean(customerName) || 
+                               clean(customerName).includes(clean(c)) ||
+                               clean(c).includes(clean(customerName));
+                    });
+                    if (!inMapping) {
+                        customerRoutes[customerName].wasDefaulted = true;
+                    }
+                }
+            });
+            
+            // Find problematic customers
+            const problematicCustomers = [];
+            const wellMatchedCustomers = [];
+            
+            Object.entries(customerRoutes).forEach(([customer, data]) => {
+                const routesArray = Array.from(data.routes);
+                
+                if (data.routes.size > 1) {
+                    // CRITICAL: Same customer assigned to multiple different routes
+                    problematicCustomers.push({
+                        customer,
+                        routes: routesArray,
+                        orderCount: data.orderCount,
+                        orders: data.orders,
+                        severity: 'CRITICAL',
+                        issue: 'Same customer assigned to different routes - BUG!'
+                    });
+                } else if (data.wasDefaulted) {
+                    // WARNING: Customer not found in mapping, defaulted to Rijnsburg
+                    const locationIdArray = Array.from(data.locationIds);
+                    const LOCATION_ID_TO_ROUTE = { 32: 'aalsmeer', 34: 'naaldwijk', 36: 'rijnsburg' };
+                    const suggestedRoute = locationIdArray.length > 0 ? LOCATION_ID_TO_ROUTE[locationIdArray[0]] : null;
+                    
+                    problematicCustomers.push({
+                        customer,
+                        routes: routesArray,
+                        orderCount: data.orderCount,
+                        orders: data.orders,
+                        locationIds: locationIdArray,
+                        suggestedRoute: suggestedRoute,
+                        severity: 'WARNING',
+                        issue: `Customer not found in route mapping, defaulted to ${routesArray[0]}. Location ID suggests: ${suggestedRoute || 'unknown'}`
+                    });
+                } else {
+                    wellMatchedCustomers.push({
+                        customer,
+                        route: routesArray[0],
+                        orderCount: data.orderCount
                     });
                 }
             });
             
             // Generate report
-            if (mismatches.length === 0) {
-                alert('✅ No mismatched orders found! All orders are correctly assigned.');
-                console.log('✅ No mismatched orders - all routes match correctly');
+            if (problematicCustomers.length === 0) {
+                alert('✅ No mismatched customers found! All customers are correctly assigned.');
+                console.log('✅ No mismatched customers - all routes match correctly');
                 return;
             }
             
-            console.warn(`⚠️ Found ${mismatches.length} mismatched orders out of ${ordersInMemory.length}`);
+            console.warn(`⚠️ Found ${problematicCustomers.length} problematic customers out of ${Object.keys(customerRoutes).length}`);
             
             // Create report text
             let reportText = `╔══════════════════════════════════════════════════════════════╗\n`;
-            reportText += `║          MISMATCHED ORDERS REPORT                            ║\n`;
+            reportText += `║       CUSTOMER ROUTE ASSIGNMENT ANALYSIS REPORT            ║\n`;
             reportText += `╚══════════════════════════════════════════════════════════════╝\n\n`;
             reportText += `📅 Date: ${new Date().toLocaleDateString()}\n`;
-            reportText += `📊 Total Orders: ${ordersInMemory.length}\n`;
-            reportText += `⚠️ Mismatched Orders: ${mismatches.length}\n`;
-            reportText += `✅ Correct Orders: ${ordersInMemory.length - mismatches.length}\n\n`;
+            reportText += `📊 Total Customers: ${Object.keys(customerRoutes).length}\n`;
+            reportText += `📦 Total Orders: ${ordersInMemory.length}\n`;
+            reportText += `⚠️ Problematic Customers: ${problematicCustomers.length}\n`;
+            reportText += `✅ Well-Matched Customers: ${wellMatchedCustomers.length}\n\n`;
             reportText += `═══════════════════════════════════════════════════════════════\n\n`;
             
-            mismatches.forEach((m, i) => {
-                reportText += `${i + 1}. Order ID: ${m.orderId}\n`;
-                reportText += `   Customer: ${m.customerName || 'Unknown'}\n`;
-                reportText += `   Location ID: ${m.locationId || 'N/A'}\n`;
-                reportText += `   Assembly Amount: ${m.assemblyAmount}\n`;
-                reportText += `   Route from Customer Mapping: ${m.routeFromCustomer}\n`;
-                reportText += `   Route from Location ID: ${m.routeFromLocation || 'N/A'}\n`;
-                reportText += `   Route used in Cart Calculation: ${m.routeFromCartCalc}\n`;
-                reportText += `   ⚠️ Issue: ${m.reason}\n`;
+            // Sort by severity
+            const critical = problematicCustomers.filter(c => c.severity === 'CRITICAL');
+            const warnings = problematicCustomers.filter(c => c.severity === 'WARNING');
+            
+            if (critical.length > 0) {
+                reportText += `🔴 CRITICAL - Same customer, different routes (${critical.length}):\n`;
+                reportText += `${'═'.repeat(60)}\n\n`;
+                critical.forEach((c, i) => {
+                    reportText += `${i + 1}. ${c.customer}\n`;
+                    reportText += `   Routes: ${c.routes.join(' vs ')}\n`;
+                    reportText += `   Orders affected: ${c.orderCount}\n`;
+                    reportText += `   Issue: ${c.issue}\n\n`;
+                });
                 reportText += `\n`;
-            });
+            }
+            
+            if (warnings.length > 0) {
+                reportText += `🟡 WARNING - Not found in route mapping (${warnings.length}):\n`;
+                reportText += `${'═'.repeat(60)}\n\n`;
+                warnings.forEach((c, i) => {
+                    reportText += `${i + 1}. ${c.customer}\n`;
+                    reportText += `   Currently defaulted to: ${c.routes[0]}\n`;
+                    reportText += `   Orders affected: ${c.orderCount}\n`;
+                    if (c.suggestedRoute) {
+                        reportText += `   Location ID suggests: ${c.suggestedRoute}\n`;
+                    }
+                    reportText += `   Issue: ${c.issue}\n\n`;
+                });
+                reportText += `\n`;
+            }
             
             reportText += `═══════════════════════════════════════════════════════════════\n\n`;
-            reportText += `ACTION NEEDED:\n`;
-            reportText += `1. Review these orders manually\n`;
-            reportText += `2. Check if customer should be in different route\n`;
-            reportText += `3. Update route-mapping.js if customer mapping is wrong\n`;
-            reportText += `4. Check location_id if it suggests different route\n\n`;
+            reportText += `📋 ACTION REQUIRED:\n\n`;
+            
+            if (critical.length > 0) {
+                reportText += `For CRITICAL issues:\n`;
+                reportText += `1. These customers are being assigned to DIFFERENT routes\n`;
+                reportText += `2. This is a BUG in the route mapping logic\n`;
+                reportText += `3. Fix immediately!\n\n`;
+            }
+            
+            if (warnings.length > 0) {
+                reportText += `For WARNING issues:\n`;
+                reportText += `1. Add these customer names to js/route-mapping.js\n`;
+                reportText += `2. Determine their correct route from Planning Excel\n`;
+                reportText += `3. Add name variations if API name differs from Excel\n\n`;
+                
+                // Group by suggested route
+                const byRoute = {
+                    'rijnsburg': warnings.filter(c => c.suggestedRoute === 'rijnsburg' || !c.suggestedRoute),
+                    'aalsmeer': warnings.filter(c => c.suggestedRoute === 'aalsmeer'),
+                    'naaldwijk': warnings.filter(c => c.suggestedRoute === 'naaldwijk')
+                };
+                
+                reportText += `SUGGESTED CODE TO ADD:\n\n`;
+                
+                if (byRoute.rijnsburg.length > 0) {
+                    reportText += `'rijnsburg': [\n`;
+                    reportText += `  // ... existing ...\n`;
+                    byRoute.rijnsburg.slice(0, 10).forEach(c => {
+                        reportText += `  '${c.customer}',  // ← Add this (${c.orderCount} orders)\n`;
+                    });
+                    reportText += `],\n\n`;
+                }
+                
+                if (byRoute.aalsmeer.length > 0) {
+                    reportText += `'aalsmeer': [\n`;
+                    reportText += `  // ... existing ...\n`;
+                    byRoute.aalsmeer.slice(0, 10).forEach(c => {
+                        reportText += `  '${c.customer}',  // ← Add this (${c.orderCount} orders)\n`;
+                    });
+                    reportText += `],\n\n`;
+                }
+                
+                if (byRoute.naaldwijk.length > 0) {
+                    reportText += `'naaldwijk': [\n`;
+                    reportText += `  // ... existing ...\n`;
+                    byRoute.naaldwijk.slice(0, 10).forEach(c => {
+                        reportText += `  '${c.customer}',  // ← Add this (${c.orderCount} orders)\n`;
+                    });
+                    reportText += `],\n\n`;
+                }
+            }
+            
+            reportText += `═══════════════════════════════════════════════════════════════\n\n`;
+            reportText += `✅ WELL-MATCHED CUSTOMERS (${wellMatchedCustomers.length}):\n\n`;
+            reportText += `By Route:\n`;
+            reportText += `- Rijnsburg: ${wellMatchedCustomers.filter(c => c.route === 'rijnsburg').length} customers\n`;
+            reportText += `- Aalsmeer: ${wellMatchedCustomers.filter(c => c.route === 'aalsmeer').length} customers\n`;
+            reportText += `- Naaldwijk: ${wellMatchedCustomers.filter(c => c.route === 'naaldwijk').length} customers\n\n`;
+            reportText += `Success Rate: ${((wellMatchedCustomers.length / Object.keys(customerRoutes).length) * 100).toFixed(1)}%\n`;
             
             // Show in modal
             const existingModal = document.querySelector('.mismatch-report-modal');
@@ -1610,40 +1688,86 @@
             const modal = document.createElement('div');
             modal.className = 'mismatch-report-modal';
             
+            // Group warnings by route for display
+            const byRoute = {
+                'rijnsburg': warnings.filter(c => c.suggestedRoute === 'rijnsburg' || !c.suggestedRoute),
+                'aalsmeer': warnings.filter(c => c.suggestedRoute === 'aalsmeer'),
+                'naaldwijk': warnings.filter(c => c.suggestedRoute === 'naaldwijk')
+            };
+            
             modal.innerHTML = `
-                <h3>⚠️ Mismatched Orders Report</h3>
+                <h3>⚠️ Customer Route Analysis Report</h3>
                 <div class="modal-stats">
+                    <p><strong>Total Customers:</strong> ${Object.keys(customerRoutes).length}</p>
                     <p><strong>Total Orders:</strong> ${ordersInMemory.length}</p>
-                    <p><strong>⚠️ Mismatched:</strong> ${mismatches.length}</p>
-                    <p><strong>✅ Correct:</strong> ${ordersInMemory.length - mismatches.length}</p>
+                    <p><strong>🔴 Critical Issues:</strong> ${critical.length}</p>
+                    <p><strong>🟡 Needs Mapping:</strong> ${warnings.length}</p>
+                    <p><strong>✅ Well-Matched:</strong> ${wellMatchedCustomers.length}</p>
                 </div>
                 <div class="mismatch-list-container">
-                    <table class="mismatch-table">
-                        <thead>
-                            <tr>
-                                <th>Order ID</th>
-                                <th>Customer</th>
-                                <th>Location ID</th>
-                                <th>Customer Route</th>
-                                <th>Location Route</th>
-                                <th>Cart Calc Route</th>
-                                <th>Issue</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${mismatches.map(m => `
+                    ${critical.length > 0 ? `
+                        <h4 style="color: #ef4444; margin-top: 20px;">🔴 CRITICAL - Same Customer, Different Routes</h4>
+                        <table class="mismatch-table">
+                            <thead>
                                 <tr>
-                                    <td>${m.orderId}</td>
-                                    <td>${m.customerName || 'Unknown'}</td>
-                                    <td>${m.locationId || 'N/A'}</td>
-                                    <td>${m.routeFromCustomer}</td>
-                                    <td>${m.routeFromLocation || 'N/A'}</td>
-                                    <td>${m.routeFromCartCalc}</td>
-                                    <td style="color: #ef4444; font-size: 0.9rem;">${m.reason}</td>
+                                    <th>Customer</th>
+                                    <th>Routes</th>
+                                    <th>Orders</th>
+                                    <th>Issue</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                ${critical.map(c => `
+                                    <tr>
+                                        <td><strong>${c.customer}</strong></td>
+                                        <td>${c.routes.join(' vs ')}</td>
+                                        <td>${c.orderCount}</td>
+                                        <td style="color: #ef4444;">${c.issue}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    ` : ''}
+                    ${warnings.length > 0 ? `
+                        <h4 style="color: #f59e0b; margin-top: 20px;">🟡 WARNING - Not Found in Route Mapping</h4>
+                        <table class="mismatch-table">
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Current Route</th>
+                                    <th>Suggested Route</th>
+                                    <th>Orders</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${warnings.map(c => `
+                                    <tr>
+                                        <td><strong>${c.customer}</strong></td>
+                                        <td>${c.routes[0]}</td>
+                                        <td>${c.suggestedRoute || 'Check Excel'}</td>
+                                        <td>${c.orderCount}</td>
+                                        <td style="color: #f59e0b; font-size: 0.85rem;">Add to ${c.suggestedRoute || 'route-mapping.js'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px;">
+                            <strong>💡 Suggested Code to Add:</strong>
+                            <pre style="background: white; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; margin-top: 10px;">
+${byRoute.rijnsburg.length > 0 ? `'rijnsburg': [
+  // ... existing ...
+${byRoute.rijnsburg.slice(0, 5).map(c => `  '${c.customer}',  // ${c.orderCount} orders`).join('\n')}
+],\n` : ''}${byRoute.aalsmeer.length > 0 ? `'aalsmeer': [
+  // ... existing ...
+${byRoute.aalsmeer.slice(0, 5).map(c => `  '${c.customer}',  // ${c.orderCount} orders`).join('\n')}
+],\n` : ''}${byRoute.naaldwijk.length > 0 ? `'naaldwijk': [
+  // ... existing ...
+${byRoute.naaldwijk.slice(0, 5).map(c => `  '${c.customer}',  // ${c.orderCount} orders`).join('\n')}
+],` : ''}
+                            </pre>
+                        </div>
+                    ` : ''}
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button class="modal-close-btn" onclick="this.closest('.mismatch-report-modal').remove(); document.querySelector('.modal-backdrop').remove()">
@@ -1668,7 +1792,7 @@
                 }
             };
             
-            console.log(`✅ Mismatch report generated: ${mismatches.length} mismatched orders`);
+            console.log(`✅ Customer route analysis complete: ${problematicCustomers.length} problematic customers`);
         }
         
         // Download mismatch report

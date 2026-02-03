@@ -37,6 +37,9 @@ const CLIENT_ROUTE_MAPPING = {
     'V&E Export',
     'Vianen',
     'St. Gabriel'
+    // NOTE: Hoekhuis Naaldwijk Klondike → naaldwijk (NOT rijnsburg)
+    // NOTE: Holex Flower BV → aalsmeer (NOT rijnsburg)
+    // NOTE: Henk Schreuders Bl.export → naaldwijk (NOT rijnsburg)
   ],
   
   // ========================================
@@ -64,6 +67,8 @@ const CLIENT_ROUTE_MAPPING = {
     'Hans Visser',
     'Harrewijn',
     'Hoekhuis Aalsmeer',
+    'Holex Flower',
+    'Holex Flower BV',
     'Imex',
     'KLOK Aalsmeer',
     'MM Flowers',
@@ -74,6 +79,7 @@ const CLIENT_ROUTE_MAPPING = {
     'Stolk Flora',
     'Superflora',
     'Xaverius'
+    // NOTE: Westflora → naaldwijk (NOT aalsmeer)
   ],
   
   // ========================================
@@ -98,6 +104,10 @@ const CLIENT_ROUTE_MAPPING = {
     'Flamingo Flowers',
     'Goldman',
     'H. Star',
+    'Henk Schreuders',
+    'Henk Schreuders Bl.export',
+    'Hoekhuis Naaldwijk',
+    'Hoekhuis Naaldwijk Klondike',
     'MD Agro Import',
     'Kontikiflor',
     'Kuipers',
@@ -109,6 +119,7 @@ const CLIENT_ROUTE_MAPPING = {
     'v Vliet',
     'Webshopflower',
     'West Flora Export',
+    'Westflora',
     'What If'
   ]
 };
