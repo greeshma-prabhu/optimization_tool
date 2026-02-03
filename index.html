@@ -1630,42 +1630,6 @@
                 reportText += `1. Add these customer names to js/route-mapping.js\n`;
                 reportText += `2. Determine their correct route from Planning Excel\n`;
                 reportText += `3. Add name variations if API name differs from Excel\n\n`;
-                
-                // Group by suggested route
-                const byRoute = {
-                    'rijnsburg': warnings.filter(c => c.suggestedRoute === 'rijnsburg' || !c.suggestedRoute),
-                    'aalsmeer': warnings.filter(c => c.suggestedRoute === 'aalsmeer'),
-                    'naaldwijk': warnings.filter(c => c.suggestedRoute === 'naaldwijk')
-                };
-                
-                reportText += `SUGGESTED CODE TO ADD:\n\n`;
-                
-                if (byRoute.rijnsburg.length > 0) {
-                    reportText += `'rijnsburg': [\n`;
-                    reportText += `  // ... existing ...\n`;
-                    byRoute.rijnsburg.slice(0, 10).forEach(c => {
-                        reportText += `  '${c.customer}',  // ← Add this (${c.orderCount} orders)\n`;
-                    });
-                    reportText += `],\n\n`;
-                }
-                
-                if (byRoute.aalsmeer.length > 0) {
-                    reportText += `'aalsmeer': [\n`;
-                    reportText += `  // ... existing ...\n`;
-                    byRoute.aalsmeer.slice(0, 10).forEach(c => {
-                        reportText += `  '${c.customer}',  // ← Add this (${c.orderCount} orders)\n`;
-                    });
-                    reportText += `],\n\n`;
-                }
-                
-                if (byRoute.naaldwijk.length > 0) {
-                    reportText += `'naaldwijk': [\n`;
-                    reportText += `  // ... existing ...\n`;
-                    byRoute.naaldwijk.slice(0, 10).forEach(c => {
-                        reportText += `  '${c.customer}',  // ← Add this (${c.orderCount} orders)\n`;
-                    });
-                    reportText += `],\n\n`;
-                }
             }
             
             reportText += `═══════════════════════════════════════════════════════════════\n\n`;
