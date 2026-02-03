@@ -1783,19 +1783,8 @@
                 reportText += `${'═'.repeat(60)}\n\n`;
                 warnings.forEach((c, i) => {
                     reportText += `${i + 1}. ${c.customer}\n`;
-                    reportText += `   Currently defaulted to: ${c.routes[0]}\n`;
-                    reportText += `   Orders affected: ${c.orderCount}\n`;
-                    if (c.excelSuggestedRoute && c.excelSuggestedRoute !== 'NOT_IN_EXCEL') {
-                        reportText += `   ✅ Excel data suggests: ${c.excelSuggestedRoute}\n`;
-                    } else if (c.excelSuggestedRoute === 'NOT_IN_EXCEL') {
-                        reportText += `   ⚠️ NOT FOUND IN EXCEL - Manual review needed\n`;
-                        if (c.suggestedRoute && c.suggestedRoute !== 'NOT_IN_EXCEL') {
-                            reportText += `   Location ID suggests: ${c.suggestedRoute}\n`;
-                        }
-                    } else if (c.suggestedRoute) {
-                        reportText += `   Location ID suggests: ${c.suggestedRoute}\n`;
-                    }
-                    reportText += `   Issue: ${c.issue}\n\n`;
+                    reportText += `   Defaulted to: ${c.routes[0]}\n`;
+                    reportText += `   Orders: ${c.orderCount}\n\n`;
                 });
                 reportText += `\n`;
             }
@@ -1812,9 +1801,8 @@
             
             if (warnings.length > 0) {
                 reportText += `For WARNING issues:\n`;
-                reportText += `1. Add these customer names to js/route-mapping.js\n`;
-                reportText += `2. Determine their correct route from Planning Excel\n`;
-                reportText += `3. Add name variations if API name differs from Excel\n\n`;
+                reportText += `These customers were not found in route mapping and were defaulted.\n`;
+                reportText += `Add them to js/route-mapping.js with the correct route.\n\n`;
             }
             
             reportText += `═══════════════════════════════════════════════════════════════\n\n`;
@@ -1888,28 +1876,17 @@
                                     let actionText = '';
                                     
                                     if (c.excelSuggestedRoute && c.excelSuggestedRoute !== 'NOT_IN_EXCEL') {
-                                        // Found in Excel
-                                        suggestedRouteText = `✅ ${c.excelSuggestedRoute}`;
+                                        // Found in Excel - show the route
+                                        suggestedRouteText = c.excelSuggestedRoute;
                                         if (c.excelSuggestedRoute === c.routes[0]) {
                                             actionText = 'Add name variation to route-mapping.js';
                                         } else {
                                             actionText = `Change to ${c.excelSuggestedRoute}`;
                                         }
-                                    } else if (c.excelSuggestedRoute === 'NOT_IN_EXCEL') {
-                                        // Not found in Excel
-                                        suggestedRouteText = '⚠️ NOT IN EXCEL';
-                                        if (c.suggestedRoute && c.suggestedRoute !== 'NOT_IN_EXCEL') {
-                                            actionText = `Location suggests: ${c.suggestedRoute} (manual review needed)`;
-                                        } else {
-                                            actionText = 'Manual review needed - Contact Jeroen';
-                                        }
-                                    } else if (c.suggestedRoute) {
-                                        // Fallback to location_id suggestion
-                                        suggestedRouteText = c.suggestedRoute;
-                                        actionText = `Add to ${c.suggestedRoute}`;
                                     } else {
-                                        suggestedRouteText = 'UNKNOWN';
-                                        actionText = 'Manual review needed';
+                                        // Not in Excel - just show defaulted route
+                                        suggestedRouteText = c.routes[0];
+                                        actionText = `Defaulted to ${c.routes[0]}`;
                                     }
                                     
                                     return `
