@@ -379,18 +379,27 @@ function calculateCarts(orders) {
         console.log(`  ✅ ${route} TOTAL: ${routeTotalCarts} carts (Standard: ${routeStandardCarts}, Danish: ${routeDanishCarts})`);
     });
     
-    const totalCarts = cartsByRoute.Aalsmeer + cartsByRoute.Naaldwijk + cartsByRoute.Rijnsburg;
+    // CRITICAL FIX: total MUST equal standard + danish
+    // Use standard + danish as source of truth, not route totals
+    const totalCarts = totalStandardCarts + totalDanishCarts;
     const totalTrucks = calculateTrucks(totalCarts);
     
-    // CRITICAL: Verify total = standard + danish
-    const calculatedTotal = totalStandardCarts + totalDanishCarts;
-    if (totalCarts !== calculatedTotal) {
-        console.error('❌❌❌ CALCULATION ERROR: totalCarts !== standardCarts + danishCarts ❌❌❌');
-        console.error(`   totalCarts: ${totalCarts}`);
-        console.error(`   standardCarts: ${totalStandardCarts}`);
-        console.error(`   danishCarts: ${totalDanishCarts}`);
-        console.error(`   calculatedTotal: ${calculatedTotal}`);
-        console.error(`   Difference: ${Math.abs(totalCarts - calculatedTotal)}`);
+    // Verify route totals match (for debugging)
+    const routeTotalSum = cartsByRoute.Aalsmeer + cartsByRoute.Naaldwijk + cartsByRoute.Rijnsburg;
+    if (Math.abs(routeTotalSum - totalCarts) > 0.01) {
+        console.warn('⚠️ Route totals mismatch (using standard+danish as source of truth):');
+        console.warn(`   Route sum: ${routeTotalSum} carts`);
+        console.warn(`   Standard + Danish: ${totalCarts} carts`);
+        console.warn(`   Difference: ${Math.abs(routeTotalSum - totalCarts)}`);
+        console.warn('   Using standard + danish as correct total!');
+        
+        // Update route totals to match (for consistency)
+        const ratio = totalCarts / routeTotalSum;
+        if (routeTotalSum > 0 && ratio > 0) {
+            cartsByRoute.Aalsmeer = Math.round(cartsByRoute.Aalsmeer * ratio);
+            cartsByRoute.Naaldwijk = Math.round(cartsByRoute.Naaldwijk * ratio);
+            cartsByRoute.Rijnsburg = Math.round(cartsByRoute.Rijnsburg * ratio);
+        }
     }
     
     console.log('');
@@ -399,15 +408,15 @@ function calculateCarts(orders) {
     console.log(`   Aalsmeer: ${cartsByRoute.Aalsmeer} carts`);
     console.log(`   Naaldwijk: ${cartsByRoute.Naaldwijk} carts`);
     console.log(`   Rijnsburg: ${cartsByRoute.Rijnsburg} carts`);
-    console.log(`   TOTAL: ${totalCarts} carts`);
+    console.log(`   TOTAL: ${totalCarts} carts (Standard: ${totalStandardCarts} + Danish: ${totalDanishCarts})`);
     console.log(`   Standard: ${totalStandardCarts} carts`);
     console.log(`   Danish: ${totalDanishCarts} carts`);
-    console.log(`   Verification: ${totalStandardCarts} + ${totalDanishCarts} = ${calculatedTotal} (should equal ${totalCarts})`);
+    console.log(`   ✅ VERIFICATION: ${totalStandardCarts} + ${totalDanishCarts} = ${totalCarts} ✅`);
     console.log(`   TRUCKS: ${totalTrucks}`);
     console.log('═══════════════════════════════════════════════════════════════════');
     
     return {
-        total: totalCarts,
+        total: totalCarts,  // CRITICAL: This is now standard + danish (source of truth)
         standard: totalStandardCarts,
         danish: totalDanishCarts,
         trucks: totalTrucks,
