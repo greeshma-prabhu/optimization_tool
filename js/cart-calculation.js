@@ -519,12 +519,28 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         } else {
             // No cache exists at all
             if (!forceRefresh) {
-                // Non-Dashboard page with no cache - calculate but warn
-                console.warn('⚠️ WARNING: No cache found and this is NOT Dashboard!');
-                console.warn('⚠️ Dashboard should calculate first, but calculating here as fallback...');
-                console.warn('⚠️ This result will NOT be cached - Dashboard should sync to cache properly!');
-                console.warn('⚠️ Please load Dashboard and click "Sync" or "Refresh Data" for proper caching!');
-                // Continue to calculation below (don't return empty)
+                // CRITICAL: Non-Dashboard pages should NEVER calculate!
+                // They must ONLY read from Dashboard's cache!
+                console.error('❌ ERROR: No cache found and this is NOT Dashboard!');
+                console.error('❌ Non-Dashboard pages should ONLY read from cache, never calculate!');
+                console.error('❌ Please load Dashboard first and click "Sync" or "Refresh Data" to calculate carts!');
+                console.error('❌ Returning empty result - Dashboard must calculate first!');
+                
+                // Return empty result - don't calculate!
+                return {
+                    orders: orders || [],
+                    cartResult: {
+                        total: 0,
+                        byRoute: {
+                            Aalsmeer: 0,
+                            Naaldwijk: 0,
+                            Rijnsburg: 0
+                        },
+                        trucks: 0,
+                        methodCounts: {},
+                        skippedOrdersCount: 0
+                    }
+                };
             } else {
                 // Dashboard with no cache - this is fine, calculate fresh
                 console.log('🔄 Dashboard: No cache found - calculating fresh...');
@@ -532,16 +548,12 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         }
     }
     
+    // CRITICAL: Only Dashboard (forceRefresh=true) reaches this point!
     // Calculate carts using the SAME function
     console.log(`🧮 getGlobalOrdersAndCarts: Calculating carts for ${orders.length} orders...`);
     console.log(`   Date: ${currentDate}`);
-    if (forceRefresh) {
-        console.log(`   🔵 DASHBOARD is calculating FRESH (forceRefresh=true)`);
-        console.log(`   ⚠️ This will OVERWRITE any existing cache!`);
-    } else {
-        console.log(`   ⚠️ Other page is calculating (no cache found)`);
-        console.log(`   ⚠️ Dashboard should have calculated first - this shouldn't happen!`);
-    }
+    console.log(`   🔵 DASHBOARD is calculating FRESH (forceRefresh=true)`);
+    console.log(`   ⚠️ This will OVERWRITE any existing cache!`);
     console.log(`   🔵 STARTING FUST CALCULATION NOW...`);
     console.log('');
     
@@ -554,18 +566,7 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     console.log(`   Breakdown: Aalsmeer=${cartResult.byRoute.Aalsmeer}, Naaldwijk=${cartResult.byRoute.Naaldwijk}, Rijnsburg=${cartResult.byRoute.Rijnsburg}`);
     
     // CACHE the result with timestamp and date
-    // CRITICAL: ONLY Dashboard can set the cache! Other pages should NEVER cache!
-    if (!forceRefresh) {
-        console.error('❌ CRITICAL ERROR: Non-Dashboard page tried to set cache!');
-        console.error('❌ Only Dashboard should calculate and cache results!');
-        console.error('❌ This page should have used Dashboard\'s cache instead!');
-        console.error('❌ NOT caching this result - Dashboard must calculate first!');
-        // DON'T cache - return result but don't store it
-        return {
-            orders: orders,
-            cartResult: cartResult
-        };
-    }
+    // CRITICAL: ONLY Dashboard can reach this point and set the cache!
     
     // Only Dashboard (forceRefresh=true) can cache
     const cacheSource = 'Dashboard (forceRefresh=true)';

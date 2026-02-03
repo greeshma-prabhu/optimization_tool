@@ -27,10 +27,16 @@ class CartDisplayManager {
         
         // CRITICAL: Use getGlobalOrdersAndCarts() to get CACHED result
         // DO NOT call calculateTotalCarts() directly - that would calculate fresh and overwrite cache!
+        // CRITICAL: Non-Dashboard pages should NEVER calculate - only read from Dashboard's cache!
         if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
-            const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+            const globalData = window.CartCalculation.getGlobalOrdersAndCarts(); // NO forceRefresh - only reads cache!
             this.cartData = globalData.cartResult;
             this.orders = globalData.orders; // Use orders from single source
+            
+            if (this.cartData.total === 0 && this.orders.length > 0) {
+                console.warn('⚠️ CartDisplayManager: Got 0 carts but have orders - Dashboard may not have calculated yet!');
+                console.warn('⚠️ Please load Dashboard and click "Sync" or "Refresh Data" to calculate carts!');
+            }
             
             console.log('✅ CartDisplayManager: Using CACHED result from SINGLE SOURCE');
             console.log('   Total carts:', this.cartData.total);
@@ -39,15 +45,9 @@ class CartDisplayManager {
             console.log('   Naaldwijk:', this.cartData.byRoute.Naaldwijk || 0);
             console.log('   Rijnsburg:', this.cartData.byRoute.Rijnsburg || 0);
             console.log('   Orders:', this.orders.length);
-        } else if (this.orders && this.orders.length > 0 && window.CartCalculation && typeof window.CartCalculation.calculateTotalCarts === 'function') {
-            // Fallback: Only calculate if no cache exists and we have orders
-            console.warn('⚠️ CartDisplayManager: No cache found, calculating fresh (this should only happen on Dashboard!)');
-            this.cartData = window.CartCalculation.calculateTotalCarts(this.orders);
-            console.log('✅ CartDisplayManager: Calculation complete');
-            console.log('   Total carts:', this.cartData.total);
-            console.log('   Total trucks:', this.cartData.trucks);
         } else {
-            console.log('📦 CartDisplayManager: No orders, returning empty data');
+            console.error('❌ CartDisplayManager: getGlobalOrdersAndCarts() not available!');
+            console.error('❌ Cannot get cart data - Dashboard must calculate first!');
             this.cartData = {
                 total: 0,
                 byRoute: { Aalsmeer: 0, Naaldwijk: 0, Rijnsburg: 0 },
