@@ -193,9 +193,17 @@ function calculateCarts(orders) {
         'zero': 0
     };
     
-    // Step 2: Calculate FUST for each orderrow and aggregate by route + fust type
+    // Step 2: Calculate FUST for each orderrow and aggregate by route + fust type + cart type
     // CRITICAL: Sum ALL fust of SAME TYPE in SAME ROUTE FIRST!
+    // Also track Danish vs Standard carts separately
     const fustByRouteAndType = {
+        'Aalsmeer': {},
+        'Naaldwijk': {},
+        'Rijnsburg': {}
+    };
+    
+    // Track Danish cart customers separately
+    const fustByRouteAndTypeDanish = {
         'Aalsmeer': {},
         'Naaldwijk': {},
         'Rijnsburg': {}
@@ -212,15 +220,24 @@ function calculateCarts(orders) {
         const fustType = getFustType(order);
         const fustCalc = calculateFustForOrderrow(order);
         const assemblyAmount = order.assembly_amount || 0;
+        const customerName = order.customer_name || order.order?.customer_name || '';
+        
+        // Check if customer uses Danish carts
+        const isDanish = window.RouteMapping && window.RouteMapping.usesDanishCarts 
+            ? window.RouteMapping.usesDanishCarts(customerName)
+            : false;
         
         // Track method usage
         methodCounts[fustCalc.method] = (methodCounts[fustCalc.method] || 0) + 1;
         
         // Aggregate: Sum ALL fust of SAME TYPE in SAME ROUTE
-        if (!fustByRouteAndType[route][fustType]) {
-            fustByRouteAndType[route][fustType] = 0;
+        // Separate Danish and Standard carts
+        const targetMap = isDanish ? fustByRouteAndTypeDanish : fustByRouteAndType;
+        
+        if (!targetMap[route][fustType]) {
+            targetMap[route][fustType] = 0;
         }
-        fustByRouteAndType[route][fustType] += fustCalc.totalFust;
+        targetMap[route][fustType] += fustCalc.totalFust;
         
         // Log first 5 orders for debugging
         if (idx < 5) {
@@ -277,17 +294,56 @@ function calculateCarts(orders) {
         
         // Calculate carts for each fust type in this route
         Object.entries(fustTypes).forEach(([fustType, totalFust]) => {
-            const capacity = FUST_CAPACITY[fustType] || FUST_CAPACITY['default'];
-            // FORMULA: carts = total_fust ÷ fust_capacity
-            const carts = Math.ceil(totalFust / capacity);
+            // Check if there's Danish fust for this route+type
+            const danishFust = fustByRouteAndTypeDanish[route]?.[fustType] || 0;
+            const standardFust = totalFust - danishFust; // Standard = total - danish
             
-            routeTotalCarts += carts;
-            routeBreakdown.push({
-                fustType,
-                totalFust: parseFloat(totalFust.toFixed(2)),
-                capacity,
-                carts
-            });
+            let totalCarts = 0;
+            
+            // Calculate Danish carts if any
+            if (danishFust > 0 && window.RouteMapping && window.RouteMapping.getCartCapacity) {
+                const danishCapacity = window.RouteMapping.getCartCapacity(fustType, true);
+                const danishCarts = Math.ceil(danishFust / danishCapacity);
+                totalCarts += danishCarts;
+                routeBreakdown.push({
+                    fustType: `${fustType} (Danish)`,
+                    totalFust: parseFloat(danishFust.toFixed(2)),
+                    capacity: danishCapacity,
+                    carts: danishCarts
+                });
+            }
+            
+            // Calculate Standard carts if any
+            if (standardFust > 0) {
+                const standardCapacity = window.RouteMapping && window.RouteMapping.getCartCapacity
+                    ? window.RouteMapping.getCartCapacity(fustType, false)
+                    : (FUST_CAPACITY[fustType] || FUST_CAPACITY['default']);
+                const standardCarts = Math.ceil(standardFust / standardCapacity);
+                totalCarts += standardCarts;
+                routeBreakdown.push({
+                    fustType: `${fustType} (Standard)`,
+                    totalFust: parseFloat(standardFust.toFixed(2)),
+                    capacity: standardCapacity,
+                    carts: standardCarts
+                });
+            }
+            
+            // If no Danish fust, use simple standard calculation
+            if (danishFust === 0 && totalFust > 0) {
+                const capacity = window.RouteMapping && window.RouteMapping.getCartCapacity
+                    ? window.RouteMapping.getCartCapacity(fustType, false)
+                    : (FUST_CAPACITY[fustType] || FUST_CAPACITY['default']);
+                const carts = Math.ceil(totalFust / capacity);
+                totalCarts = carts;
+                routeBreakdown.push({
+                    fustType,
+                    totalFust: parseFloat(totalFust.toFixed(2)),
+                    capacity,
+                    carts
+                });
+            }
+            
+            routeTotalCarts += totalCarts;
             
             console.log(`  Fust ${fustType}: ${totalFust.toFixed(2)} total FUST ÷ ${capacity} capacity = ${carts} carts`);
         });
