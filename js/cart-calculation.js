@@ -343,15 +343,14 @@ function calculateCarts(orders) {
             const danishFust = fustByRouteAndTypeDanish[route]?.[fustType] || 0;
             const standardFust = totalFust - danishFust; // Standard = total - danish
             
-            let totalCarts = 0;
+            let routeCartsForThisType = 0;
             let capacity = FUST_CAPACITY[fustType] || FUST_CAPACITY['default']; // Default capacity
-            let carts = 0; // Will be calculated
             
             // Calculate Danish carts if any
             if (danishFust > 0 && window.RouteMapping && window.RouteMapping.getCartCapacity) {
                 const danishCapacity = window.RouteMapping.getCartCapacity(fustType, true);
                 const danishCarts = Math.ceil(danishFust / danishCapacity);
-                totalCarts += danishCarts;
+                routeCartsForThisType += danishCarts;
                 routeDanishCarts += danishCarts;
                 routeBreakdown.push({
                     fustType: `${fustType} (Danish)`,
@@ -361,16 +360,15 @@ function calculateCarts(orders) {
                 });
             }
             
-            // Calculate Standard carts if any
+            // Calculate Standard carts if any (ONLY ONCE - no overlap with Danish)
             if (standardFust > 0) {
                 const standardCapacity = window.RouteMapping && window.RouteMapping.getCartCapacity
                     ? window.RouteMapping.getCartCapacity(fustType, false)
                     : (FUST_CAPACITY[fustType] || FUST_CAPACITY['default']);
                 const standardCarts = Math.ceil(standardFust / standardCapacity);
-                totalCarts += standardCarts;
+                routeCartsForThisType += standardCarts;
                 routeStandardCarts += standardCarts;
                 capacity = standardCapacity; // For logging
-                carts = standardCarts; // For logging
                 routeBreakdown.push({
                     fustType: `${fustType} (Standard)`,
                     totalFust: parseFloat(standardFust.toFixed(2)),
@@ -379,27 +377,11 @@ function calculateCarts(orders) {
                 });
             }
             
-            // If no Danish fust, use simple standard calculation
-            if (danishFust === 0 && totalFust > 0) {
-                capacity = window.RouteMapping && window.RouteMapping.getCartCapacity
-                    ? window.RouteMapping.getCartCapacity(fustType, false)
-                    : (FUST_CAPACITY[fustType] || FUST_CAPACITY['default']);
-                carts = Math.ceil(totalFust / capacity);
-                totalCarts = carts;
-                routeStandardCarts += carts;
-                routeBreakdown.push({
-                    fustType,
-                    totalFust: parseFloat(totalFust.toFixed(2)),
-                    capacity,
-                    carts
-                });
-            }
-            
-            routeTotalCarts += totalCarts;
+            routeTotalCarts += routeCartsForThisType;
             
             // Only log if we calculated carts
-            if (totalCarts > 0) {
-                console.log(`  Fust ${fustType}: ${totalFust.toFixed(2)} total FUST ÷ ${capacity} capacity = ${totalCarts} carts`);
+            if (routeCartsForThisType > 0) {
+                console.log(`  Fust ${fustType}: ${totalFust.toFixed(2)} total FUST ÷ ${capacity} capacity = ${routeCartsForThisType} carts`);
             }
         });
         
@@ -418,55 +400,17 @@ function calculateCarts(orders) {
         console.log(`  ✅ ${route} TOTAL: ${routeTotalCarts} carts (Standard: ${routeStandardCarts}, Danish: ${routeDanishCarts})`);
     });
     
-    // CRITICAL FIX: total MUST equal standard + danish
-    // Use standard + danish as source of truth, not route totals
+    // Source of truth: total = standard + danish
+    // Route totals are informational only (never adjusted)
     const totalCarts = totalStandardCarts + totalDanishCarts;
     const totalTrucks = calculateTrucks(totalCarts);
     
-    // Verify route totals match (for debugging)
+    // Log route totals for reference (informational only)
     const routeTotalSum = cartsByRoute.Aalsmeer + cartsByRoute.Naaldwijk + cartsByRoute.Rijnsburg;
     if (Math.abs(routeTotalSum - totalCarts) > 0.01) {
-        console.warn('⚠️ Route totals mismatch (using standard+danish as source of truth):');
-        console.warn(`   Route sum: ${routeTotalSum} carts`);
-        console.warn(`   Standard + Danish: ${totalCarts} carts`);
-        console.warn(`   Difference: ${Math.abs(routeTotalSum - totalCarts)}`);
-        console.warn('   Using standard + danish as correct total!');
-        
-        // CRITICAL: Recalculate route totals to match standard+danish
-        // This ensures consistency - route totals should sum to standard+danish
-        if (routeTotalSum > 0 && totalCarts > 0) {
-            const ratio = totalCarts / routeTotalSum;
-            cartsByRoute.Aalsmeer = Math.round(cartsByRoute.Aalsmeer * ratio);
-            cartsByRoute.Naaldwijk = Math.round(cartsByRoute.Naaldwijk * ratio);
-            cartsByRoute.Rijnsburg = Math.round(cartsByRoute.Rijnsburg * ratio);
-            
-            // Verify the fix worked
-            const newRouteSum = cartsByRoute.Aalsmeer + cartsByRoute.Naaldwijk + cartsByRoute.Rijnsburg;
-            if (Math.abs(newRouteSum - totalCarts) > 1) {
-                console.error('❌ Failed to fix route totals - still mismatched!');
-                console.error(`   New route sum: ${newRouteSum}, Expected: ${totalCarts}`);
-            } else {
-                console.log(`✅ Route totals adjusted: ${newRouteSum} carts (matches standard+danish)`);
-            }
-        } else if (totalCarts === 0) {
-            // No carts - set all routes to 0
-            cartsByRoute.Aalsmeer = 0;
-            cartsByRoute.Naaldwijk = 0;
-            cartsByRoute.Rijnsburg = 0;
-        }
-    }
-    
-    // FINAL VERIFICATION: Ensure total = standard + danish
-    if (Math.abs(totalCarts - (totalStandardCarts + totalDanishCarts)) > 0.01) {
-        console.error('❌❌❌ CRITICAL BUG: total !== standard + danish!');
-        console.error(`   total: ${totalCarts}`);
-        console.error(`   standard: ${totalStandardCarts}`);
-        console.error(`   danish: ${totalDanishCarts}`);
-        console.error(`   standard + danish: ${totalStandardCarts + totalDanishCarts}`);
-        console.error('   FIXING: Setting total = standard + danish');
-        // Force fix
-        const correctedTotal = totalStandardCarts + totalDanishCarts;
-        console.log(`   Corrected total: ${correctedTotal}`);
+        console.log('ℹ️ Route totals (informational):');
+        console.log(`   Route sum: ${routeTotalSum} carts`);
+        console.log(`   Standard + Danish (source of truth): ${totalCarts} carts`);
     }
     
     console.log('');
