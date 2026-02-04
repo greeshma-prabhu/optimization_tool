@@ -822,25 +822,51 @@
                                 const validationResult = window.OrderValidator.validateOrders(filteredByDate);
                                 orders = validationResult.orders;
                                 
+                                // CRITICAL: Count unique orders after validation (not orderrows!)
+                                const uniqueOrderIdsAfterValidation = new Set();
+                                orders.forEach(row => {
+                                    const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                                    if (orderId) {
+                                        uniqueOrderIdsAfterValidation.add(String(orderId));
+                                    }
+                                });
+                                const uniqueOrderCountAfterValidation = uniqueOrderIdsAfterValidation.size;
+                                
                                 // Get statistics
                                 const stats = window.OrderValidator.getOrderStats(orders);
                                 console.log('');
-                                console.log('📊 ORDER STATISTICS:');
-                                console.log('  Aalsmeer:', stats.byRoute.Aalsmeer, 'orders');
-                                console.log('  Naaldwijk:', stats.byRoute.Naaldwijk, 'orders');
-                                console.log('  Rijnsburg:', stats.byRoute.Rijnsburg, 'orders');
+                                console.log('📊 ORDER STATISTICS (UNIQUE ORDERS):');
+                                console.log(`  Total unique orders: ${uniqueOrderCountAfterValidation} (from ${orders.length} orderrows)`);
+                                console.log('  Aalsmeer:', stats.byRoute.Aalsmeer, 'orderrows');
+                                console.log('  Naaldwijk:', stats.byRoute.Naaldwijk, 'orderrows');
+                                console.log('  Rijnsburg:', stats.byRoute.Rijnsburg, 'orderrows');
                                 console.log('  Total customers:', Object.keys(stats.byCustomer).length);
                                 if (stats.topCustomers.length > 0) {
-                                    console.log('  Top customer:', stats.topCustomers[0].name, `(${stats.topCustomers[0].count} orders)`);
+                                    console.log('  Top customer:', stats.topCustomers[0].name, `(${stats.topCustomers[0].count} orderrows)`);
                                 }
                                 console.log('');
+                                
+                                // Store unique order count for display
+                                orders._uniqueOrderCount = uniqueOrderCountAfterValidation;
                             } else {
                                 // Fallback if validator not loaded - use filtered orders
                                 orders = filteredByDate;
+                                
+                                // Count unique orders
+                                const uniqueOrderIdsFallback = new Set();
+                                orders.forEach(row => {
+                                    const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                                    if (orderId) {
+                                        uniqueOrderIdsFallback.add(String(orderId));
+                                    }
+                                });
+                                orders._uniqueOrderCount = uniqueOrderIdsFallback.size;
+                                
                                 console.log('⚠️ Order validator not available, using filtered orders');
+                                console.log(`   Unique orders: ${orders._uniqueOrderCount} (from ${orders.length} orderrows)`);
                             }
                             
-                            console.log('✅ Processing', orders.length, 'valid orders');
+                            console.log(`✅ Processing ${orders._uniqueOrderCount || orders.length} unique orders (${orders.length} orderrows)`);
                             
                             // ✅ CRITICAL: SAVE TO GLOBAL STATE FIRST (before calculating carts!)
                             console.log(`🔄 Saving ${orders.length} orders to global state FIRST...`);
@@ -1050,7 +1076,7 @@
                 console.log(`   TRUCKS: ${cartResult.trucks || 0}`);
                 
                 document.getElementById('total-carts-needed').textContent = totalCarts;
-                console.log(`✅ Dashboard updated with SINGLE SOURCE calculation: ${totalCarts} carts (from ${matchedOrdersCount} matched orders)`);
+                console.log(`✅ Dashboard updated with SINGLE SOURCE calculation: ${totalCarts} carts (from ${uniqueMatchedOrders} unique matched orders)`);
                 
                 // Store verification data for Orders page comparison
                 const currentDate = window.appState?.currentDate || new Date().toISOString().split('T')[0];
