@@ -1346,16 +1346,34 @@
                 return;
             }
             
+            // CRITICAL: Use ONLY matched orders from cartData (Excel clients only)
+            // DO NOT use all orders - unmatched orders should NOT appear in route summaries!
+            const matchedOrders = cartData.matchedOrders || orders.filter(o => {
+                // Fallback: if matchedOrders not available, filter using isKnownClient
+                const customerName = o.customer_name || o.order?.customer_name || '';
+                const clientCheck = window.RouteMapping.isKnownClient(customerName);
+                return clientCheck.matched;
+            });
+            
+            console.log(`📊 updateRouteSummary: Using ${matchedOrders.length} matched orders (Excel clients only)`);
+            console.log(`   Total orders passed: ${orders.length}`);
+            console.log(`   Matched orders: ${matchedOrders.length}`);
+            console.log(`   Unmatched orders (excluded): ${(cartData.unmatchedOrders || []).length}`);
+            
             const routes = ['rijnsburg', 'aalsmeer', 'naaldwijk'];
             
             routes.forEach(route => {
-                // Count orders for this route
-                const routeOrders = orders.filter(o => {
-                    const customerName = o.customer_name || o.order?.customer_name || '';
-                    return window.RouteMapping.getRouteForCustomer(customerName) === route;
+                // Count orders for this route (ONLY from matched orders)
+                const routeOrders = matchedOrders.filter(o => {
+                    // Use route already set by separateOrdersByClientMatch, or getRouteForCustomer
+                    const routeFromOrder = o.route || (() => {
+                        const customerName = o.customer_name || o.order?.customer_name || '';
+                        return window.RouteMapping.getRouteForCustomer(customerName);
+                    })();
+                    return routeFromOrder === route;
                 });
                 
-                // Count unique customers
+                // Count unique customers (ONLY matched customers)
                 const uniqueCustomers = new Set(routeOrders.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean));
                 
                 // Get carts for this route - check both proper case and lowercase
@@ -1394,9 +1412,19 @@
         
         // View route details - show customer list in scrollable modal
         function viewRouteDetails(route) {
-            const ordersInMemory = window.__zuidplas_orders_memory || [];
-            if (ordersInMemory.length === 0) {
-                alert('No orders loaded. Please sync data first.');
+            // CRITICAL: Get cart result to access matched orders
+            const cartResult = window.__zuidplas_cart_cache?.cartResult;
+            if (!cartResult) {
+                alert('No cart data available. Please sync data first.');
+                return;
+            }
+            
+            // CRITICAL: Use ONLY matched orders (Excel clients only)
+            // DO NOT use all orders - unmatched orders should NOT appear in customer lists!
+            const matchedOrders = cartResult.matchedOrders || [];
+            
+            if (matchedOrders.length === 0) {
+                alert('No matched orders loaded. Please sync data first.');
                 return;
             }
             
@@ -1405,10 +1433,19 @@
                 return;
             }
             
-            const routeOrders = ordersInMemory.filter(o => {
-                const customerName = o.customer_name || o.order?.customer_name || '';
-                return window.RouteMapping.getRouteForCustomer(customerName) === route;
+            // Filter route orders from MATCHED orders only
+            const routeOrders = matchedOrders.filter(o => {
+                // Use route already set by separateOrdersByClientMatch, or getRouteForCustomer
+                const routeFromOrder = o.route || (() => {
+                    const customerName = o.customer_name || o.order?.customer_name || '';
+                    return window.RouteMapping.getRouteForCustomer(customerName);
+                })();
+                return routeFromOrder === route;
             });
+            
+            console.log(`📋 viewRouteDetails(${route}): Showing ${routeOrders.length} matched orders (Excel clients only)`);
+            console.log(`   Total matched orders: ${matchedOrders.length}`);
+            console.log(`   Unmatched orders (excluded): ${(cartResult.unmatchedOrders || []).length}`);
             
             const customers = [...new Set(routeOrders.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean))].sort();
             const departureTime = window.RouteMapping.getDepartureTime(route);

@@ -498,6 +498,8 @@ function calculateCarts(orders) {
         trucks: calculateTrucks(finalTotal),  // Recalculate trucks with correct total
         byRoute: cartsByRoute,
         breakdown: breakdown,
+        matchedOrders: validOrders,  // CRITICAL: Return matched orders for display (ONLY these should be shown)
+        unmatchedOrders: unmatchedOrders,  // CRITICAL: Return unmatched orders for DUMP BASKET only
         matchedOrdersCount: matchedOrders.length,  // Count of matched (Excel) orders
         unmatchedOrdersCount: unmatchedOrders.length  // Count of unmatched (DUMP BASKET) orders
     };
