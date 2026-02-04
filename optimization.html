@@ -277,8 +277,10 @@
             }
             
             console.log('✅ Input Summary updated:');
-            console.log('   Orders:', summary.totalOrders);
-            console.log('   Carts:', summary.totalCarts);
+            console.log('   Orders:', cartResult.matchedOrdersCount || 0);
+            console.log('   Carts:', cartResult.total || 0);
+            console.log('   Standard:', cartResult.standard || 0);
+            console.log('   Danish:', cartResult.danish || 0);
             console.log('   Danish:', cartTypes.danish);
             console.log('   Standard:', cartTypes.standard);
         }
