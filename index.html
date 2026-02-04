@@ -910,10 +910,20 @@
                     } else {
                         // Check if actually from API or demo data
                         const isDemoData = localStorage.getItem('zuidplas_using_demo_data') === 'true';
+                        
+                        // Get matched/unmatched counts from cart result if available
+                        const cartResult = window.__zuidplas_cart_cache?.cartResult;
+                        const matchedCount = cartResult?.matchedOrdersCount || orders.length;
+                        const unmatchedCount = cartResult?.unmatchedOrdersCount || 0;
+                        
                         if (isDemoData) {
                             statusMsg.innerHTML = `✅ Using demo data (${orders.length} sample orders)`;
                         } else {
-                            statusMsg.innerHTML = `✅ Found ${orders.length} orders from API`;
+                            if (unmatchedCount > 0) {
+                                statusMsg.innerHTML = `✅ Found ${orders.length} orders from API (${matchedCount} matched, ${unmatchedCount} unmatched)`;
+                            } else {
+                                statusMsg.innerHTML = `✅ Found ${matchedCount} matched orders from API`;
+                            }
                         }
                         statusMsg.classList.add('show', 'success');
                     }
