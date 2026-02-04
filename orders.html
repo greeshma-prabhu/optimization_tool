@@ -574,12 +574,28 @@
                         // Calculate carts using EXACT SAME function
                         this.cartResult = window.CartCalculation.calculateCarts(validatedOrders);
                         
+                        // CRITICAL VERIFICATION: Ensure total = standard + danish
+                        const calculatedTotal = (this.cartResult.standard || 0) + (this.cartResult.danish || 0);
+                        if (Math.abs(this.cartResult.total - calculatedTotal) > 0.01) {
+                            console.error('❌❌❌ CRITICAL BUG IN calculateCarts()! ❌❌❌');
+                            console.error(`   total: ${this.cartResult.total}`);
+                            console.error(`   standard: ${this.cartResult.standard}`);
+                            console.error(`   danish: ${this.cartResult.danish}`);
+                            console.error(`   standard + danish: ${calculatedTotal}`);
+                            console.error('   FIXING: Setting total = standard + danish');
+                            this.cartResult.total = calculatedTotal;
+                            this.cartResult.trucks = Math.ceil(calculatedTotal / 17);
+                        }
+                        
                         console.log('');
                         console.log('═══════════════════════════════════════════════════════════════════');
                         console.log(`✅ Orders page calculated: ${this.cartResult.total} carts`);
-                        console.log(`   Aalsmeer: ${this.cartResult.byRoute.Aalsmeer}`);
-                        console.log(`   Naaldwijk: ${this.cartResult.byRoute.Naaldwijk}`);
-                        console.log(`   Rijnsburg: ${this.cartResult.byRoute.Rijnsburg}`);
+                        console.log(`   Standard: ${this.cartResult.standard || 0} carts`);
+                        console.log(`   Danish: ${this.cartResult.danish || 0} carts`);
+                        console.log(`   ✅ VERIFICATION: ${this.cartResult.standard || 0} + ${this.cartResult.danish || 0} = ${this.cartResult.total} ✅`);
+                        console.log(`   Aalsmeer: ${this.cartResult.byRoute.Aalsmeer || 0}`);
+                        console.log(`   Naaldwijk: ${this.cartResult.byRoute.Naaldwijk || 0}`);
+                        console.log(`   Rijnsburg: ${this.cartResult.byRoute.Rijnsburg || 0}`);
                         console.log(`   Trucks: ${this.cartResult.trucks || 0}`);
                         console.log('');
                         
