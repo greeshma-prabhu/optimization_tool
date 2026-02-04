@@ -189,16 +189,33 @@
             try {
                 console.log('🔄 Starting optimization...');
                 
-                // Get orders from global state
-                const orders = window.appState.getOrders();
+                // CRITICAL: Use matched orders from cartResult (same as Dashboard)
+                let orders = null;
+                let cartResult = null;
+                
+                if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                    cartResult = globalData.cartResult;
+                    orders = cartResult.matchedOrders || globalData.orders;
+                } else {
+                    // Fallback: use orderManager if available
+                    if (orderManager && orderManager.orders && orderManager.orders.length > 0) {
+                        orders = orderManager.orders;
+                    } else {
+                        orders = window.appState.getOrders();
+                    }
+                }
                 
                 if (!orders || orders.length === 0) {
                     throw new Error('No orders available. Please load orders from Dashboard first.');
                 }
 
                 console.log('📊 Orders loaded:', orders.length);
+                if (cartResult) {
+                    console.log(`   Matched orders count: ${cartResult.matchedOrdersCount || orders.length}`);
+                }
 
-                // Initialize optimizer
+                // Initialize optimizer with matched orders
                 currentOptimizer = initializeOptimizer(orders);
                 
                 if (!currentOptimizer) {
