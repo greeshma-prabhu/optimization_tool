@@ -763,8 +763,26 @@
                 // Clear table
                 tableBody.innerHTML = '';
                 
-                if (this.orders.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No orders found for this date</td></tr>';
+                // CRITICAL: Display ONLY matched orders (Excel clients only)
+                // Unmatched orders should NOT appear in the main orders table
+                // They should ONLY appear in the DUMP BASKET section
+                const matchedOrders = this.cartResult?.matchedOrders || this.orders.filter(o => {
+                    // Fallback: if matchedOrders not available, filter using isKnownClient
+                    if (window.RouteMapping && window.RouteMapping.isKnownClient) {
+                        const customerName = o.customer_name || o.order?.customer_name || '';
+                        const clientCheck = window.RouteMapping.isKnownClient(customerName);
+                        return clientCheck.matched;
+                    }
+                    return true; // If RouteMapping not available, show all (shouldn't happen)
+                });
+                
+                console.log(`📋 displayOrders(): Showing ${matchedOrders.length} matched orders (Excel clients only)`);
+                console.log(`   Total orders: ${this.orders.length}`);
+                console.log(`   Matched orders: ${matchedOrders.length}`);
+                console.log(`   Unmatched orders (excluded from table): ${(this.cartResult?.unmatchedOrders || []).length}`);
+                
+                if (matchedOrders.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No matched orders found for this date</td></tr>';
                     return;
                 }
                 
@@ -775,8 +793,8 @@
                     'naaldwijk': '#f59e0b'    // Orange
                 };
                 
-                // Add rows
-                this.orders.forEach((order, index) => {
+                // Add rows (ONLY matched orders)
+                matchedOrders.forEach((order, index) => {
                     const row = document.createElement('tr');
                     
                     const orderObj = order.order || {};
@@ -818,7 +836,7 @@
                     tableBody.appendChild(row);
                 });
                 
-                console.log(`✅ Displayed ${this.orders.length} orders in table`);
+                console.log(`✅ Displayed ${matchedOrders.length} matched orders in table (Excel clients only)`);
             }
             
             updateCartSummary() {
