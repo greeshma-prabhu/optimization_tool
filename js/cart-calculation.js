@@ -750,6 +750,13 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                     });
                 }
                 
+                // CRITICAL: Ensure cartResult has correct matchedOrdersCount from uniqueOrderIds
+                if (appData.cartResult && appData.uniqueOrderIds.size > 0) {
+                    appData.cartResult.matchedOrdersCount = appData.uniqueOrderIds.size;
+                }
+                
+                console.log(`✅ Using cache: ${appData.uniqueOrderIds.size} unique orders, ${appData.cartResult.total} carts`);
+                
                 return {
                     orders: appData.orders,
                     cartResult: appData.cartResult
@@ -790,6 +797,13 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                         if (orderId) appData.uniqueOrderIds.add(String(orderId));
                     });
                 }
+                
+                // CRITICAL: Ensure cartResult has correct matchedOrdersCount from uniqueOrderIds
+                if (appData.cartResult && appData.uniqueOrderIds.size > 0) {
+                    appData.cartResult.matchedOrdersCount = appData.uniqueOrderIds.size;
+                }
+                
+                console.log(`✅ Using cache: ${appData.uniqueOrderIds.size} unique orders, ${appData.cartResult.total} carts`);
                 
                 return {
                     orders: appData.orders,
