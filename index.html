@@ -1054,6 +1054,10 @@
             console.log('📊 UPDATE DASHBOARD CALLED');
             console.log(`   Orders parameter: ${orders ? orders.length : 0}`);
             
+            // CRITICAL: Declare cartResult at function scope so it's available everywhere
+            let cartResult = null;
+            let actualOrders = orders || [];
+            
             // CRITICAL: Dashboard loads data FIRST, so it should CALCULATE FRESH!
             // Other pages will then use the cached result from Dashboard
             if (typeof window.CartCalculation !== 'undefined' && window.CartCalculation.getGlobalOrdersAndCarts) {
@@ -1083,9 +1087,9 @@
                 // Now get fresh calculation (will calculate and cache for other pages)
                 console.log('   🔄 Calling getGlobalOrdersAndCarts(forceRefresh=true) - will calculate FRESH...');
                 const globalData = window.CartCalculation.getGlobalOrdersAndCarts(true); // FORCE REFRESH!
-                const cartResult = globalData.cartResult;
+                cartResult = globalData.cartResult; // Use function-scoped variable
                 const totalCarts = cartResult.total || 0;
-                const actualOrders = globalData.orders;
+                actualOrders = globalData.orders;
                 
                 // CRITICAL: Count unique orders (not orderrows!)
                 // actualOrders is an array of orderrows, we need to count unique order_ids
@@ -1259,9 +1263,13 @@
                     cartResult = globalData.cartResult;
                     console.log('✅ Route overview using SINGLE SOURCE:');
                     console.log(`   Orders: ${ordersWithCarts.length}`);
-                    console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
-                    console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
-                    console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
+                    if (cartResult && cartResult.byRoute) {
+                        console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
+                        console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
+                        console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
+                    } else {
+                        console.warn('⚠️ cartResult or cartResult.byRoute not available');
+                    }
                 } else {
                     // Fallback: Try to get from cache anyway
                     console.warn('⚠️ Route overview: getGlobalOrdersAndCarts() not available, trying fallback...');
