@@ -161,33 +161,42 @@ const LATE_DELIVERY_CLIENTS = [
 
 /**
  * CANONICAL name normalization function
- * Normalizes customer names for matching by:
- * 1. Converting to lowercase
- * 2. Trimming spaces
- * 3. Removing common prefixes (1x, 2x, 3x, etc.)
- * 4. Removing company suffixes (bv, b.v., webshop, etc.)
- * 5. Normalizing spaces and punctuation
- * PRESERVES all words (including Dutch particles) - no word removal!
+ * Normalizes customer names for matching by removing business-safe variations:
+ * - Quantity prefixes (1x, 2x, 3x, etc.)
+ * - Legal/business suffixes (BV, B.V., webshop, retail, etc.)
+ * - Special characters and punctuation
+ * - Multiple spaces
+ * 
+ * CRITICAL: This function ensures both API and Excel names normalize to the same value
+ * Example: "Superflora BV" and "1x Superflora" both normalize to "superflora"
+ * 
+ * PRESERVES all meaningful words (including Dutch particles) - no word removal!
  */
 function normalizeName(name) {
   if (!name) return '';
   
   return name
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')           // Normalize multiple spaces to single space
-    .replace(/^\d+x\s+/i, '')        // Remove prefixes like "1x ", "2x ", "3x "
-    .replace(/[&]/g, ' ')            // Replace ampersands with space
-    .replace(/\./g, '')              // Remove periods
-    .replace(/b\.v\.|bv|b v|b\.v/gi, '')      // Remove BV suffix
-    .replace(/v\.o\.f\.|vof/gi, '')           // Remove VOF suffix
-    .replace(/\s+webshop\s*/gi, ' ')         // Remove "webshop" suffix
-    .replace(/\s+retail\s*/gi, ' ')          // Remove "retail" suffix
-    .replace(/\(.*?\)/g, '')        // Remove content in parentheses
-    .replace(/-/g, ' ')              // Replace hyphens with spaces
-    .replace(/\//g, ' ')            // Replace slashes with spaces
-    .replace(/\s+/g, ' ')           // Normalize spaces again after replacements
-    .trim();
+    .toLowerCase()                    // Step 1: Convert to lowercase
+    .trim()                           // Step 2: Trim leading/trailing whitespace
+    .replace(/\s+/g, ' ')            // Step 3: Collapse multiple spaces to single space
+    .replace(/^\d+x\s*/i, '')        // Step 4: Remove leading quantity prefixes (1x, 2x, 3x, etc.)
+    .replace(/\s*\d+x\s*/gi, ' ')    // Step 5: Remove quantity prefixes anywhere (with spaces)
+    .replace(/[&]/g, ' ')            // Step 6: Replace ampersands with space
+    .replace(/\./g, '')              // Step 7: Remove periods (handles B.V. → BV → removed)
+    .replace(/b\.v\.|bv|b\s*v|b\.v/gi, '')      // Step 8: Remove BV suffix (all variations)
+    .replace(/v\.o\.f\.|vof|v\s*o\s*f/gi, '')  // Step 9: Remove VOF suffix (all variations)
+    .replace(/\s+webshop\s*/gi, ' ') // Step 10: Remove "webshop" suffix
+    .replace(/\s+retail\s*/gi, ' ')  // Step 11: Remove "retail" suffix
+    .replace(/\s+export\s*/gi, ' ')  // Step 12: Remove "export" suffix
+    .replace(/\s+holding\s*/gi, ' ') // Step 13: Remove "holding" suffix
+    .replace(/\s+group\s*/gi, ' ')   // Step 14: Remove "group" suffix
+    .replace(/\(.*?\)/g, '')         // Step 15: Remove content in parentheses
+    .replace(/\[.*?\]/g, '')         // Step 16: Remove content in square brackets
+    .replace(/-/g, ' ')              // Step 17: Replace hyphens with spaces
+    .replace(/\//g, ' ')             // Step 18: Replace slashes with spaces
+    .replace(/[^\w\s]/g, ' ')        // Step 19: Remove all other special characters
+    .replace(/\s+/g, ' ')            // Step 20: Normalize spaces again after all replacements
+    .trim();                          // Step 21: Final trim
 }
 
 /**
