@@ -408,42 +408,6 @@ function isKnownClient(customerName) {
   // Not found in any route - NOT a known client
   return { matched: false, route: null };
 }
-      let matchCount = 0;
-      let significantMatches = 0;
-      for (const nw of nameWords) {
-        for (const cw of clientWords) {
-          if (nw.length > 2 && cw.length > 2) {
-            if (nw === cw || nw.includes(cw) || cw.includes(nw)) {
-              matchCount++;
-              if (nw.length >= 4 || cw.length >= 4) {
-                significantMatches++;
-              }
-              break;
-            }
-          }
-        }
-      }
-      
-      if (significantMatches >= 1 || matchCount >= 2) {
-        return { matched: true, route: route };
-      }
-      
-      // Method 4: Single word match for short names
-      if (clientWords.length === 1 && nameWords.length >= 1) {
-        const clientWord = clientWords[0];
-        const matched = nameWords.some(nw => 
-          nw === clientWord || nw.includes(clientWord) || clientWord.includes(nw)
-        );
-        if (matched && clientWord.length >= 2) {
-          return { matched: true, route: route };
-        }
-      }
-    }
-  }
-  
-  // Not found in any route - NOT a known client
-  return { matched: false, route: null };
-}
 
 /**
  * Separate orders into matched (Excel clients) and unmatched (DUMP BASKET)
