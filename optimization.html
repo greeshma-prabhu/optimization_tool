@@ -256,27 +256,25 @@
                 return;
             }
             
-            // Create or update CartDisplayManager
-            if (!cartDisplayManager) {
-                cartDisplayManager = new CartDisplayManager(orders);
-            } else {
-                cartDisplayManager.setOrders(orders);
-            }
-            
-            // Get calculated values
-            const summary = cartDisplayManager.getSummary();
-            const cartTypes = cartDisplayManager.getCartTypes();
-            
-            // Update DOM elements
+            // Update DOM elements using cartResult (SAME as Dashboard)
             const ordersEl = document.getElementById('input-orders') || document.getElementById('total-orders');
             const cartsEl = document.getElementById('input-carts') || document.getElementById('total-cars');
             const danishEl = document.getElementById('input-danish') || document.getElementById('danish-wagons');
             const standardEl = document.getElementById('input-standard') || document.getElementById('standard-cars');
             
-            if (ordersEl) ordersEl.textContent = summary.totalOrders;
-            if (cartsEl) cartsEl.textContent = summary.totalCarts;
-            if (danishEl) danishEl.textContent = cartTypes.danish;
-            if (standardEl) standardEl.textContent = cartTypes.standard;
+            // CRITICAL: Use matchedOrdersCount (unique matched orders), not orders.length
+            if (ordersEl) {
+                ordersEl.textContent = cartResult.matchedOrdersCount || 0;
+            }
+            if (cartsEl) {
+                cartsEl.textContent = cartResult.total || 0;
+            }
+            if (danishEl) {
+                danishEl.textContent = cartResult.danish || 0;
+            }
+            if (standardEl) {
+                standardEl.textContent = cartResult.standard || 0;
+            }
             
             console.log('✅ Input Summary updated:');
             console.log('   Orders:', summary.totalOrders);
