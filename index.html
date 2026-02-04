@@ -2228,16 +2228,35 @@
                 return;
             }
             
-            // Get unique customer names with order counts
-            const customerCounts = {};
-            unmatched.forEach(o => {
-                const name = o.customer_name || o.order?.customer_name || 'Unknown';
-                customerCounts[name] = (customerCounts[name] || 0) + 1;
+            // CRITICAL: Count unique orders per customer (not orderrows!)
+            const customerGroups = {};
+            unmatched.forEach(orderrow => {
+                const name = orderrow.customer_name || orderrow.order?.customer_name || 'Unknown';
+                const orderId = orderrow.order_id || orderrow.order?.id || orderrow.order?.order_id || orderrow.id;
+                
+                if (!customerGroups[name]) {
+                    customerGroups[name] = {
+                        uniqueOrderIds: new Set(),
+                        orderrows: 0
+                    };
+                }
+                
+                if (orderId) {
+                    customerGroups[name].uniqueOrderIds.add(String(orderId));
+                }
+                customerGroups[name].orderrows++;
             });
             
-            const uniqueCustomers = Object.entries(customerCounts)
-                .sort((a, b) => b[1] - a[1])  // Sort by order count (descending)
-                .map(([name, count]) => ({ name, count }));
+            const uniqueCustomers = Object.entries(customerGroups)
+                .map(([name, data]) => ({
+                    name,
+                    uniqueOrders: data.uniqueOrderIds.size,
+                    orderrows: data.orderrows
+                }))
+                .sort((a, b) => b.uniqueOrders - a.uniqueOrders); // Sort by unique order count
+            
+            // Count total unique unmatched orders
+            const totalUniqueUnmatched = uniqueCustomers.reduce((sum, c) => sum + c.uniqueOrders, 0);
             
             // Create modal
             const modal = document.createElement('div');
