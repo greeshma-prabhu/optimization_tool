@@ -421,7 +421,22 @@ class FlorinetAPI {
                 slim: 1
             });
             
-            console.log(`✅ Received ${orderrows.length} orderrows`);
+            console.log(`✅ Received ${orderrows.length} orderrows from API`);
+            
+            // CRITICAL: Count unique orders (not orderrows!)
+            // Multiple orderrows can belong to the same order
+            const uniqueOrderIds = new Set();
+            orderrows.forEach(row => {
+                const orderId = row.order_id || row.order?.id || row.order?.order_id;
+                if (orderId) {
+                    uniqueOrderIds.add(orderId);
+                }
+            });
+            
+            console.log(`📊 API Statistics:`);
+            console.log(`   - Total orderrows (product lines): ${orderrows.length}`);
+            console.log(`   - Unique orders: ${uniqueOrderIds.size}`);
+            console.log(`   - Average orderrows per order: ${uniqueOrderIds.size > 0 ? (orderrows.length / uniqueOrderIds.size).toFixed(2) : 0}`);
             console.log('');
             
             // STEP 3: Enrich each orderrow with customer/location/product data
@@ -433,21 +448,46 @@ class FlorinetAPI {
             const withLocation = enrichedOrders.filter(o => !o.location_name?.startsWith('Location ')).length;
             
             console.log(`✅ Enrichment complete:`);
-            console.log(`   - ${withCustomer}/${orderrows.length} orders have customer names`);
-            console.log(`   - ${withLocation}/${orderrows.length} orders have location names`);
+            console.log(`   - ${withCustomer}/${orderrows.length} orderrows have customer names`);
+            console.log(`   - ${withLocation}/${orderrows.length} orderrows have location names`);
             
             if (withCustomer < orderrows.length || withLocation < orderrows.length) {
-                console.warn('⚠️ Some orders missing enrichment data!');
+                console.warn('⚠️ Some orderrows missing enrichment data!');
                 console.warn(`   Missing customers: ${orderrows.length - withCustomer}`);
                 console.warn(`   Missing locations: ${orderrows.length - withLocation}`);
             }
             
+            // CRITICAL: Count unique orders by order_id (not orderrows!)
+            const uniqueOrdersByRoute = {
+                rijnsburg: new Set(),
+                aalsmeer: new Set(),
+                naaldwijk: new Set()
+            };
+            
+            enrichedOrders.forEach(orderrow => {
+                const orderId = orderrow.order_id || orderrow.order?.id || orderrow.order?.order_id;
+                const route = orderrow.route || 'rijnsburg';
+                if (orderId) {
+                    uniqueOrdersByRoute[route].add(orderId);
+                }
+            });
+            
+            const totalUniqueOrders = uniqueOrdersByRoute.rijnsburg.size + 
+                                    uniqueOrdersByRoute.aalsmeer.size + 
+                                    uniqueOrdersByRoute.naaldwijk.size;
+            
             // ROUTE DISTRIBUTION ANALYSIS
             console.log('');
             console.log('═══════════════════════════════════════');
-            console.log('📊 ROUTE DISTRIBUTION ANALYSIS');
+            console.log('📊 ROUTE DISTRIBUTION ANALYSIS (UNIQUE ORDERS)');
             console.log('═══════════════════════════════════════');
+            console.log(`Total orderrows (product lines): ${enrichedOrders.length}`);
+            console.log(`Total unique orders: ${totalUniqueOrders}`);
+            console.log(`Rijnsburg: ${uniqueOrdersByRoute.rijnsburg.size} unique orders`);
+            console.log(`Aalsmeer: ${uniqueOrdersByRoute.aalsmeer.size} unique orders`);
+            console.log(`Naaldwijk: ${uniqueOrdersByRoute.naaldwijk.size} unique orders`);
             
+            // Also count orderrows per route for reference
             const routeCounts = {
                 rijnsburg: 0,
                 aalsmeer: 0,
@@ -466,10 +506,10 @@ class FlorinetAPI {
                 locationsByRoute[route].add(order.location_name);
             });
             
-            console.log(`Total orders: ${enrichedOrders.length}`);
-            console.log(`Rijnsburg: ${routeCounts.rijnsburg} orders (${locationsByRoute.rijnsburg.size} locations)`);
-            console.log(`Aalsmeer: ${routeCounts.aalsmeer} orders (${locationsByRoute.aalsmeer.size} locations)`);
-            console.log(`Naaldwijk: ${routeCounts.naaldwijk} orders (${locationsByRoute.naaldwijk.size} locations)`);
+            console.log(`\nOrderrows per route (for reference):`);
+            console.log(`Rijnsburg: ${routeCounts.rijnsburg} orderrows (${locationsByRoute.rijnsburg.size} locations)`);
+            console.log(`Aalsmeer: ${routeCounts.aalsmeer} orderrows (${locationsByRoute.aalsmeer.size} locations)`);
+            console.log(`Naaldwijk: ${routeCounts.naaldwijk} orderrows (${locationsByRoute.naaldwijk.size} locations)`);
             console.log('───────────────────────────────────────');
             
             // Show unique locations per route
