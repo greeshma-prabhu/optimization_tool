@@ -494,19 +494,23 @@
                     }
                 }
                 
-                if (orders && orders.length > 0) {
-                    console.log(`✅ Loaded ${orders.length} orders`);
-                    console.log(`Sample order:`, orders[0]);
+                // CRITICAL: Use matched orders from cartResult (same as Dashboard)
+                const matchedOrders = cartResult ? (cartResult.matchedOrders || orders) : orders;
+                
+                if (matchedOrders && matchedOrders.length > 0) {
+                    console.log(`✅ Loaded ${matchedOrders.length} matched orders (from ${orders.length} total orderrows)`);
+                    console.log(`   Using matched orders count: ${cartResult?.matchedOrdersCount || matchedOrders.length}`);
+                    console.log(`Sample order:`, matchedOrders[0]);
                     
-                    // Update orderManager with fresh data
-                    orderManager.orders = orders;
-                    orderManager.filteredOrders = [...orders];
+                    // Update orderManager with MATCHED orders only (same as Dashboard)
+                    orderManager.orders = matchedOrders;
+                    orderManager.filteredOrders = [...matchedOrders];
                     
-                    // CRITICAL: Initialize CartDisplayManager with SAME orders
-                    console.log('📦 Initializing CartDisplayManager with', orders.length, 'orders...');
-                    cartDisplayManager = new CartDisplayManager(orders);
+                    // CRITICAL: Initialize CartDisplayManager with MATCHED orders
+                    console.log('📦 Initializing CartDisplayManager with', matchedOrders.length, 'matched orders...');
+                    cartDisplayManager = new CartDisplayManager(matchedOrders);
                     
-                    // Update Input Summary with calculated values
+                    // Update Input Summary with calculated values (uses cartResult.matchedOrdersCount)
                     updateInputSummary();
                     
                     // Update Route Breakdown
