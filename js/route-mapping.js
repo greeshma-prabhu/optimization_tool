@@ -161,42 +161,39 @@ const LATE_DELIVERY_CLIENTS = [
 
 /**
  * CANONICAL name normalization function
- * Normalizes customer names for matching by removing business-safe variations:
- * - Quantity prefixes (1x, 2x, 3x, etc.)
- * - Legal/business suffixes (BV, B.V., webshop, retail, etc.)
+ * Simple normalization: lowercase, remove prefixes/suffixes, clean punctuation
+ * 
+ * Removes:
+ * - Quantity prefixes (1x, 2x, 3x)
+ * - Legal suffixes (BV, B.V., VOF, webshop, retail, export, holding, group)
  * - Special characters and punctuation
  * - Multiple spaces
- * 
- * CRITICAL: This function ensures both API and Excel names normalize to the same value
- * Example: "Superflora BV" and "1x Superflora" both normalize to "superflora"
- * 
- * PRESERVES all meaningful words (including Dutch particles) - no word removal!
  */
 function normalizeName(name) {
   if (!name) return '';
   
   return name
-    .toLowerCase()                    // Step 1: Convert to lowercase
-    .trim()                           // Step 2: Trim leading/trailing whitespace
-    .replace(/\s+/g, ' ')            // Step 3: Collapse multiple spaces to single space
-    .replace(/^\d+x\s*/i, '')        // Step 4: Remove leading quantity prefixes (1x, 2x, 3x, etc.)
-    .replace(/\s*\d+x\s*/gi, ' ')    // Step 5: Remove quantity prefixes anywhere (with spaces)
-    .replace(/[&]/g, ' ')            // Step 6: Replace ampersands with space
-    .replace(/\./g, '')              // Step 7: Remove periods (handles B.V. → BV → removed)
-    .replace(/b\.v\.|bv|b\s*v|b\.v/gi, '')      // Step 8: Remove BV suffix (all variations)
-    .replace(/v\.o\.f\.|vof|v\s*o\s*f/gi, '')  // Step 9: Remove VOF suffix (all variations)
-    .replace(/\s+webshop\s*/gi, ' ') // Step 10: Remove "webshop" suffix
-    .replace(/\s+retail\s*/gi, ' ')  // Step 11: Remove "retail" suffix
-    .replace(/\s+export\s*/gi, ' ')  // Step 12: Remove "export" suffix
-    .replace(/\s+holding\s*/gi, ' ') // Step 13: Remove "holding" suffix
-    .replace(/\s+group\s*/gi, ' ')   // Step 14: Remove "group" suffix
-    .replace(/\(.*?\)/g, '')         // Step 15: Remove content in parentheses
-    .replace(/\[.*?\]/g, '')         // Step 16: Remove content in square brackets
-    .replace(/-/g, ' ')              // Step 17: Replace hyphens with spaces
-    .replace(/\//g, ' ')             // Step 18: Replace slashes with spaces
-    .replace(/[^\w\s]/g, ' ')        // Step 19: Remove all other special characters
-    .replace(/\s+/g, ' ')            // Step 20: Normalize spaces again after all replacements
-    .trim();                          // Step 21: Final trim
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')            // Normalize spaces
+    .replace(/^\d+x\s*/i, '')        // Remove leading quantity prefixes
+    .replace(/\s*\d+x\s*/gi, ' ')    // Remove quantity prefixes anywhere
+    .replace(/[&]/g, ' ')            // Replace ampersands
+    .replace(/\./g, '')              // Remove periods
+    .replace(/b\.v\.|bv|b\s*v/gi, '')      // Remove BV
+    .replace(/v\.o\.f\.|vof/gi, '')        // Remove VOF
+    .replace(/\s+webshop\s*/gi, ' ') // Remove webshop
+    .replace(/\s+retail\s*/gi, ' ')  // Remove retail
+    .replace(/\s+export\s*/gi, ' ')  // Remove export
+    .replace(/\s+holding\s*/gi, ' ') // Remove holding
+    .replace(/\s+group\s*/gi, ' ')   // Remove group
+    .replace(/\(.*?\)/g, '')         // Remove parentheses content
+    .replace(/\[.*?\]/g, '')         // Remove brackets content
+    .replace(/-/g, ' ')              // Replace hyphens
+    .replace(/\//g, ' ')             // Replace slashes
+    .replace(/[^\w\s]/g, ' ')        // Remove special chars
+    .replace(/\s+/g, ' ')            // Normalize spaces again
+    .trim();
 }
 
 /**
@@ -212,10 +209,13 @@ function getWords(normalizedName) {
  * Returns: { matched: boolean, route: string|null }
  * 
  * CRITICAL: This is the ONLY client-matching function!
- * Matching rules:
- * 1. Exact match after normalization
- * 2. Full-word match (all words in one name exist in the other, order independent)
- * NO partial word matching, NO fuzzy matching!
+ * 
+ * MATCHING RULE (ONE RULE ONLY):
+ * All words from Excel client name must exist in API customer name (after normalization).
+ * 
+ * Excel is the source of truth. API names may contain extra words (BV, webshop, etc).
+ * 
+ * NO bidirectional comparison, NO sets, NO fuzzy logic - simple containment check.
  */
 function isKnownClient(customerName) {
   if (!customerName) {
@@ -223,9 +223,8 @@ function isKnownClient(customerName) {
   }
   
   const normalizedCustomer = normalizeName(customerName);
-  const customerWords = getWords(normalizedCustomer);
   
-  if (customerWords.length === 0) {
+  if (!normalizedCustomer) {
     return { matched: false, route: null };
   }
   
@@ -241,25 +240,26 @@ function isKnownClient(customerName) {
   for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
     for (const client of clients) {
       const normalizedClient = normalizeName(client);
-      const clientWords = getWords(normalizedClient);
       
       // Rule 1: Exact match after normalization
       if (normalizedCustomer === normalizedClient) {
         return { matched: true, route: route };
       }
       
-      // Rule 2: Full-word match (all words in one exist in the other, order independent)
-      // Check if all customer words exist in client words
-      const customerWordsSet = new Set(customerWords);
-      const clientWordsSet = new Set(clientWords);
+      // Rule 2: All Excel client words must exist in API customer name
+      // Get words from Excel client (source of truth)
+      const clientWords = getWords(normalizedClient);
       
-      // Check if all customer words are in client words
-      const allCustomerWordsMatch = customerWords.every(word => clientWordsSet.has(word));
-      // Check if all client words are in customer words
-      const allClientWordsMatch = clientWords.every(word => customerWordsSet.has(word));
+      // Skip if Excel client has no words
+      if (clientWords.length === 0) {
+        continue;
+      }
       
-      // Match if either all customer words match OR all client words match
-      if (allCustomerWordsMatch || allClientWordsMatch) {
+      // Check if ALL Excel client words exist in normalized API customer name
+      // Simple containment check - no sets, no bidirectional comparison
+      const allWordsMatch = clientWords.every(word => normalizedCustomer.includes(word));
+      
+      if (allWordsMatch) {
         return { matched: true, route: route };
       }
     }
@@ -269,7 +269,6 @@ function isKnownClient(customerName) {
   if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING) {
     console.log(`⚠️ Unmatched customer: "${customerName}"`);
     console.log(`   Normalized: "${normalizedCustomer}"`);
-    console.log(`   Words: [${customerWords.join(', ')}]`);
   }
   
   // Not found in any route - NOT a known client
