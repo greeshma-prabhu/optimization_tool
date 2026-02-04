@@ -971,10 +971,45 @@
                         if (isDemoData) {
                             statusMsg.innerHTML = `✅ Using demo data (${orders.length} sample orders)`;
                         } else {
-                            if (unmatchedCount > 0) {
-                                statusMsg.innerHTML = `✅ Found ${orders.length} orders from API (${matchedCount} matched, ${unmatchedCount} unmatched)`;
+                            // Get unique order counts (not orderrows)
+                            const uniqueMatchedIds = new Set();
+                            const uniqueUnmatchedIds = new Set();
+                            
+                            const matchedOrderrows = orders.filter(o => {
+                                if (window.RouteMapping && window.RouteMapping.isKnownClient) {
+                                    const customerName = o.customer_name || o.order?.customer_name || '';
+                                    const clientCheck = window.RouteMapping.isKnownClient(customerName);
+                                    return clientCheck.matched;
+                                }
+                                return true;
+                            });
+                            
+                            matchedOrderrows.forEach(row => {
+                                const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                                if (orderId) uniqueMatchedIds.add(String(orderId));
+                            });
+                            
+                            const unmatchedOrderrows = orders.filter(o => {
+                                if (window.RouteMapping && window.RouteMapping.isKnownClient) {
+                                    const customerName = o.customer_name || o.order?.customer_name || '';
+                                    const clientCheck = window.RouteMapping.isKnownClient(customerName);
+                                    return !clientCheck.matched;
+                                }
+                                return false;
+                            });
+                            
+                            unmatchedOrderrows.forEach(row => {
+                                const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                                if (orderId) uniqueUnmatchedIds.add(String(orderId));
+                            });
+                            
+                            const uniqueMatched = uniqueMatchedIds.size;
+                            const uniqueUnmatched = uniqueUnmatchedIds.size;
+                            
+                            if (uniqueUnmatched > 0) {
+                                statusMsg.innerHTML = `✅ Found ${uniqueMatched} unique orders from API (${uniqueMatched} matched, ${uniqueUnmatched} unmatched)`;
                             } else {
-                                statusMsg.innerHTML = `✅ Found ${matchedCount} matched orders from API`;
+                                statusMsg.innerHTML = `✅ Found ${uniqueMatched} unique orders from API`;
                             }
                         }
                         statusMsg.classList.add('show', 'success');
