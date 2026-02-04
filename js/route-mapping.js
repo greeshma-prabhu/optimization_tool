@@ -210,12 +210,15 @@ function getWords(normalizedName) {
  * 
  * CRITICAL: This is the ONLY client-matching function!
  * 
- * MATCHING RULE (ONE RULE ONLY):
- * All words from Excel client name must exist in API customer name (after normalization).
+ * MATCHING RULES:
+ * 1. Exact match after normalization
+ * 2. All meaningful Excel words (length > 2) must match:
+ *    - As full word in API name OR
+ *    - As prefix of any API word
  * 
  * Excel is the source of truth. API names may contain extra words (BV, webshop, etc).
  * 
- * NO bidirectional comparison, NO sets, NO fuzzy logic - simple containment check.
+ * NO fuzzy logic, NO bidirectional comparison - deterministic prefix matching.
  */
 function isKnownClient(customerName) {
   if (!customerName) {
@@ -227,6 +230,9 @@ function isKnownClient(customerName) {
   if (!normalizedCustomer) {
     return { matched: false, route: null };
   }
+  
+  // Get API customer words for prefix matching
+  const customerWords = getWords(normalizedCustomer);
   
   // Check late delivery clients first
   const LATE_DELIVERY = ['rheinmaas', 'plantion', 'algemeen'];
@@ -246,18 +252,40 @@ function isKnownClient(customerName) {
         return { matched: true, route: route };
       }
       
-      // Rule 2: All Excel client words must exist in API customer name
+      // Rule 2: All meaningful Excel words must match
       // Get words from Excel client (source of truth)
       const clientWords = getWords(normalizedClient);
       
-      // Skip if Excel client has no words
-      if (clientWords.length === 0) {
+      // Filter out short words (length <= 2) - ignore abbreviations, particles
+      const meaningfulClientWords = clientWords.filter(word => word.length > 2);
+      
+      // Skip if Excel client has no meaningful words
+      if (meaningfulClientWords.length === 0) {
         continue;
       }
       
-      // Check if ALL Excel client words exist in normalized API customer name
-      // Simple containment check - no sets, no bidirectional comparison
-      const allWordsMatch = clientWords.every(word => normalizedCustomer.includes(word));
+      // Check if ALL meaningful Excel words match
+      // Match if: word exists as full word OR is prefix of any API word
+      const allWordsMatch = meaningfulClientWords.every(excelWord => {
+        // Check 1: Excel word exists as full word in normalized API name
+        if (normalizedCustomer.includes(excelWord)) {
+          // Verify it's a full word (not part of another word)
+          // Check if it's surrounded by word boundaries or spaces
+          const wordBoundaryRegex = new RegExp(`(^|\\s)${excelWord}(\\s|$)`, 'i');
+          if (wordBoundaryRegex.test(normalizedCustomer)) {
+            return true;
+          }
+        }
+        
+        // Check 2: Excel word is a prefix of any API word
+        for (const apiWord of customerWords) {
+          if (apiWord.startsWith(excelWord) && excelWord.length >= 3) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
       
       if (allWordsMatch) {
         return { matched: true, route: route };
