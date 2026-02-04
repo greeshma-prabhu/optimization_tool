@@ -930,6 +930,10 @@ if (typeof window !== 'undefined') {
         getFustType: getFustType,
         FUST_CAPACITY: FUST_CAPACITY,
         getGlobalOrdersAndCarts: getGlobalOrdersAndCarts,
-        clearCartCache: clearCartCache
+        clearCartCache: clearCartCache,
+        initAppData: initAppData
     };
+    
+    // Initialize AppData on load
+    initAppData();
 }
