@@ -2598,8 +2598,20 @@
                     const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
-                    console.log(`✅ Cart Optimization: Loaded ${orders.length} orders from SINGLE SOURCE`);
-                    console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
+                    
+                    // CRITICAL: Use window.AppData for consistent counts
+                    if (window.AppData && window.AppData.uniqueOrderIds) {
+                        const uniqueCount = window.AppData.uniqueOrderIds.size;
+                        console.log(`✅ Cart Optimization: Loaded ${uniqueCount} unique orders (from ${orders.length} orderrows)`);
+                        console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
+                        // Ensure cartResult has correct count
+                        if (cartResult) {
+                            cartResult.matchedOrdersCount = uniqueCount;
+                        }
+                    } else {
+                        console.log(`✅ Cart Optimization: Loaded ${orders.length} orders from SINGLE SOURCE`);
+                        console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
+                    }
                 } else {
                     // Fallback to old method
                     if (window.__zuidplas_orders_memory && window.__zuidplas_orders_memory.length > 0) {

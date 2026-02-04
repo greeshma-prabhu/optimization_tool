@@ -498,8 +498,19 @@
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
                     
-                    console.log(`✅ Optimization: Loaded ${orders.length} orders from SINGLE SOURCE`);
-                    console.log(`✅ Optimization: Cart result - ${cartResult.total} carts`);
+                    // CRITICAL: Use window.AppData for consistent counts
+                    if (window.AppData && window.AppData.uniqueOrderIds) {
+                        const uniqueCount = window.AppData.uniqueOrderIds.size;
+                        console.log(`✅ Optimization: Loaded ${uniqueCount} unique orders (from ${orders.length} orderrows)`);
+                        console.log(`✅ Optimization: Cart result - ${cartResult.total} carts`);
+                        // Ensure cartResult has correct count
+                        if (cartResult) {
+                            cartResult.matchedOrdersCount = uniqueCount;
+                        }
+                    } else {
+                        console.log(`✅ Optimization: Loaded ${orders.length} orders from SINGLE SOURCE`);
+                        console.log(`✅ Optimization: Cart result - ${cartResult.total} carts`);
+                    }
                 } else {
                     // Fallback to old method
                     orders = window.appState.getOrders();
