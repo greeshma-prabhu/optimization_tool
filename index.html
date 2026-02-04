@@ -314,9 +314,6 @@
                 </div>
             </div>
             <div style="margin-top: 1.5rem; text-align: center;">
-                <button id="check-mismatches-btn" class="btn btn-secondary" style="padding: 10px 20px; margin-top: 1rem;">
-                    🔍 Check Mismatched Orders
-                </button>
             </div>
         </div>
 
@@ -2297,13 +2294,6 @@
         window.displayUnmatchedOrdersSection = displayUnmatchedOrdersSection;
         window.viewUnmatchedOrdersDetail = viewUnmatchedOrdersDetail;
         
-        // Attach event listener to mismatch button
-        document.addEventListener('DOMContentLoaded', () => {
-            const mismatchBtn = document.getElementById('check-mismatches-btn');
-            if (mismatchBtn) {
-                mismatchBtn.addEventListener('click', checkMismatchedOrders);
-            }
-        });
         
         // Logout function - MUST BE GLOBAL
         function handleLogout() {
