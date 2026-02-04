@@ -993,12 +993,20 @@
                 const totalCarts = cartResult.total || 0;
                 const actualOrders = globalData.orders;
                 
-                console.log(`   ✅ Got result: ${totalCarts} carts from ${actualOrders.length} orders`);
+                // CRITICAL: Use matched orders count, NOT all orders
+                const matchedOrdersCount = cartResult.matchedOrdersCount || (cartResult.matchedOrders ? cartResult.matchedOrders.length : actualOrders.length);
+                const unmatchedOrdersCount = cartResult.unmatchedOrdersCount || 0;
                 
-                // Update stats with ACTUAL orders from global memory
-                document.getElementById('total-orders-count').textContent = actualOrders.length;
+                console.log(`   ✅ Got result: ${totalCarts} carts from ${matchedOrdersCount} matched orders`);
+                console.log(`   📥 API returned: ${matchedOrdersCount + unmatchedOrdersCount} total orders`);
+                console.log(`   ✅ Matched (Excel clients): ${matchedOrdersCount} orders`);
+                console.log(`   ⚠️ Unmatched (DUMP BASKET): ${unmatchedOrdersCount} orders`);
                 
-                console.log(`   Orders from global memory: ${actualOrders.length}`);
+                // Update stats with MATCHED orders only (Excel clients)
+                document.getElementById('total-orders-count').textContent = matchedOrdersCount;
+                
+                console.log(`   Orders from global memory: ${actualOrders.length} total`);
+                console.log(`   Matched orders (displayed): ${matchedOrdersCount}`);
                 console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
                 console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
                 console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
@@ -1006,7 +1014,7 @@
                 console.log(`   TRUCKS: ${cartResult.trucks || 0}`);
                 
                 document.getElementById('total-carts-needed').textContent = totalCarts;
-                console.log(`✅ Dashboard updated with SINGLE SOURCE calculation: ${totalCarts} carts`);
+                console.log(`✅ Dashboard updated with SINGLE SOURCE calculation: ${totalCarts} carts (from ${matchedOrdersCount} matched orders)`);
                 
                 // Store verification data for Orders page comparison
                 const currentDate = window.appState?.currentDate || new Date().toISOString().split('T')[0];
@@ -1019,21 +1027,32 @@
                 }));
                 console.log(`📝 Dashboard result stored for verification (date: ${currentDate}): ${totalCarts} carts`);
                 
-                // Update route summary cards
-                updateRouteSummary(actualOrders, cartResult);
+                // Update route summary cards (use matched orders only)
+                const matchedOrdersForDisplay = cartResult.matchedOrders || actualOrders.filter(o => {
+                    // Fallback: filter using isKnownClient if matchedOrders not available
+                    if (window.RouteMapping && window.RouteMapping.isKnownClient) {
+                        const customerName = o.customer_name || o.order?.customer_name || '';
+                        const clientCheck = window.RouteMapping.isKnownClient(customerName);
+                        return clientCheck.matched;
+                    }
+                    return true;
+                });
+                updateRouteSummary(matchedOrdersForDisplay, cartResult);
                 
                 // Display unmatched orders (DUMP BASKET)
-                displayUnmatchedOrdersSection(window.unmatchedOrders || [], cartResult);
+                displayUnmatchedOrdersSection(cartResult.unmatchedOrders || window.unmatchedOrders || [], cartResult);
                 
-                // Use actualOrders for route overview too
-                orders = actualOrders;
+                // Use matched orders for route overview too
+                orders = matchedOrdersForDisplay;
             } else {
                 console.error('❌ getGlobalOrdersAndCarts() NOT AVAILABLE! This should never happen!');
                 console.error('   CartCalculation available?', typeof window.CartCalculation !== 'undefined');
                 console.error('   getGlobalOrdersAndCarts available?', window.CartCalculation && typeof window.CartCalculation.getGlobalOrdersAndCarts === 'function');
                 // Don't use fallback - show error instead
                 document.getElementById('total-carts-needed').textContent = 'ERROR';
-                document.getElementById('total-orders-count').textContent = orders ? orders.length : 0;
+                // Try to get matched orders count from cartResult if available
+                const matchedCount = cartResult?.matchedOrdersCount || (orders ? orders.length : 0);
+                document.getElementById('total-orders-count').textContent = matchedCount;
             }
             console.log('═══════════════════════════════════════════════════════════════════');
             
