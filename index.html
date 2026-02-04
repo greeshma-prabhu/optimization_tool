@@ -1273,12 +1273,21 @@
                     const routeName = route.name;
                     const carts = cartResult ? (cartResult.byRoute[routeName] || 0) : 0;
                     
-                    // Count orders for this route
-                    const routeOrders = ordersWithCarts.filter(order => {
+                    // Count orderrows for this route
+                    const routeOrderrows = ordersWithCarts.filter(order => {
                         const orderLocationId = order.delivery_location_id || order.order?.delivery_location_id;
                         return orderLocationId === route.locationId && (order.assembly_amount || 0) > 0;
                     });
-                    const orderCount = routeOrders.length;
+                    
+                    // CRITICAL: Count unique orders (not orderrows!)
+                    const uniqueOrderIds = new Set();
+                    routeOrderrows.forEach(o => {
+                        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                        if (orderId) {
+                            uniqueOrderIds.add(String(orderId));
+                        }
+                    });
+                    const orderCount = uniqueOrderIds.size;
                     
                     // Calculate status
                     const maxCapacity = 17;
