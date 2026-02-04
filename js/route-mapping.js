@@ -322,7 +322,7 @@ function isKnownClient(customerName) {
   }
   
   // Clean name function - removes legal suffixes, location names, articles, etc.
-  const nameClean = (name) => {
+  const cleanName = (name) => {
     return name
       .toLowerCase()
       .trim()
@@ -356,13 +356,13 @@ function isKnownClient(customerName) {
       .filter((w, i, arr) => arr.indexOf(w) === i); // Remove duplicates
   };
   
-  const nameClean = nameClean(customerName);
+  const nameClean = cleanName(customerName);
   const nameWords = getSignificantWords(nameClean);
   
   // Check all routes
   for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
     for (const client of clients) {
-      const clientClean = nameClean(client);
+      const clientClean = cleanName(client);
       const clientWords = getSignificantWords(clientClean);
       
       // Rule 1: Exact match after cleaning
