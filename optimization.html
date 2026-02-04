@@ -237,11 +237,15 @@
         function updateInputSummary() {
             console.log('📊 Updating Input Summary...');
             
-            // Get orders from global state
-            const orders = window.appState.getOrders();
+            // CRITICAL: Use cartResult from SINGLE SOURCE (matched orders only)
+            let cartResult = null;
+            if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                cartResult = globalData.cartResult;
+            }
             
-            if (!orders || orders.length === 0) {
-                console.warn('⚠️ No orders available for Input Summary');
+            if (!cartResult) {
+                console.warn('⚠️ No cart result available for Input Summary');
                 // Set all to 0
                 document.getElementById('input-orders').textContent = '0';
                 document.getElementById('input-carts').textContent = '0';
