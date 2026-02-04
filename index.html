@@ -2246,5 +2246,211 @@
         setTimeout(updateDebugPanel, 1000);
 
     </script>
+    
+    <!-- Floating Buttons Overlap Fix -->
+    <style>
+        /* Hide floating buttons when chat widget is open */
+        .floating-buttons.chat-open,
+        .action-buttons.chat-open,
+        .floating-action-buttons.chat-open {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+        }
+        
+        /* Smooth transition for hiding/showing */
+        .floating-buttons,
+        .action-buttons,
+        .floating-action-buttons {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        /* Common chat widget selectors - ensure chat is above buttons */
+        .chat-widget,
+        .chat-container,
+        .chat-popup,
+        .chat-window,
+        [class*="chat"],
+        [id*="chat"],
+        [class*="Chat"],
+        [id*="Chat"] {
+            z-index: 10000 !important;
+        }
+        
+        /* Common floating button selectors */
+        [class*="floating-button"],
+        [id*="floating-button"],
+        [class*="action-button"],
+        [id*="action-button"],
+        [class*="chatbot-button"],
+        [id*="chatbot-button"],
+        [class*="call-button"],
+        [id*="call-button"],
+        [class*="voice-button"],
+        [id*="voice-button"] {
+            transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+        }
+    </style>
+    
+    <script>
+        /**
+         * Fix floating buttons overlapping chat widget
+         * Hides floating buttons when chat widget opens
+         * Shows floating buttons when chat widget closes
+         */
+        (function() {
+            'use strict';
+            
+            // Common selectors for floating buttons
+            const floatingButtonSelectors = [
+                '.floating-buttons',
+                '.action-buttons',
+                '.floating-action-buttons',
+                '[class*="floating-button"]',
+                '[id*="floating-button"]',
+                '[class*="action-button"]',
+                '[id*="action-button"]'
+            ];
+            
+            // Common selectors for chat widget
+            const chatWidgetSelectors = [
+                '.chat-widget',
+                '.chat-container',
+                '.chat-popup',
+                '.chat-window',
+                '[class*="chat"]',
+                '[id*="chat"]',
+                '[class*="Chat"]',
+                '[id*="Chat"]'
+            ];
+            
+            // Find floating buttons container
+            function findFloatingButtons() {
+                for (const selector of floatingButtonSelectors) {
+                    const elements = document.querySelectorAll(selector);
+                    if (elements.length > 0) {
+                        return Array.from(elements);
+                    }
+                }
+                return [];
+            }
+            
+            // Find chat widget
+            function findChatWidget() {
+                for (const selector of chatWidgetSelectors) {
+                    const element = document.querySelector(selector);
+                    if (element && window.getComputedStyle(element).display !== 'none') {
+                        return element;
+                    }
+                }
+                return null;
+            }
+            
+            // Hide floating buttons
+            function hideFloatingButtons() {
+                const buttons = findFloatingButtons();
+                buttons.forEach(button => {
+                    button.classList.add('chat-open');
+                    button.style.display = 'none';
+                });
+                console.log('✅ Floating buttons hidden (chat widget open)');
+            }
+            
+            // Show floating buttons
+            function showFloatingButtons() {
+                const buttons = findFloatingButtons();
+                buttons.forEach(button => {
+                    button.classList.remove('chat-open');
+                    button.style.display = '';
+                });
+                console.log('✅ Floating buttons shown (chat widget closed)');
+            }
+            
+            // Check if chat widget is open
+            function isChatOpen() {
+                const chatWidget = findChatWidget();
+                if (!chatWidget) return false;
+                
+                const style = window.getComputedStyle(chatWidget);
+                return style.display !== 'none' && 
+                       style.visibility !== 'hidden' && 
+                       style.opacity !== '0';
+            }
+            
+            // Monitor chat widget state
+            function monitorChatWidget() {
+                let wasOpen = false;
+                
+                setInterval(() => {
+                    const isOpen = isChatOpen();
+                    
+                    if (isOpen && !wasOpen) {
+                        // Chat just opened
+                        hideFloatingButtons();
+                        wasOpen = true;
+                    } else if (!isOpen && wasOpen) {
+                        // Chat just closed
+                        showFloatingButtons();
+                        wasOpen = false;
+                    }
+                }, 500); // Check every 500ms
+            }
+            
+            // Listen for chat widget events (common patterns)
+            function setupEventListeners() {
+                // Listen for common chat widget events
+                document.addEventListener('click', function(e) {
+                    // Check if clicking chat open button
+                    if (e.target.matches('[class*="chatbot"], [id*="chatbot"], [class*="chat-open"], [id*="chat-open"]')) {
+                        setTimeout(hideFloatingButtons, 100);
+                    }
+                    
+                    // Check if clicking chat close button
+                    if (e.target.matches('[class*="chat-close"], [id*="chat-close"], [class*="close"], [id*="close"]')) {
+                        setTimeout(showFloatingButtons, 100);
+                    }
+                });
+                
+                // Listen for DOM mutations (chat widget might be added dynamically)
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes.length > 0) {
+                            // Check if chat widget was added
+                            const chatWidget = findChatWidget();
+                            if (chatWidget) {
+                                hideFloatingButtons();
+                            }
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+            
+            // Initialize when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    setupEventListeners();
+                    monitorChatWidget();
+                });
+            } else {
+                setupEventListeners();
+                monitorChatWidget();
+            }
+            
+            // Also check immediately
+            setTimeout(function() {
+                if (isChatOpen()) {
+                    hideFloatingButtons();
+                }
+            }, 1000);
+            
+            console.log('✅ Floating buttons overlap fix initialized');
+        })();
+    </script>
 </body>
 </html>
