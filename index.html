@@ -2184,6 +2184,16 @@
                 return;
             }
             
+            // CRITICAL: Count unique orders (not orderrows!)
+            const uniqueUnmatchedOrderIds = new Set();
+            unmatchedOrders.forEach(o => {
+                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                if (orderId) {
+                    uniqueUnmatchedOrderIds.add(String(orderId));
+                }
+            });
+            const uniqueUnmatchedOrdersCount = uniqueUnmatchedOrderIds.size;
+            
             // Get unique customer names
             const uniqueCustomers = [...new Set(unmatchedOrders.map(o => 
                 o.customer_name || o.order?.customer_name || 'Unknown'
@@ -2197,7 +2207,7 @@
                         These orders are <strong>NOT</strong> in the Excel client list and are <strong>excluded from calculations</strong>.
                     </p>
                     <div style="margin: 15px 0; padding: 10px; background: white; border-radius: 5px;">
-                        <strong style="color: #856404;">Total Unmatched Orders: ${unmatchedOrders.length}</strong>
+                        <strong style="color: #856404;">Total Unmatched Orders: ${uniqueUnmatchedOrdersCount} unique orders (from ${unmatchedOrders.length} orderrows)</strong>
                         <br>
                         <strong style="color: #856404;">Unique Unmatched Customers: ${uniqueCustomers.length}</strong>
                         ${cartResult ? `<br><small style="color: #856404;">Matched Orders (processed): ${cartResult.matchedOrdersCount || 0}</small>` : ''}
@@ -2242,7 +2252,7 @@
                     These customers need to be added to the Excel sheet (route-mapping.js) to be processed:
                 </p>
                 <div style="margin: 20px 0; padding: 15px; background: #fff3cd; border-radius: 5px;">
-                    <strong>Total Unmatched Orders: ${unmatched.length}</strong>
+                    <strong>Total Unmatched Orders: ${totalUniqueUnmatched} unique orders (from ${unmatched.length} orderrows)</strong>
                 </div>
                 <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
                     <table style="width: 100%; border-collapse: collapse;">
@@ -2250,7 +2260,7 @@
                             <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
                                 <th style="padding: 8px; text-align: left;">#</th>
                                 <th style="padding: 8px; text-align: left;">Customer Name</th>
-                                <th style="padding: 8px; text-align: right;">Orders</th>
+                                <th style="padding: 8px; text-align: right;">Unique Orders</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2258,7 +2268,7 @@
                                 <tr style="border-bottom: 1px solid #eee;">
                                     <td style="padding: 8px;">${i + 1}</td>
                                     <td style="padding: 8px;"><strong>${c.name}</strong></td>
-                                    <td style="padding: 8px; text-align: right;">${c.count}</td>
+                                    <td style="padding: 8px; text-align: right;">${c.uniqueOrders} (${c.orderrows} orderrows)</td>
                                 </tr>
                             `).join('')}
                         </tbody>
