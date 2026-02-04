@@ -171,6 +171,7 @@ function calculateFustForOrderrow(orderrow) {
 /**
  * MAIN CALCULATION FUNCTION
  * CRITICAL: Aggregate ALL fust by type per route FIRST, then calculate carts
+ * CRITICAL BUSINESS RULE: ONLY process orders from Excel-mapped clients!
  * 
  * Formula:
  * 1. For each orderrow: fust = assembly_amount ÷ bundles_per_fust
@@ -179,8 +180,8 @@ function calculateFustForOrderrow(orderrow) {
  */
 function calculateCarts(orders) {
     console.log('═══════════════════════════════════════════════════════════════════');
-    console.log('🔵 FUST CALCULATION (SINGLE SOURCE OF TRUTH)');
-    console.log(`Input: ${orders.length} orderrows`);
+    console.log('🔵 FUST CALCULATION (EXCEL CLIENTS ONLY - SINGLE SOURCE OF TRUTH)');
+    console.log(`Input: ${orders.length} total orderrows`);
     console.log('═══════════════════════════════════════════════════════════════════');
     console.log('');
     console.log('FORMULA: fust = assembly_amount ÷ bundles_per_fust');
@@ -188,8 +189,29 @@ function calculateCarts(orders) {
     console.log('NOT: stems ÷ 72 (WRONG!)');
     console.log('');
     
-    // Step 1: Filter valid orders
-    const validOrders = orders.filter(order => {
+    // CRITICAL: Separate matched (Excel clients) vs unmatched (DUMP BASKET)
+    let matchedOrders = orders;
+    let unmatchedOrders = [];
+    
+    if (window.RouteMapping && window.RouteMapping.separateOrdersByClientMatch) {
+        console.log('🔍 Filtering orders: Excel-mapped clients ONLY...');
+        const separation = window.RouteMapping.separateOrdersByClientMatch(orders);
+        matchedOrders = separation.matched;
+        unmatchedOrders = separation.unmatched;
+        
+        // Store unmatched globally for display
+        window.unmatchedOrders = unmatchedOrders;
+        
+        console.log(`✅ Processing ${matchedOrders.length} matched orders (Excel clients)`);
+        console.log(`⚠️ Ignoring ${unmatchedOrders.length} unmatched orders (DUMP BASKET)`);
+        console.log('');
+    } else {
+        console.warn('⚠️ RouteMapping.separateOrdersByClientMatch not available - processing ALL orders');
+        console.warn('⚠️ This should not happen - all orders will be processed!');
+    }
+    
+    // Step 1: Filter valid orders (from matched only)
+    const validOrders = matchedOrders.filter(order => {
         const assemblyAmount = order.assembly_amount || 0;
         const locationId = order.delivery_location_id || order.order?.delivery_location_id;
         const customerId = order.customer_id || order.order?.customer_id;
@@ -197,7 +219,8 @@ function calculateCarts(orders) {
         return assemblyAmount > 0 && locationId && customerId;
     });
     
-    console.log(`✅ Valid orders: ${validOrders.length} out of ${orders.length}`);
+    console.log(`✅ Valid matched orders: ${validOrders.length} out of ${matchedOrders.length} matched`);
+    console.log(`⚠️ Unmatched orders (DUMP BASKET): ${unmatchedOrders.length}`);
     console.log('');
     
     // Track which method is used for bundles_per_fust
@@ -474,7 +497,9 @@ function calculateCarts(orders) {
         danish: totalDanishCarts,
         trucks: calculateTrucks(finalTotal),  // Recalculate trucks with correct total
         byRoute: cartsByRoute,
-        breakdown: breakdown
+        breakdown: breakdown,
+        matchedOrdersCount: matchedOrders.length,  // Count of matched (Excel) orders
+        unmatchedOrdersCount: unmatchedOrders.length  // Count of unmatched (DUMP BASKET) orders
     };
 }
 

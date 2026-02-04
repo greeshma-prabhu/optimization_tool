@@ -338,6 +338,9 @@
             </div>
         </div>
 
+        <!-- DUMP BASKET - Unmatched Orders Section -->
+        <div id="unmatched-section" style="display: none; margin-top: 20px;"></div>
+
         <!-- Error Message -->
         <div id="error-message" class="info-box danger" style="display: none; margin-top: 20px;"></div>
         
@@ -1018,6 +1021,9 @@
                 
                 // Update route summary cards
                 updateRouteSummary(actualOrders, cartResult);
+                
+                // Display unmatched orders (DUMP BASKET)
+                displayUnmatchedOrdersSection(window.unmatchedOrders || [], cartResult);
                 
                 // Use actualOrders for route overview too
                 orders = actualOrders;
@@ -1944,11 +1950,120 @@
             }
         }
         
+        /**
+         * Display unmatched orders section (DUMP BASKET)
+         */
+        function displayUnmatchedOrdersSection(unmatchedOrders, cartResult) {
+            const section = document.getElementById('unmatched-section');
+            if (!section) return;
+            
+            if (!unmatchedOrders || unmatchedOrders.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            // Get unique customer names
+            const uniqueCustomers = [...new Set(unmatchedOrders.map(o => 
+                o.customer_name || o.order?.customer_name || 'Unknown'
+            ))].filter(Boolean).sort();
+            
+            section.style.display = 'block';
+            section.innerHTML = `
+                <div class="card" style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px;">
+                    <h3 style="margin-top: 0; color: #856404;">⚠️ DUMP BASKET - Unmatched Orders</h3>
+                    <p style="color: #856404; margin: 10px 0;">
+                        These orders are <strong>NOT</strong> in the Excel client list and are <strong>excluded from calculations</strong>.
+                    </p>
+                    <div style="margin: 15px 0; padding: 10px; background: white; border-radius: 5px;">
+                        <strong style="color: #856404;">Total Unmatched Orders: ${unmatchedOrders.length}</strong>
+                        <br>
+                        <strong style="color: #856404;">Unique Unmatched Customers: ${uniqueCustomers.length}</strong>
+                        ${cartResult ? `<br><small style="color: #856404;">Matched Orders (processed): ${cartResult.matchedOrdersCount || 0}</small>` : ''}
+                    </div>
+                    <button onclick="viewUnmatchedOrdersDetail()" 
+                            style="background: #ffc107; color: #856404; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;">
+                        📋 View Unmatched Orders List
+                    </button>
+                </div>
+            `;
+        }
+        
+        /**
+         * Show detailed modal with unmatched customers
+         */
+        function viewUnmatchedOrdersDetail() {
+            const unmatched = window.unmatchedOrders || [];
+            
+            if (unmatched.length === 0) {
+                alert('No unmatched orders found.');
+                return;
+            }
+            
+            // Get unique customer names with order counts
+            const customerCounts = {};
+            unmatched.forEach(o => {
+                const name = o.customer_name || o.order?.customer_name || 'Unknown';
+                customerCounts[name] = (customerCounts[name] || 0) + 1;
+            });
+            
+            const uniqueCustomers = Object.entries(customerCounts)
+                .sort((a, b) => b[1] - a[1])  // Sort by order count (descending)
+                .map(([name, count]) => ({ name, count }));
+            
+            // Create modal
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 1000; max-height: 80vh; width: 700px; overflow-y: auto;';
+            
+            modal.innerHTML = `
+                <h3 style="margin-top: 0; color: #856404;">⚠️ Unmatched Customers (${uniqueCustomers.length})</h3>
+                <p style="color: #666; margin: 10px 0;">
+                    These customers need to be added to the Excel sheet (route-mapping.js) to be processed:
+                </p>
+                <div style="margin: 20px 0; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                    <strong>Total Unmatched Orders: ${unmatched.length}</strong>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                <th style="padding: 8px; text-align: left;">#</th>
+                                <th style="padding: 8px; text-align: left;">Customer Name</th>
+                                <th style="padding: 8px; text-align: right;">Orders</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${uniqueCustomers.map((c, i) => `
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px;">${i + 1}</td>
+                                    <td style="padding: 8px;"><strong>${c.name}</strong></td>
+                                    <td style="padding: 8px; text-align: right;">${c.count}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <button onclick="this.closest('div').remove(); document.querySelector('.modal-backdrop').remove()" 
+                        style="margin-top: 20px; padding: 10px 30px; background: #ff6b00; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    Close
+                </button>
+            `;
+            
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop';
+            backdrop.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999;';
+            backdrop.onclick = () => { modal.remove(); backdrop.remove(); };
+            
+            document.body.appendChild(backdrop);
+            document.body.appendChild(modal);
+        }
+
         // Make functions globally accessible
         window.updateRouteSummary = updateRouteSummary;
         window.viewRouteDetails = viewRouteDetails;
         window.checkMismatchedOrders = checkMismatchedOrders;
         window.downloadMismatchReport = downloadMismatchReport;
+        window.displayUnmatchedOrdersSection = displayUnmatchedOrdersSection;
+        window.viewUnmatchedOrdersDetail = viewUnmatchedOrdersDetail;
         
         // Attach event listener to mismatch button
         document.addEventListener('DOMContentLoaded', () => {

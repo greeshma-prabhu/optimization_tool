@@ -7,7 +7,7 @@
 const CLIENT_ROUTE_MAPPING = {
   // ========================================
   // RIJNSBURG ROUTE (09:00 departure)
-  // 27 clients from Rijnsburg sheet (OFFICIAL - from Excel)
+  // 27 clients from Excel (OFFICIAL - from Planningstabel_2_0__2_.xlsx)
   // ========================================
   'rijnsburg': [
     'A. Heemskerk',
@@ -37,54 +37,62 @@ const CLIENT_ROUTE_MAPPING = {
     'V&E Export',
     'Vianen',
     'St. Gabriel'
-    // NOTE: Hoekhuis Naaldwijk Klondike → naaldwijk (NOT rijnsburg)
-    // NOTE: Holex Flower BV → aalsmeer (NOT rijnsburg)
-    // NOTE: Henk Schreuders Bl.export → naaldwijk (NOT rijnsburg)
   ],
   
   // ========================================
   // AALSMEER ROUTE (10:00 departure)  
-  // 30 clients from Aalsmeer sheet (OFFICIAL - from Excel)
+  // 44 clients from Excel (OFFICIAL - from Planningstabel_2_0__2_.xlsx)
   // ========================================
   'aalsmeer': [
-    'BBI Blomstertorget',
-    'Bloemen Buro',
-    'Bloomenet',
-    'Blooming Direct',
-    'Carsea',
-    'Dijk Flora',
-    'Eurofleur Export',
-    'Flamingo',
-    'Floramondo',
-    'Florette',
-    'Flori Culture',
-    'Floripac',
+    'Akkus',
+    'Albert Heijn',
+    'Behne Blumen',
+    'By Special',
+    'Bloomon',
+    'Directflor',
+    'Divflo',
+    'Fleura Metz',
+    'Flora Service',
+    'EZ Flower',
+    'Floral Connection',
     'Floris Holland',
-    'Flora Nova',
-    'Flower Point',
-    'Flower Trade Consult',
-    'FTD',
+    'Floral Charm',
     'Hans Visser',
-    'Harrewijn',
+    'Hans Visser P',
+    'Hans Visser B',
+    'Greenflor',
+    'hilverda de boer',
+    'holex',
     'Hoekhuis Aalsmeer',
-    'Holex Flower',
-    'Holex Flower BV',
-    'Imex',
-    'KLOK Aalsmeer',
-    'MM Flowers',
-    'Passie Bloemen',
-    'PB Flowerbulbs',
-    'Plantion',
-    'Royal Lemkes',
-    'Stolk Flora',
-    'Superflora',
-    'Xaverius'
-    // NOTE: Westflora → naaldwijk (NOT aalsmeer)
+    'Intratuin',
+    'IBH',
+    'Lem',
+    'F.T.C. Aalsmeer',
+    'KUB Flowers',
+    'Hoorn',
+    'OZ Zurel',
+    'Nijssen',
+    'PS Flowers',
+    'Roelofs',
+    'salaba/barile',
+    'Slikweid',
+    'Spaargaren',
+    'Transfleur',
+    'Thom Slootman',
+    'Tuning',
+    'verbeek en bol',
+    'Vliet',
+    'Vimex',
+    'Verdnatura',
+    'waterdrinker',
+    'Willemsen',
+    'Zandbergen',
+    'MM Flower'
   ],
   
   // ========================================
   // NAALDWIJK ROUTE (11:00 departure)
-  // 29 clients from Naaldwijk sheet (OFFICIAL - from Excel)
+  // 34 clients from Excel (OFFICIAL - from Planningstabel_2_0__2_.xlsx)
   // ========================================
   'naaldwijk': [
     'Astrafund',
@@ -104,10 +112,6 @@ const CLIENT_ROUTE_MAPPING = {
     'Flamingo Flowers',
     'Goldman',
     'H. Star',
-    'Henk Schreuders',
-    'Henk Schreuders Bl.export',
-    'Hoekhuis Naaldwijk',
-    'Hoekhuis Naaldwijk Klondike',
     'MD Agro Import',
     'Kontikiflor',
     'Kuipers',
@@ -119,10 +123,16 @@ const CLIENT_ROUTE_MAPPING = {
     'v Vliet',
     'Webshopflower',
     'West Flora Export',
-    'Westflora',
-    'What If'
+    'What If',
+    'Zeester',
+    'Zuylen',
+    'Denen',
+    'Bosjes',
+    'Crocus'
   ]
 };
+
+// TOTAL: 105 clients across 3 routes (27 + 44 + 34)
 
 // Danish cart clients (these use special larger carts)
 const DANISH_CART_CLIENTS = [
@@ -302,6 +312,142 @@ function getRouteForCustomer(customerName) {
 }
 
 /**
+ * Check if customer is in our known client list (Excel-mapped clients only)
+ * Returns: { matched: boolean, route: string|null }
+ * CRITICAL: Only returns true for clients in CLIENT_ROUTE_MAPPING
+ */
+function isKnownClient(customerName) {
+  if (!customerName) {
+    return { matched: false, route: null };
+  }
+  
+  // Use the same fuzzy matching logic as getRouteForCustomer
+  // but return early if matched (don't default to rijnsburg)
+  const nameClean = (name) => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/[&]/g, ' ')
+      .replace(/\./g, '')
+      .replace(/b\.v\.|bv|b v|b\.v/gi, '')
+      .replace(/\s+(export|flowers?|bloemen|plant|swiss|holland|westland|aalsmeer|naaldwijk|rijnsburg|bleiswijk|klondike|gerbera|mini|webshop|retail|vof|v\.o\.f\.|vof)/gi, ' ')
+      .replace(/\(.*?\)/g, '')
+      .replace(/webshop/gi, '')
+      .replace(/retail/gi, '')
+      .replace(/-/g, ' ')
+      .replace(/\//g, ' ')
+      .replace(/van der|vander|vd|v d/gi, ' ')
+      .replace(/de |het |van |der |den /gi, ' ')
+      .trim();
+  };
+  
+  const nameLower = nameClean(customerName);
+  const nameWords = nameLower.split(/\s+/).filter(w => w.length > 2);
+  
+  // Check all routes
+  for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
+    for (const client of clients) {
+      const clientClean = nameClean(client);
+      const clientWords = clientClean.split(/\s+/).filter(w => w.length > 2);
+      
+      // Method 1: Exact match after cleaning
+      if (nameLower === clientClean) {
+        return { matched: true, route: route };
+      }
+      
+      // Method 2: Contains match
+      if (clientClean.length >= 3) {
+        if (nameLower.includes(clientClean)) {
+          return { matched: true, route: route };
+        }
+        if (nameLower.length >= 3 && clientClean.includes(nameLower)) {
+          return { matched: true, route: route };
+        }
+      }
+      
+      // Method 3: Word-based matching
+      let matchCount = 0;
+      let significantMatches = 0;
+      for (const nw of nameWords) {
+        for (const cw of clientWords) {
+          if (nw.length > 2 && cw.length > 2) {
+            if (nw === cw || nw.includes(cw) || cw.includes(nw)) {
+              matchCount++;
+              if (nw.length >= 4 || cw.length >= 4) {
+                significantMatches++;
+              }
+              break;
+            }
+          }
+        }
+      }
+      
+      if (significantMatches >= 1 || matchCount >= 2) {
+        return { matched: true, route: route };
+      }
+      
+      // Method 4: Single word match for short names
+      if (clientWords.length === 1 && nameWords.length >= 1) {
+        const clientWord = clientWords[0];
+        const matched = nameWords.some(nw => 
+          nw === clientWord || nw.includes(clientWord) || clientWord.includes(nw)
+        );
+        if (matched && clientWord.length >= 2) {
+          return { matched: true, route: route };
+        }
+      }
+    }
+  }
+  
+  // Not found in any route - NOT a known client
+  return { matched: false, route: null };
+}
+
+/**
+ * Separate orders into matched (Excel clients) and unmatched (DUMP BASKET)
+ * CRITICAL BUSINESS RULE: Only process orders from Excel-mapped clients
+ */
+function separateOrdersByClientMatch(orders) {
+  const matched = [];
+  const unmatched = [];
+  
+  orders.forEach(order => {
+    const customerName = order.customer_name || order.order?.customer_name || '';
+    const result = isKnownClient(customerName);
+    
+    if (result.matched) {
+      order.route = result.route;
+      order.isKnownClient = true;
+      matched.push(order);
+    } else {
+      order.route = 'unmatched';
+      order.isKnownClient = false;
+      unmatched.push(order);
+    }
+  });
+  
+  // Count by route for logging
+  const matchedByRoute = {
+    rijnsburg: matched.filter(o => o.route === 'rijnsburg').length,
+    aalsmeer: matched.filter(o => o.route === 'aalsmeer').length,
+    naaldwijk: matched.filter(o => o.route === 'naaldwijk').length
+  };
+  
+  console.log('═══════════════════════════════════════════════════════════════════');
+  console.log('🔍 CLIENT MATCHING RESULTS (EXCEL CLIENTS ONLY):');
+  console.log(`✅ Matched (in Excel): ${matched.length} orders`);
+  console.log(`   - Rijnsburg: ${matchedByRoute.rijnsburg} orders`);
+  console.log(`   - Aalsmeer: ${matchedByRoute.aalsmeer} orders`);
+  console.log(`   - Naaldwijk: ${matchedByRoute.naaldwijk} orders`);
+  console.log(`⚠️ Unmatched (DUMP BASKET): ${unmatched.length} orders`);
+  console.log(`📊 Total clients in Excel: ${CLIENT_ROUTE_MAPPING.rijnsburg.length + CLIENT_ROUTE_MAPPING.aalsmeer.length + CLIENT_ROUTE_MAPPING.naaldwijk.length}`);
+  console.log('═══════════════════════════════════════════════════════════════════');
+  
+  return { matched, unmatched };
+}
+
+/**
  * Show summary of unmapped customers
  */
 function showUnmappedCustomersSummary() {
@@ -374,6 +520,8 @@ if (typeof window !== 'undefined') {
     getDepartureTime: getDepartureTime,
     getCartCapacity: getCartCapacity,
     showUnmappedCustomersSummary: showUnmappedCustomersSummary,
+    isKnownClient: isKnownClient,
+    separateOrdersByClientMatch: separateOrdersByClientMatch,
     CLIENT_ROUTE_MAPPING: CLIENT_ROUTE_MAPPING,
     DANISH_CART_CLIENTS: DANISH_CART_CLIENTS,
     ROUTE_DEPARTURE_TIMES: ROUTE_DEPARTURE_TIMES,
@@ -388,6 +536,8 @@ if (typeof window !== 'undefined') {
     CLIENT_ROUTE_MAPPING.rijnsburg.length + 
     CLIENT_ROUTE_MAPPING.aalsmeer.length + 
     CLIENT_ROUTE_MAPPING.naaldwijk.length, 
-    'permanent client assignments');
+    'Excel-mapped clients (ONLY these are processed)');
   console.log('   Danish cart clients:', DANISH_CART_CLIENTS.length);
+  console.log('   ⚠️ CRITICAL: Only Excel-mapped clients are processed!');
+  console.log('   ⚠️ All other orders go to DUMP BASKET!');
 }
