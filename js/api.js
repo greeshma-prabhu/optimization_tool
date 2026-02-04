@@ -427,21 +427,45 @@ class FlorinetAPI {
             // Multiple orderrows can belong to the same order
             const uniqueOrderIds = new Set();
             orderrows.forEach(row => {
-                const orderId = row.order_id || row.order?.id || row.order?.order_id;
+                // Try multiple possible locations for order_id
+                const orderId = row.order_id || 
+                               row.order?.id || 
+                               row.order?.order_id ||
+                               row.id; // Sometimes order_id is at root level
                 if (orderId) {
-                    uniqueOrderIds.add(orderId);
+                    uniqueOrderIds.add(String(orderId)); // Convert to string for consistency
                 }
             });
             
             console.log(`📊 API Statistics:`);
             console.log(`   - Total orderrows (product lines): ${orderrows.length}`);
-            console.log(`   - Unique orders: ${uniqueOrderIds.size}`);
+            console.log(`   - Unique orders (by order_id): ${uniqueOrderIds.size}`);
             console.log(`   - Average orderrows per order: ${uniqueOrderIds.size > 0 ? (orderrows.length / uniqueOrderIds.size).toFixed(2) : 0}`);
+            console.log('');
+            
+            // CRITICAL: Log sample order_ids for debugging
+            if (orderrows.length > 0) {
+                const sampleOrderIds = Array.from(uniqueOrderIds).slice(0, 5);
+                console.log(`   Sample order_ids: ${sampleOrderIds.join(', ')}`);
+                
+                // Check first orderrow structure
+                const firstRow = orderrows[0];
+                console.log(`   First orderrow structure check:`);
+                console.log(`     - row.order_id: ${firstRow.order_id || 'NOT FOUND'}`);
+                console.log(`     - row.order?.id: ${firstRow.order?.id || 'NOT FOUND'}`);
+                console.log(`     - row.order?.order_id: ${firstRow.order?.order_id || 'NOT FOUND'}`);
+                console.log(`     - row.id: ${firstRow.id || 'NOT FOUND'}`);
+            }
             console.log('');
             
             // STEP 3: Enrich each orderrow with customer/location/product data
             console.log('🔄 Enriching orderrows with customer/location names...');
-            const enrichedOrders = orderrows.map(row => this.enrichOrderrow(row));
+            const enrichedOrders = orderrows.map(row => {
+                const enriched = this.enrichOrderrow(row);
+                // CRITICAL: Store order_id for unique counting
+                enriched.order_id = row.order_id || row.order?.id || row.order?.order_id;
+                return enriched;
+            });
             
             // Count how many were successfully enriched
             const withCustomer = enrichedOrders.filter(o => !o.customer_name?.startsWith('customer ')).length;

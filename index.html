@@ -797,7 +797,20 @@
                         console.log('📅 Fetching orders for date:', selectedDate.toISOString().split('T')[0]);
                         const apiOrders = await florinetAPI.fetchOrdersForDate(selectedDate);
                         if (apiOrders && apiOrders.length > 0) {
-                            console.log('✅ Loaded', apiOrders.length, 'raw orders from API');
+                            // CRITICAL: Count unique orders, not orderrows!
+                            const uniqueOrderIds = new Set();
+                            apiOrders.forEach(row => {
+                                const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                                if (orderId) {
+                                    uniqueOrderIds.add(String(orderId));
+                                }
+                            });
+                            const uniqueOrderCount = uniqueOrderIds.size;
+                            
+                            console.log('✅ Loaded from API:');
+                            console.log(`   - Total orderrows (product lines): ${apiOrders.length}`);
+                            console.log(`   - Unique orders: ${uniqueOrderCount}`);
+                            console.log(`   - Average orderrows per order: ${uniqueOrderCount > 0 ? (apiOrders.length / uniqueOrderCount).toFixed(2) : 0}`);
                             
                             // CRITICAL: Filter by delivery_date FIRST (same as Orders page)
                             const selectedDateStr = selectedDate.toISOString().split('T')[0];
