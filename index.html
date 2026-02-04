@@ -1055,20 +1055,57 @@
                 const totalCarts = cartResult.total || 0;
                 const actualOrders = globalData.orders;
                 
-                // CRITICAL: Use matched orders count, NOT all orders
-                const matchedOrdersCount = cartResult.matchedOrdersCount || (cartResult.matchedOrders ? cartResult.matchedOrders.length : actualOrders.length);
-                const unmatchedOrdersCount = cartResult.unmatchedOrdersCount || 0;
+                // CRITICAL: Count unique orders (not orderrows!)
+                // actualOrders is an array of orderrows, we need to count unique order_ids
+                const uniqueOrderIds = new Set();
+                actualOrders.forEach(row => {
+                    const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                    if (orderId) {
+                        uniqueOrderIds.add(String(orderId));
+                    }
+                });
+                const totalUniqueOrders = uniqueOrderIds.size;
                 
-                console.log(`   ✅ Got result: ${totalCarts} carts from ${matchedOrdersCount} matched orders`);
-                console.log(`   📥 API returned: ${matchedOrdersCount + unmatchedOrdersCount} total orders`);
-                console.log(`   ✅ Matched (Excel clients): ${matchedOrdersCount} orders`);
-                console.log(`   ⚠️ Unmatched (DUMP BASKET): ${unmatchedOrdersCount} orders`);
+                // Count unique matched orders
+                const matchedOrderrows = cartResult.matchedOrders || actualOrders.filter(o => {
+                    if (window.RouteMapping && window.RouteMapping.isKnownClient) {
+                        const customerName = o.customer_name || o.order?.customer_name || '';
+                        const clientCheck = window.RouteMapping.isKnownClient(customerName);
+                        return clientCheck.matched;
+                    }
+                    return true;
+                });
                 
-                // Update stats with MATCHED orders only (Excel clients)
-                document.getElementById('total-orders-count').textContent = matchedOrdersCount;
+                const uniqueMatchedOrderIds = new Set();
+                matchedOrderrows.forEach(row => {
+                    const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                    if (orderId) {
+                        uniqueMatchedOrderIds.add(String(orderId));
+                    }
+                });
+                const uniqueMatchedOrders = uniqueMatchedOrderIds.size;
                 
-                console.log(`   Orders from global memory: ${actualOrders.length} total`);
-                console.log(`   Matched orders (displayed): ${matchedOrdersCount}`);
+                // Count unique unmatched orders
+                const unmatchedOrderrows = cartResult.unmatchedOrders || [];
+                const uniqueUnmatchedOrderIds = new Set();
+                unmatchedOrderrows.forEach(row => {
+                    const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                    if (orderId) {
+                        uniqueUnmatchedOrderIds.add(String(orderId));
+                    }
+                });
+                const uniqueUnmatchedOrders = uniqueUnmatchedOrderIds.size;
+                
+                console.log(`   ✅ Got result: ${totalCarts} carts from ${uniqueMatchedOrders} unique matched orders`);
+                console.log(`   📥 API returned: ${totalUniqueOrders} unique orders (from ${actualOrders.length} orderrows)`);
+                console.log(`   ✅ Matched (Excel clients): ${uniqueMatchedOrders} unique orders`);
+                console.log(`   ⚠️ Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders`);
+                
+                // Update stats with MATCHED unique orders only (Excel clients)
+                document.getElementById('total-orders-count').textContent = uniqueMatchedOrders;
+                
+                console.log(`   Orders from global memory: ${actualOrders.length} orderrows (${totalUniqueOrders} unique orders)`);
+                console.log(`   Matched orders (displayed): ${uniqueMatchedOrders} unique orders`);
                 console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
                 console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
                 console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
@@ -1085,9 +1122,11 @@
                     page: 'Dashboard',
                     total: totalCarts,
                     date: currentDate,
-                    byRoute: cartResult.byRoute
+                    byRoute: cartResult.byRoute,
+                    uniqueMatchedOrders: uniqueMatchedOrders,
+                    totalUniqueOrders: totalUniqueOrders
                 }));
-                console.log(`📝 Dashboard result stored for verification (date: ${currentDate}): ${totalCarts} carts`);
+                console.log(`📝 Dashboard result stored for verification (date: ${currentDate}): ${totalCarts} carts, ${uniqueMatchedOrders} unique matched orders`);
                 
                 // Update route summary cards (use matched orders only)
                 const matchedOrdersForDisplay = cartResult.matchedOrders || actualOrders.filter(o => {
