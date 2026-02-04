@@ -539,8 +539,13 @@ class FlorinetAPI {
                 console.log(`   Quantity: ${sample.total_stems}`);
             }
             
+            // Store unique order count for reference
+            enrichedOrders._uniqueOrderCount = totalUniqueOrders;
+            enrichedOrders._totalOrderrows = enrichedOrders.length;
+            
             console.log('');
             console.log('╚═══════════════════════════════════════════════════════════╝');
+            console.log(`📊 SUMMARY: ${totalUniqueOrders} unique orders from ${enrichedOrders.length} orderrows`);
             return enrichedOrders;
             
         } catch (error) {
