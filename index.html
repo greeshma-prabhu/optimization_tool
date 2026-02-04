@@ -1588,8 +1588,8 @@
                 return;
             }
             
-            // Filter route orders from MATCHED orders only
-            const routeOrders = matchedOrders.filter(o => {
+            // Filter route orderrows from MATCHED orders only
+            const routeOrderrows = matchedOrders.filter(o => {
                 // Use route already set by separateOrdersByClientMatch, or getRouteForCustomer
                 const routeFromOrder = o.route || (() => {
                     const customerName = o.customer_name || o.order?.customer_name || '';
@@ -1598,11 +1598,21 @@
                 return routeFromOrder === route;
             });
             
-            console.log(`📋 viewRouteDetails(${route}): Showing ${routeOrders.length} matched orders (Excel clients only)`);
-            console.log(`   Total matched orders: ${matchedOrders.length}`);
+            // CRITICAL: Count unique orders (not orderrows!)
+            const uniqueOrderIds = new Set();
+            routeOrderrows.forEach(o => {
+                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                if (orderId) {
+                    uniqueOrderIds.add(String(orderId));
+                }
+            });
+            const uniqueOrdersCount = uniqueOrderIds.size;
+            
+            console.log(`📋 viewRouteDetails(${route}): Showing ${uniqueOrdersCount} unique matched orders (from ${routeOrderrows.length} orderrows, Excel clients only)`);
+            console.log(`   Total matched orderrows: ${matchedOrders.length}`);
             console.log(`   Unmatched orders (excluded): ${(cartResult.unmatchedOrders || []).length}`);
             
-            const customers = [...new Set(routeOrders.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean))].sort();
+            const customers = [...new Set(routeOrderrows.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean))].sort();
             const departureTime = window.RouteMapping.getDepartureTime(route);
             const cartsEl = document.getElementById(route + '-carts');
             const carts = cartsEl ? cartsEl.textContent : '0';
@@ -1629,7 +1639,7 @@
                 <h3>📍 Route: ${routeName} - All Customers</h3>
                 <div class="modal-stats">
                     <p><strong>🕐 Departure:</strong> ${departureTime}</p>
-                    <p><strong>📦 Total Orders:</strong> ${routeOrders.length}</p>
+                    <p><strong>📦 Total Unique Orders:</strong> ${uniqueOrdersCount} (from ${routeOrderrows.length} orderrows)</p>
                     <p><strong>🚛 Carts Needed:</strong> ${carts}</p>
                     <p><strong>👥 Customers:</strong> ${customers.length}</p>
                 </div>
