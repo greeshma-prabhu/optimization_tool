@@ -439,6 +439,9 @@ function separateOrdersByClientMatch(orders) {
     naaldwijk: matched.filter(o => o.route === 'naaldwijk').length
   };
   
+  // Get unique unmatched customers for optional logging
+  const unmatchedCustomers = [...new Set(unmatched.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean))];
+  
   console.log('═══════════════════════════════════════════════════════════════════');
   console.log('🔍 CLIENT MATCHING RESULTS (EXCEL CLIENTS ONLY):');
   console.log(`✅ Matched (in Excel): ${matched.length} orders`);
@@ -447,6 +450,15 @@ function separateOrdersByClientMatch(orders) {
   console.log(`   - Naaldwijk: ${matchedByRoute.naaldwijk} orders`);
   console.log(`⚠️ Unmatched (DUMP BASKET): ${unmatched.length} orders`);
   console.log(`📊 Total clients in Excel: ${CLIENT_ROUTE_MAPPING.rijnsburg.length + CLIENT_ROUTE_MAPPING.aalsmeer.length + CLIENT_ROUTE_MAPPING.naaldwijk.length}`);
+  
+  // Optional logging for unmatched customers (for debugging)
+  if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING && unmatchedCustomers.length > 0) {
+    console.log(`\n⚠️ Unmatched customers (${unmatchedCustomers.length}):`);
+    unmatchedCustomers.sort().forEach((name, i) => {
+      console.log(`   ${i + 1}. "${name}"`);
+    });
+  }
+  
   console.log('═══════════════════════════════════════════════════════════════════');
   
   return { matched, unmatched };
