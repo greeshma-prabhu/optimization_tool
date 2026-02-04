@@ -500,8 +500,23 @@ function calculateCarts(orders) {
         breakdown: breakdown,
         matchedOrders: validOrders,  // CRITICAL: Return matched orders for display (ONLY these should be shown)
         unmatchedOrders: unmatchedOrders,  // CRITICAL: Return unmatched orders for DUMP BASKET only
-        matchedOrdersCount: matchedOrders.length,  // Count of matched (Excel) orders
-        unmatchedOrdersCount: unmatchedOrders.length  // Count of unmatched (DUMP BASKET) orders
+        // CRITICAL: Count unique orders (not orderrows!)
+        matchedOrdersCount: (() => {
+            const uniqueIds = new Set();
+            matchedOrders.forEach(o => {
+                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                if (orderId) uniqueIds.add(String(orderId));
+            });
+            return uniqueIds.size;
+        })(),
+        unmatchedOrdersCount: (() => {
+            const uniqueIds = new Set();
+            unmatchedOrders.forEach(o => {
+                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                if (orderId) uniqueIds.add(String(orderId));
+            });
+            return uniqueIds.size;
+        })()
     };
 }
 
