@@ -161,7 +161,12 @@ const LATE_DELIVERY_CLIENTS = [
 
 /**
  * CANONICAL name normalization function
- * Simple cleaning: lowercase, remove BV/VOF, remove punctuation
+ * Normalizes customer names for matching by:
+ * 1. Converting to lowercase
+ * 2. Trimming spaces
+ * 3. Removing common prefixes (1x, 2x, 3x, etc.)
+ * 4. Removing company suffixes (bv, b.v., webshop, etc.)
+ * 5. Normalizing spaces and punctuation
  * PRESERVES all words (including Dutch particles) - no word removal!
  */
 function normalizeName(name) {
@@ -170,14 +175,18 @@ function normalizeName(name) {
   return name
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, ' ')           // Normalize spaces
+    .replace(/\s+/g, ' ')           // Normalize multiple spaces to single space
+    .replace(/^\d+x\s+/i, '')        // Remove prefixes like "1x ", "2x ", "3x "
     .replace(/[&]/g, ' ')            // Replace ampersands with space
     .replace(/\./g, '')              // Remove periods
     .replace(/b\.v\.|bv|b v|b\.v/gi, '')      // Remove BV suffix
     .replace(/v\.o\.f\.|vof/gi, '')           // Remove VOF suffix
+    .replace(/\s+webshop\s*/gi, ' ')         // Remove "webshop" suffix
+    .replace(/\s+retail\s*/gi, ' ')          // Remove "retail" suffix
     .replace(/\(.*?\)/g, '')        // Remove content in parentheses
     .replace(/-/g, ' ')              // Replace hyphens with spaces
     .replace(/\//g, ' ')            // Replace slashes with spaces
+    .replace(/\s+/g, ' ')           // Normalize spaces again after replacements
     .trim();
 }
 

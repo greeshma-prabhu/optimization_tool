@@ -1191,16 +1191,37 @@
             
             // Update routes status
             try {
-                // Use orders directly (they already have all data)
-                const ordersWithCarts = orders || [];
-                console.log('📊 Updating routes status with', ordersWithCarts.length, 'orders');
-                const optimizer = initializeOptimizer(ordersWithCarts);
-                const routeAnalysis = optimizer.processOrders();
-                const routesWithOrders = Object.keys(routeAnalysis).filter(routeKey => {
-                    const analysis = routeAnalysis[routeKey];
-                    return analysis && analysis.orders && analysis.orders.length > 0;
-                }).length;
-                document.getElementById('routes-status').textContent = `${routesWithOrders}/3`;
+                // CRITICAL: Use cartResult to determine active routes
+                // A route is active if it has carts > 0
+                if (cartResult && cartResult.byRoute) {
+                    const routes = ['Aalsmeer', 'Naaldwijk', 'Rijnsburg'];
+                    const activeRoutes = routes.filter(routeName => {
+                        const carts = cartResult.byRoute[routeName] || 0;
+                        return carts > 0;
+                    }).length;
+                    console.log(`📊 Routes Status: ${activeRoutes}/3 active routes`);
+                    console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
+                    console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
+                    console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
+                    document.getElementById('routes-status').textContent = `${activeRoutes}/3`;
+                } else {
+                    console.warn('⚠️ cartResult.byRoute not available, using fallback');
+                    // Fallback: Count routes with orders
+                    const ordersWithCarts = orders || [];
+                    const routeCounts = {
+                        'Aalsmeer': 0,
+                        'Naaldwijk': 0,
+                        'Rijnsburg': 0
+                    };
+                    ordersWithCarts.forEach(order => {
+                        const locationId = order.delivery_location_id || order.order?.delivery_location_id;
+                        if (locationId === 32) routeCounts['Aalsmeer']++;
+                        else if (locationId === 34) routeCounts['Naaldwijk']++;
+                        else if (locationId === 36) routeCounts['Rijnsburg']++;
+                    });
+                    const activeRoutes = Object.values(routeCounts).filter(count => count > 0).length;
+                    document.getElementById('routes-status').textContent = `${activeRoutes}/3`;
+                }
             } catch (error) {
                 console.error('Error updating routes status:', error);
                 document.getElementById('routes-status').textContent = '0/3';
