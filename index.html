@@ -677,10 +677,23 @@
                     
                     // Show success message with change info
                     if (statusMsg) {
+                        // Get matched/unmatched counts from cart result if available
+                        const cartResult = window.__zuidplas_cart_cache?.cartResult;
+                        const matchedCount = cartResult?.matchedOrdersCount || ordersWithCarts.length;
+                        const unmatchedCount = cartResult?.unmatchedOrdersCount || 0;
+                        
                         if (hasChanges) {
-                            statusMsg.innerHTML = `✅ Updated: Found ${ordersWithCarts.length} orders (was ${existingCount})`;
+                            if (unmatchedCount > 0) {
+                                statusMsg.innerHTML = `✅ Updated: Found ${ordersWithCarts.length} orders from API (${matchedCount} matched, ${unmatchedCount} unmatched) - was ${existingCount}`;
+                            } else {
+                                statusMsg.innerHTML = `✅ Updated: Found ${matchedCount} matched orders (was ${existingCount})`;
+                            }
                         } else {
-                            statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders (no changes)`;
+                            if (unmatchedCount > 0) {
+                                statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders from API (${matchedCount} matched, ${unmatchedCount} unmatched) - no changes`;
+                            } else {
+                                statusMsg.innerHTML = `✅ Refreshed: ${matchedCount} matched orders (no changes)`;
+                            }
                         }
                         statusMsg.classList.add('show', 'success');
                     }
