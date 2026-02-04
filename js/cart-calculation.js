@@ -426,20 +426,11 @@ function calculateCarts(orders) {
     console.log(`   TRUCKS: ${totalTrucks}`);
     console.log('═══════════════════════════════════════════════════════════════════');
     
-    // FINAL VERIFICATION: Ensure total = standard + danish (CRITICAL!)
-    const finalTotal = totalStandardCarts + totalDanishCarts;
-    if (Math.abs(totalCarts - finalTotal) > 0.01) {
-        console.error('❌❌❌ CRITICAL: total !== standard + danish in return statement!');
-        console.error(`   totalCarts: ${totalCarts}`);
-        console.error(`   finalTotal (standard+danish): ${finalTotal}`);
-        console.error('   FIXING: Using standard+danish as total');
-    }
-    
     return {
-        total: finalTotal,  // CRITICAL: Always use standard + danish (source of truth)
+        total: totalCarts,  // Source of truth: standard + danish
         standard: totalStandardCarts,
         danish: totalDanishCarts,
-        trucks: calculateTrucks(finalTotal),  // Recalculate trucks with correct total
+        trucks: totalTrucks,
         byRoute: cartsByRoute,
         breakdown: breakdown,
         matchedOrders: validOrders,  // CRITICAL: Return matched orders for display (ONLY these should be shown)
