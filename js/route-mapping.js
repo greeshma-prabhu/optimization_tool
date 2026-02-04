@@ -161,8 +161,8 @@ const LATE_DELIVERY_CLIENTS = [
 
 /**
  * CANONICAL name normalization function
- * PRESERVES Dutch particles (van, der, de, den, vd, v/d) - these are identity words!
- * Used by ALL matching functions for consistency
+ * Simple cleaning: lowercase, remove BV/VOF, remove punctuation
+ * PRESERVES all words (including Dutch particles) - no word removal!
  */
 function normalizeName(name) {
   if (!name) return '';
@@ -171,105 +171,51 @@ function normalizeName(name) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, ' ')           // Normalize spaces
-    .replace(/[&]/g, ' ')           // Replace ampersands with space
+    .replace(/[&]/g, ' ')            // Replace ampersands with space
     .replace(/\./g, '')              // Remove periods
     .replace(/b\.v\.|bv|b v|b\.v/gi, '')      // Remove BV suffix
     .replace(/v\.o\.f\.|vof/gi, '')           // Remove VOF suffix
-    .replace(/\s+(export|flowers?|bloemen|plant|swiss|holland|westland|aalsmeer|naaldwijk|rijnsburg|bleiswijk|klondike|gerbera|mini|webshop|retail|holding|group)/gi, ' ')  // Remove common business suffixes
     .replace(/\(.*?\)/g, '')        // Remove content in parentheses
     .replace(/-/g, ' ')              // Replace hyphens with spaces
-    .replace(/\//g, ' ')             // Replace slashes with spaces (V/D → V D)
-    .replace(/van der|vander/gi, 'van der')  // Normalize "van der" (PRESERVE it!)
-    .replace(/v d|vd/gi, 'van der')  // Normalize "v d" and "vd" to "van der"
-    // CRITICAL: DO NOT remove Dutch particles (van, der, de, den, vd, v/d)
-    // These are identity words, not noise!
+    .replace(/\//g, ' ')            // Replace slashes with spaces
     .trim();
 }
 
 /**
- * Tokenize a normalized name into tokens
- * Filters out empty tokens and very short tokens (length < 2)
+ * Get words from normalized name (split by spaces, filter empty)
  */
-function tokenizeName(normalizedName) {
+function getWords(normalizedName) {
   if (!normalizedName) return [];
-  
-  return normalizedName
-    .split(/\s+/)
-    .filter(token => token.length >= 2)  // Keep tokens with length >= 2
-    .filter((token, index, arr) => arr.indexOf(token) === index); // Remove duplicates
+  return normalizedName.split(/\s+/).filter(w => w.length > 0);
 }
 
 /**
- * Calculate token overlap percentage between two token arrays
- * Returns: overlap percentage (0-100)
- */
-function calculateTokenOverlap(tokens1, tokens2) {
-  if (tokens1.length === 0 && tokens2.length === 0) return 100;
-  if (tokens1.length === 0 || tokens2.length === 0) return 0;
-  
-  const set1 = new Set(tokens1);
-  const set2 = new Set(tokens2);
-  
-  // Count overlapping tokens
-  let overlapCount = 0;
-  for (const token of set1) {
-    if (set2.has(token)) {
-      overlapCount++;
-    }
-  }
-  
-  // Calculate percentage based on the smaller set (more conservative)
-  const minLength = Math.min(set1.size, set2.size);
-  return minLength > 0 ? (overlapCount / minLength) * 100 : 0;
-}
-
-/**
- * Find closest Excel candidate for an unmatched customer
- * Returns: { client: string, route: string, overlap: number } | null
- */
-function findClosestCandidate(customerName, normalizedCustomer, customerTokens) {
-  let bestMatch = null;
-  let bestOverlap = 0;
-  
-  for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
-    for (const client of clients) {
-      const normalizedClient = normalizeName(client);
-      const clientTokens = tokenizeName(normalizedClient);
-      const overlap = calculateTokenOverlap(customerTokens, clientTokens);
-      
-      if (overlap > bestOverlap) {
-        bestOverlap = overlap;
-        bestMatch = { client, route, overlap };
-      }
-    }
-  }
-  
-  return bestMatch;
-}
-
-/**
- * Get route for a customer using TOKEN-BASED MATCHING
- * API customer names might be slightly different from planning sheet
+ * Check if customer is in our known client list (Excel-mapped clients only)
+ * Returns: { matched: boolean, route: string|null }
  * 
- * Matching logic:
- * 1. Normalize both names (preserves Dutch particles)
- * 2. Tokenize into words
- * 3. Match if ≥60% of tokens overlap (order independent)
- * 4. Ignores punctuation only
+ * CRITICAL: This is the ONLY client-matching function!
+ * Matching rules:
+ * 1. Exact match after normalization
+ * 2. Full-word match (all words in one name exist in the other, order independent)
+ * NO partial word matching, NO fuzzy matching!
  */
-function getRouteForCustomer(customerName) {
-  if (!customerName) return null; // NO DEFAULT - unmatched must remain unmatched
+function isKnownClient(customerName) {
+  if (!customerName) {
+    return { matched: false, route: null };
+  }
   
   const normalizedCustomer = normalizeName(customerName);
-  const customerTokens = tokenizeName(normalizedCustomer);
+  const customerWords = getWords(normalizedCustomer);
   
-  if (customerTokens.length === 0) return null;
+  if (customerWords.length === 0) {
+    return { matched: false, route: null };
+  }
   
   // Check late delivery clients first
   const LATE_DELIVERY = ['rheinmaas', 'plantion', 'algemeen'];
   for (const late of LATE_DELIVERY) {
     if (normalizedCustomer.includes(late)) {
-      return 'late_delivery';
+      return { matched: true, route: 'late_delivery' };
     }
   }
   
@@ -277,74 +223,57 @@ function getRouteForCustomer(customerName) {
   for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
     for (const client of clients) {
       const normalizedClient = normalizeName(client);
-      const clientTokens = tokenizeName(normalizedClient);
+      const clientWords = getWords(normalizedClient);
       
-      // Calculate token overlap
-      const overlap = calculateTokenOverlap(customerTokens, clientTokens);
+      // Rule 1: Exact match after normalization
+      if (normalizedCustomer === normalizedClient) {
+        return { matched: true, route: route };
+      }
       
-      // Match if ≥60% of tokens overlap
-      if (overlap >= 60) {
-        return route;
+      // Rule 2: Full-word match (all words in one exist in the other, order independent)
+      // Check if all customer words exist in client words
+      const customerWordsSet = new Set(customerWords);
+      const clientWordsSet = new Set(clientWords);
+      
+      // Check if all customer words are in client words
+      const allCustomerWordsMatch = customerWords.every(word => clientWordsSet.has(word));
+      // Check if all client words are in customer words
+      const allClientWordsMatch = clientWords.every(word => customerWordsSet.has(word));
+      
+      // Match if either all customer words match OR all client words match
+      if (allCustomerWordsMatch || allClientWordsMatch) {
+        return { matched: true, route: route };
       }
     }
   }
   
-  // No match found - log for debugging
-  const closest = findClosestCandidate(customerName, normalizedCustomer, customerTokens);
-  if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING) {
-    console.log(`⚠️ Unmatched customer: "${customerName}"`);
-    console.log(`   Normalized: "${normalizedCustomer}"`);
-    console.log(`   Tokens: [${customerTokens.join(', ')}]`);
-    if (closest) {
-      console.log(`   Closest Excel candidate: "${closest.client}" (${closest.overlap.toFixed(1)}% overlap, route: ${closest.route})`);
-    }
-  }
-  
-  // Track unmapped customers globally
-  if (typeof window !== 'undefined') {
-    if (!window.unmappedCustomers) {
-      window.unmappedCustomers = new Set();
-    }
-    window.unmappedCustomers.add(customerName);
-  }
-  
-  return null; // NO DEFAULT - unmatched must remain unmatched
-}
-
-/**
- * Check if customer is in our known client list (Excel-mapped clients only)
- * Returns: { matched: boolean, route: string|null }
- * CRITICAL: Only returns true for clients in CLIENT_ROUTE_MAPPING
- * Uses SAME token-based matching as getRouteForCustomer
- */
-function isKnownClient(customerName) {
-  if (!customerName) {
-    return { matched: false, route: null };
-  }
-  
-  // Use getRouteForCustomer for consistency (same matching logic)
-  const route = getRouteForCustomer(customerName);
-  
-  if (route) {
-    return { matched: true, route: route };
-  }
-  
   // No match found - log for debugging (optional)
   if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING) {
-    const normalizedCustomer = normalizeName(customerName);
-    const customerTokens = tokenizeName(normalizedCustomer);
-    const closest = findClosestCandidate(customerName, normalizedCustomer, customerTokens);
-    
     console.log(`⚠️ Unmatched customer: "${customerName}"`);
     console.log(`   Normalized: "${normalizedCustomer}"`);
-    console.log(`   Tokens: [${customerTokens.join(', ')}]`);
-    if (closest) {
-      console.log(`   Closest Excel candidate: "${closest.client}" (${closest.overlap.toFixed(1)}% overlap, route: ${closest.route})`);
-    }
+    console.log(`   Words: [${customerWords.join(', ')}]`);
   }
   
   // Not found in any route - NOT a known client
   return { matched: false, route: null };
+}
+
+/**
+ * Get route for a customer
+ * CRITICAL: Must ONLY be called AFTER client is confirmed known via isKnownClient()
+ * Returns route string or null if unmatched
+ */
+function getRouteForCustomer(customerName) {
+  if (!customerName) return null;
+  
+  // Use isKnownClient() as the ONLY matching function
+  const result = isKnownClient(customerName);
+  
+  if (result.matched) {
+    return result.route;
+  }
+  
+  return null; // NO DEFAULT - unmatched must remain unmatched
 }
 
 /**

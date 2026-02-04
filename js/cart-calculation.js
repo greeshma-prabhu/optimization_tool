@@ -46,13 +46,8 @@ function getRoute(order) {
         
         // If route is null, customer is unmatched - fall back to location_id
         if (route) {
-            // CRITICAL: Convert to proper case for consistency with fustByRouteAndType keys
-            // fustByRouteAndType uses 'Aalsmeer', 'Naaldwijk', 'Rijnsburg' (proper case)
-            const properCaseRoute = route === 'rijnsburg' ? 'Rijnsburg' : 
-                                    route === 'aalsmeer' ? 'Aalsmeer' : 
-                                    route === 'naaldwijk' ? 'Naaldwijk' : 
-                                    route === 'late_delivery' ? 'Rijnsburg' : 'Rijnsburg';
-            return properCaseRoute;
+            // CRITICAL: Normalize to lowercase internally
+            return route.toLowerCase();
         }
         // If route is null, customer is unmatched - fall through to location_id fallback
     }
@@ -61,12 +56,10 @@ function getRoute(order) {
     const locId = order.delivery_location_id || order.order?.delivery_location_id;
     const routeFromLocation = LOCATION_ID_TO_ROUTE[locId];
     if (routeFromLocation) {
-        // Convert to proper case
-        return routeFromLocation === 'rijnsburg' ? 'Rijnsburg' :
-               routeFromLocation === 'aalsmeer' ? 'Aalsmeer' :
-               routeFromLocation === 'naaldwijk' ? 'Naaldwijk' : 'Rijnsburg';
+        // CRITICAL: Normalize to lowercase internally
+        return routeFromLocation.toLowerCase();
     }
-    return 'Rijnsburg'; // Default
+    return 'rijnsburg'; // Default (lowercase)
 }
 
 /**
@@ -234,17 +227,18 @@ function calculateCarts(orders) {
     // Step 2: Calculate FUST for each orderrow and aggregate by route + fust type + cart type
     // CRITICAL: Sum ALL fust of SAME TYPE in SAME ROUTE FIRST!
     // Also track Danish vs Standard carts separately
+    // CRITICAL: Use lowercase route keys internally for consistency
     const fustByRouteAndType = {
-        'Aalsmeer': {},
-        'Naaldwijk': {},
-        'Rijnsburg': {}
+        'aalsmeer': {},
+        'naaldwijk': {},
+        'rijnsburg': {}
     };
     
     // Track Danish cart customers separately
     const fustByRouteAndTypeDanish = {
-        'Aalsmeer': {},
-        'Naaldwijk': {},
-        'Rijnsburg': {}
+        'aalsmeer': {},
+        'naaldwijk': {},
+        'rijnsburg': {}
     };
     
     console.log('═══════════════════════════════════════════════════════════════════');
@@ -254,7 +248,9 @@ function calculateCarts(orders) {
     console.log('═══════════════════════════════════════════════════════════════════');
     
     validOrders.forEach((order, idx) => {
-        const route = getRoute(order);
+        const routeRaw = getRoute(order);
+        // CRITICAL: Normalize route to lowercase internally
+        const route = routeRaw ? routeRaw.toLowerCase() : 'rijnsburg';
         const fustType = getFustType(order);
         const fustCalc = calculateFustForOrderrow(order);
         const assemblyAmount = order.assembly_amount || 0;
@@ -272,6 +268,10 @@ function calculateCarts(orders) {
         // Separate Danish and Standard carts
         const targetMap = isDanish ? fustByRouteAndTypeDanish : fustByRouteAndType;
         
+        // Ensure route exists in map
+        if (!targetMap[route]) {
+            targetMap[route] = {};
+        }
         if (!targetMap[route][fustType]) {
             targetMap[route][fustType] = 0;
         }
@@ -316,10 +316,11 @@ function calculateCarts(orders) {
     console.log('═══════════════════════════════════════════════════════════════════');
     
     // Step 3: Calculate carts from aggregated fust
+    // CRITICAL: Use lowercase route keys internally, map to display names in UI
     const cartsByRoute = {
-        'Aalsmeer': 0,
-        'Naaldwijk': 0,
-        'Rijnsburg': 0
+        'aalsmeer': 0,
+        'naaldwijk': 0,
+        'rijnsburg': 0
     };
     
     // Track standard and danish carts separately
@@ -329,7 +330,11 @@ function calculateCarts(orders) {
     const breakdown = [];
     
     Object.entries(fustByRouteAndType).forEach(([route, fustTypes]) => {
-        console.log(`\n${route}:`);
+        // Map to display name for logging
+        const displayRoute = route === 'aalsmeer' ? 'Aalsmeer' : 
+                            route === 'naaldwijk' ? 'Naaldwijk' : 
+                            route === 'rijnsburg' ? 'Rijnsburg' : route;
+        console.log(`\n${displayRoute}:`);
         
         let routeTotalCarts = 0;
         let routeStandardCarts = 0;
@@ -338,11 +343,13 @@ function calculateCarts(orders) {
         
         // Calculate carts for each fust type in this route
         Object.entries(fustTypes).forEach(([fustType, totalFust]) => {
+            // CRITICAL BUG FIX: Reset routeCartsForThisType INSIDE each fustType loop!
+            let routeCartsForThisType = 0;
+            
             // Check if there's Danish fust for this route+type
             const danishFust = fustByRouteAndTypeDanish[route]?.[fustType] || 0;
             const standardFust = totalFust - danishFust; // Standard = total - danish
             
-            let routeCartsForThisType = 0;
             let capacity = FUST_CAPACITY[fustType] || FUST_CAPACITY['default']; // Default capacity
             
             // Calculate Danish carts if any
@@ -389,23 +396,26 @@ function calculateCarts(orders) {
         totalDanishCarts += routeDanishCarts;
         
         breakdown.push({
-            route,
+            route: displayRoute, // Use display name in breakdown
             carts: routeTotalCarts,
             standardCarts: routeStandardCarts,
             danishCarts: routeDanishCarts,
             fustBreakdown: routeBreakdown
         });
         
-        console.log(`  ✅ ${route} TOTAL: ${routeTotalCarts} carts (Standard: ${routeStandardCarts}, Danish: ${routeDanishCarts})`);
+        console.log(`  ✅ ${displayRoute} TOTAL: ${routeTotalCarts} carts (Standard: ${routeStandardCarts}, Danish: ${routeDanishCarts})`);
     });
     
     // Source of truth: total = standard + danish
-    // Route totals are informational only (never adjusted)
     const totalCarts = totalStandardCarts + totalDanishCarts;
     const totalTrucks = calculateTrucks(totalCarts);
     
+    // CRITICAL: Assert that total = standard + danish
+    console.assert(totalCarts === totalStandardCarts + totalDanishCarts, 
+        `❌ CART COUNT BUG: total (${totalCarts}) !== standard (${totalStandardCarts}) + danish (${totalDanishCarts})`);
+    
     // Log route totals for reference (informational only)
-    const routeTotalSum = cartsByRoute.Aalsmeer + cartsByRoute.Naaldwijk + cartsByRoute.Rijnsburg;
+    const routeTotalSum = cartsByRoute.aalsmeer + cartsByRoute.naaldwijk + cartsByRoute.rijnsburg;
     if (Math.abs(routeTotalSum - totalCarts) > 0.01) {
         console.log('ℹ️ Route totals (informational):');
         console.log(`   Route sum: ${routeTotalSum} carts`);
@@ -415,9 +425,9 @@ function calculateCarts(orders) {
     console.log('');
     console.log('═══════════════════════════════════════════════════════════════════');
     console.log('✅ FINAL RESULTS:');
-    console.log(`   Aalsmeer: ${cartsByRoute.Aalsmeer} carts`);
-    console.log(`   Naaldwijk: ${cartsByRoute.Naaldwijk} carts`);
-    console.log(`   Rijnsburg: ${cartsByRoute.Rijnsburg} carts`);
+    console.log(`   Aalsmeer: ${cartsByRoute.aalsmeer} carts`);
+    console.log(`   Naaldwijk: ${cartsByRoute.naaldwijk} carts`);
+    console.log(`   Rijnsburg: ${cartsByRoute.rijnsburg} carts`);
     console.log(`   TOTAL: ${totalCarts} carts (Standard: ${totalStandardCarts} + Danish: ${totalDanishCarts})`);
     console.log(`   Standard: ${totalStandardCarts} carts`);
     console.log(`   Danish: ${totalDanishCarts} carts`);
@@ -425,32 +435,40 @@ function calculateCarts(orders) {
     console.log(`   TRUCKS: ${totalTrucks}`);
     console.log('═══════════════════════════════════════════════════════════════════');
     
+    // CRITICAL: Calculate unique order IDs (Set)
+    const uniqueOrderIds = new Set();
+    validOrders.forEach(o => {
+        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+        if (orderId) uniqueOrderIds.add(String(orderId));
+    });
+    
+    const uniqueUnmatchedOrderIds = new Set();
+    unmatchedOrders.forEach(o => {
+        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+        if (orderId) uniqueUnmatchedOrderIds.add(String(orderId));
+    });
+    
+    // Map route keys to display names for UI compatibility
+    const byRouteDisplay = {
+        'Aalsmeer': cartsByRoute.aalsmeer,
+        'Naaldwijk': cartsByRoute.naaldwijk,
+        'Rijnsburg': cartsByRoute.rijnsburg
+    };
+    
     return {
         total: totalCarts,  // Source of truth: standard + danish
         standard: totalStandardCarts,
         danish: totalDanishCarts,
         trucks: totalTrucks,
-        byRoute: cartsByRoute,
+        byRoute: byRouteDisplay, // Display names for UI
+        byRouteInternal: cartsByRoute, // Lowercase keys for internal use
         breakdown: breakdown,
         matchedOrders: validOrders,  // CRITICAL: Return matched orders for display (ONLY these should be shown)
         unmatchedOrders: unmatchedOrders,  // CRITICAL: Return unmatched orders for DUMP BASKET only
-        // CRITICAL: Count unique orders (not orderrows!)
-        matchedOrdersCount: (() => {
-            const uniqueIds = new Set();
-            matchedOrders.forEach(o => {
-                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
-                if (orderId) uniqueIds.add(String(orderId));
-            });
-            return uniqueIds.size;
-        })(),
-        unmatchedOrdersCount: (() => {
-            const uniqueIds = new Set();
-            unmatchedOrders.forEach(o => {
-                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
-                if (orderId) uniqueIds.add(String(orderId));
-            });
-            return uniqueIds.size;
-        })()
+        // CRITICAL: Use uniqueOrderIds.size for order count (not orders.length!)
+        matchedOrdersCount: uniqueOrderIds.size,
+        unmatchedOrdersCount: uniqueUnmatchedOrderIds.size,
+        uniqueOrderIds: uniqueOrderIds // CRITICAL: Store Set for consistency checks
     };
 }
 
@@ -462,11 +480,29 @@ function calculateTrucks(totalCarts) {
 }
 
 /**
+ * Initialize or get window.AppData (SINGLE SOURCE OF TRUTH)
+ * CRITICAL: All pages MUST read only from window.AppData
+ */
+function initAppData() {
+    if (!window.AppData) {
+        window.AppData = {
+            orders: [],              // matched order rows
+            uniqueOrderIds: new Set(), // Set of unique order IDs
+            cartResult: null          // from calculateCarts
+        };
+    }
+    return window.AppData;
+}
+
+/**
  * Single source of truth function
  * ALL pages must use this to get orders and cart calculation
+ * CRITICAL: Populates window.AppData as the SINGLE SOURCE OF TRUTH
  * @param {boolean} forceRefresh - If true, ignore cache and calculate fresh (Dashboard only!)
  */
 function getGlobalOrdersAndCarts(forceRefresh = false) {
+    // Initialize AppData
+    const appData = initAppData();
     console.log('🔍 getGlobalOrdersAndCarts: Getting orders from single source...');
     if (forceRefresh) {
         console.log('   🔄 FORCE REFRESH requested - will calculate fresh (ignoring cache)!');
@@ -679,9 +715,23 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
                 console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
                 console.log('═══════════════════════════════════════════════════════════════════');
+                
+                // CRITICAL: Update window.AppData from cache
+                appData.orders = cachedCartResult.matchedOrders || orders;
+                appData.uniqueOrderIds = cachedCartResult.uniqueOrderIds ? new Set(cachedCartResult.uniqueOrderIds) : new Set();
+                appData.cartResult = cachedCartResult;
+                
+                // If uniqueOrderIds not in cache, rebuild from orders
+                if (appData.uniqueOrderIds.size === 0 && appData.orders.length > 0) {
+                    appData.orders.forEach(o => {
+                        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                        if (orderId) appData.uniqueOrderIds.add(String(orderId));
+                    });
+                }
+                
                 return {
-                    orders: orders,
-                    cartResult: cachedCartResult
+                    orders: appData.orders,
+                    cartResult: appData.cartResult
                 };
             } else {
                 // Cache exists but doesn't match - USE IT ANYWAY (don't recalculate!)
@@ -706,9 +756,23 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 console.log(`   ✅ Then: carts = fust ÷ fust_capacity`);
                 console.log(`   ✅ NOT: stems ÷ 72 (WRONG!)`);
                 console.log('═══════════════════════════════════════════════════════════════════');
+                
+                // CRITICAL: Update window.AppData from cache
+                appData.orders = cachedCartResult.matchedOrders || orders;
+                appData.uniqueOrderIds = cachedCartResult.uniqueOrderIds ? new Set(cachedCartResult.uniqueOrderIds) : new Set();
+                appData.cartResult = cachedCartResult;
+                
+                // If uniqueOrderIds not in cache, rebuild from orders
+                if (appData.uniqueOrderIds.size === 0 && appData.orders.length > 0) {
+                    appData.orders.forEach(o => {
+                        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                        if (orderId) appData.uniqueOrderIds.add(String(orderId));
+                    });
+                }
+                
                 return {
-                    orders: orders,
-                    cartResult: cachedCartResult
+                    orders: appData.orders,
+                    cartResult: appData.cartResult
                 };
             }
         } else {
@@ -760,8 +824,16 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     console.log(`   Result: ${cartResult.total} carts`);
     console.log(`   Breakdown: Aalsmeer=${cartResult.byRoute.Aalsmeer}, Naaldwijk=${cartResult.byRoute.Naaldwijk}, Rijnsburg=${cartResult.byRoute.Rijnsburg}`);
     
+    // CRITICAL: Update window.AppData (SINGLE SOURCE OF TRUTH)
+    appData.orders = cartResult.matchedOrders || [];
+    appData.uniqueOrderIds = cartResult.uniqueOrderIds || new Set();
+    appData.cartResult = cartResult;
+    
+    console.log(`✅ window.AppData updated: ${appData.orders.length} orders, ${appData.uniqueOrderIds.size} unique orders`);
+    
     // CACHE the result with timestamp and date
     // CRITICAL: ONLY Dashboard can reach this point and set the cache!
+    // CRITICAL: Store ONLY uniqueOrderIds (Array) and cartResult (no raw orders!)
     
     // Only Dashboard (forceRefresh=true) can cache
     const cacheSource = 'Dashboard (forceRefresh=true)';
@@ -779,14 +851,17 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         }
     }
     
+    // CRITICAL: Convert Set to Array for JSON serialization
+    const uniqueOrderIdsArray = Array.from(appData.uniqueOrderIds);
+    
     // CRITICAL: Save to MULTIPLE locations for compatibility!
     // Location 1: Primary cache (window.__zuidplas_cart_cache)
     window.__zuidplas_cart_cache = {
         ordersHash: ordersHash,
-        orders: orders,
+        uniqueOrderIds: uniqueOrderIdsArray, // Store as Array (not Set)
         cartResult: cartResult,
         timestamp: new Date().toISOString(),
-        ordersCount: orders.length,
+        ordersCount: appData.uniqueOrderIds.size, // Use unique count, not orders.length!
         date: normalizedDate,  // CRITICAL: Store normalized date so different dates don't share cache!
         source: cacheSource
     };
@@ -798,8 +873,15 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     window.appState.cartResult = cartResult;
     
     // Location 3: localStorage (for persistence across page reloads)
+    // CRITICAL: Store ONLY uniqueOrderIds and cartResult (no raw orders!)
     try {
-        localStorage.setItem('cachedCartResult', JSON.stringify(cartResult));
+        const cacheData = {
+            uniqueOrderIds: uniqueOrderIdsArray,
+            cartResult: cartResult,
+            timestamp: new Date().toISOString(),
+            date: normalizedDate
+        };
+        localStorage.setItem('cachedCartResult', JSON.stringify(cacheData));
         localStorage.setItem('cachedCartResultTimestamp', new Date().toISOString());
     } catch (e) {
         console.warn('⚠️ Could not save to localStorage:', e);
@@ -809,7 +891,7 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     console.log(`   Cached by: ${cacheSource}`);
     console.log(`   Cache hash: ${ordersHash}`);
     console.log(`   Cache date: ${normalizedDate}`);
-    console.log(`   Cache orders count: ${orders.length}`);
+    console.log(`   Cache unique orders count: ${appData.uniqueOrderIds.size} (NOT ${orders.length} orderrows!)`);
     console.log(`   Cache result: ${cartResult.total} carts`);
     console.log(`   ✅ Saved to 3 locations: window.__zuidplas_cart_cache, window.appState.cartResult, localStorage`);
     console.log(`   ✅ Other pages can now use this cache from ANY location!`);
@@ -817,10 +899,11 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     console.log(`   Total: ${cartResult.total} carts, ${cartResult.trucks} trucks`);
     console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer}, Naaldwijk: ${cartResult.byRoute.Naaldwijk}, Rijnsburg: ${cartResult.byRoute.Rijnsburg}`);
     console.log(`   🔒 This cache is now LOCKED - all pages MUST use this result!`);
+    console.log(`   ✅ window.AppData is the SINGLE SOURCE OF TRUTH!`);
     
     return {
-        orders: orders,
-        cartResult: cartResult
+        orders: appData.orders,
+        cartResult: appData.cartResult
     };
 }
 
