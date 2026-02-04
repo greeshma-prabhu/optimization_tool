@@ -43,19 +43,18 @@ function getRoute(order) {
     if (window.RouteMapping && window.RouteMapping.getRouteForCustomer) {
         const customerName = order.customer_name || order.order?.customer_name || '';
         const route = window.RouteMapping.getRouteForCustomer(customerName);
-        // CRITICAL: Convert to proper case for consistency with fustByRouteAndType keys
-        // fustByRouteAndType uses 'Aalsmeer', 'Naaldwijk', 'Rijnsburg' (proper case)
-        const properCaseRoute = route === 'rijnsburg' ? 'Rijnsburg' : 
-                                route === 'aalsmeer' ? 'Aalsmeer' : 
-                                route === 'naaldwijk' ? 'Naaldwijk' : 
-                                route === 'late_delivery' ? 'Rijnsburg' : 'Rijnsburg';
         
-        // Log route assignment for debugging
-        if (!customerName) {
-            console.warn(`⚠️ Order ${order.id || 'unknown'} has no customer_name, defaulting to Rijnsburg`);
+        // If route is null, customer is unmatched - fall back to location_id
+        if (route) {
+            // CRITICAL: Convert to proper case for consistency with fustByRouteAndType keys
+            // fustByRouteAndType uses 'Aalsmeer', 'Naaldwijk', 'Rijnsburg' (proper case)
+            const properCaseRoute = route === 'rijnsburg' ? 'Rijnsburg' : 
+                                    route === 'aalsmeer' ? 'Aalsmeer' : 
+                                    route === 'naaldwijk' ? 'Naaldwijk' : 
+                                    route === 'late_delivery' ? 'Rijnsburg' : 'Rijnsburg';
+            return properCaseRoute;
         }
-        
-        return properCaseRoute;
+        // If route is null, customer is unmatched - fall through to location_id fallback
     }
     
     // Fallback: Use location_id (old method, less reliable)

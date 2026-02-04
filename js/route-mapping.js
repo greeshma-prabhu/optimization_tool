@@ -160,48 +160,115 @@ const LATE_DELIVERY_CLIENTS = [
 ];
 
 /**
- * Get route for a customer using IMPROVED FUZZY MATCHING
+ * CANONICAL name normalization function
+ * PRESERVES Dutch particles (van, der, de, den, vd, v/d) - these are identity words!
+ * Used by ALL matching functions for consistency
+ */
+function normalizeName(name) {
+  if (!name) return '';
+  
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')           // Normalize spaces
+    .replace(/[&]/g, ' ')           // Replace ampersands with space
+    .replace(/\./g, '')              // Remove periods
+    .replace(/b\.v\.|bv|b v|b\.v/gi, '')      // Remove BV suffix
+    .replace(/v\.o\.f\.|vof/gi, '')           // Remove VOF suffix
+    .replace(/\s+(export|flowers?|bloemen|plant|swiss|holland|westland|aalsmeer|naaldwijk|rijnsburg|bleiswijk|klondike|gerbera|mini|webshop|retail|holding|group)/gi, ' ')  // Remove common business suffixes
+    .replace(/\(.*?\)/g, '')        // Remove content in parentheses
+    .replace(/-/g, ' ')              // Replace hyphens with spaces
+    .replace(/\//g, ' ')             // Replace slashes with spaces (V/D → V D)
+    .replace(/van der|vander/gi, 'van der')  // Normalize "van der" (PRESERVE it!)
+    .replace(/v d|vd/gi, 'van der')  // Normalize "v d" and "vd" to "van der"
+    // CRITICAL: DO NOT remove Dutch particles (van, der, de, den, vd, v/d)
+    // These are identity words, not noise!
+    .trim();
+}
+
+/**
+ * Tokenize a normalized name into tokens
+ * Filters out empty tokens and very short tokens (length < 2)
+ */
+function tokenizeName(normalizedName) {
+  if (!normalizedName) return [];
+  
+  return normalizedName
+    .split(/\s+/)
+    .filter(token => token.length >= 2)  // Keep tokens with length >= 2
+    .filter((token, index, arr) => arr.indexOf(token) === index); // Remove duplicates
+}
+
+/**
+ * Calculate token overlap percentage between two token arrays
+ * Returns: overlap percentage (0-100)
+ */
+function calculateTokenOverlap(tokens1, tokens2) {
+  if (tokens1.length === 0 && tokens2.length === 0) return 100;
+  if (tokens1.length === 0 || tokens2.length === 0) return 0;
+  
+  const set1 = new Set(tokens1);
+  const set2 = new Set(tokens2);
+  
+  // Count overlapping tokens
+  let overlapCount = 0;
+  for (const token of set1) {
+    if (set2.has(token)) {
+      overlapCount++;
+    }
+  }
+  
+  // Calculate percentage based on the smaller set (more conservative)
+  const minLength = Math.min(set1.size, set2.size);
+  return minLength > 0 ? (overlapCount / minLength) * 100 : 0;
+}
+
+/**
+ * Find closest Excel candidate for an unmatched customer
+ * Returns: { client: string, route: string, overlap: number } | null
+ */
+function findClosestCandidate(customerName, normalizedCustomer, customerTokens) {
+  let bestMatch = null;
+  let bestOverlap = 0;
+  
+  for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
+    for (const client of clients) {
+      const normalizedClient = normalizeName(client);
+      const clientTokens = tokenizeName(normalizedClient);
+      const overlap = calculateTokenOverlap(customerTokens, clientTokens);
+      
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        bestMatch = { client, route, overlap };
+      }
+    }
+  }
+  
+  return bestMatch;
+}
+
+/**
+ * Get route for a customer using TOKEN-BASED MATCHING
  * API customer names might be slightly different from planning sheet
- * Handles variations like: "Floripac Swiss plant BV" → "Floripac"
  * 
- * This function uses MULTIPLE matching methods to achieve 90%+ accuracy:
- * 1. Exact match after cleaning
- * 2. Contains matching (customer name contains client name)
- * 3. Reverse contains (client name contains customer name)
- * 4. Word-based matching (2+ significant words match)
- * 5. Partial word matching for short names
+ * Matching logic:
+ * 1. Normalize both names (preserves Dutch particles)
+ * 2. Tokenize into words
+ * 3. Match if ≥60% of tokens overlap (order independent)
+ * 4. Ignores punctuation only
  */
 function getRouteForCustomer(customerName) {
-  if (!customerName) return 'rijnsburg'; // Default
+  if (!customerName) return null; // NO DEFAULT - unmatched must remain unmatched
   
-  // Clean the customer name for better matching - MORE AGGRESSIVE CLEANING
-  const cleanName = (name) => {
-    return name
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, ' ')           // Normalize spaces
-      .replace(/[&]/g, ' ')           // Remove ampersands
-      .replace(/\./g, '')             // Remove periods
-      .replace(/b\.v\.|bv|b v|b\.v/gi, '')      // Remove all BV variations
-      .replace(/\s+(export|flowers?|bloemen|plant|swiss|holland|westland|aalsmeer|naaldwijk|rijnsburg|bleiswijk|klondike|gerbera|mini|webshop|retail|vof|v\.o\.f\.|vof)/gi, ' ')  // Remove common suffixes and location names
-      .replace(/\(.*?\)/g, '')        // Remove content in parentheses like (MINI)
-      .replace(/webshop/gi, '')        // Remove "webshop"
-      .replace(/retail/gi, '')         // Remove "retail"
-      .replace(/-/g, ' ')              // Replace hyphens with spaces
-      .replace(/\//g, ' ')             // Replace slashes with spaces (V/D PLAS → V D PLAS)
-      .replace(/van der|vander|vd|v d/gi, ' ')  // Normalize "van der" variations
-      .replace(/de |het |van |der |den /gi, ' ') // Remove common Dutch articles
-      .trim();
-  };
+  const normalizedCustomer = normalizeName(customerName);
+  const customerTokens = tokenizeName(normalizedCustomer);
   
-  const nameClean = cleanName(customerName);
-  const nameWords = nameClean.split(/\s+/).filter(w => w.length > 2);
+  if (customerTokens.length === 0) return null;
   
   // Check late delivery clients first
   const LATE_DELIVERY = ['rheinmaas', 'plantion', 'algemeen'];
   for (const late of LATE_DELIVERY) {
-    if (nameClean.includes(late)) {
-      console.log(`✅ Late delivery client: "${customerName}" → late_delivery`);
+    if (normalizedCustomer.includes(late)) {
       return 'late_delivery';
     }
   }
@@ -209,96 +276,29 @@ function getRouteForCustomer(customerName) {
   // Search through all routes
   for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
     for (const client of clients) {
-      const clientClean = cleanName(client);
-      const clientWords = clientClean.split(/\s+/).filter(w => w.length > 2);
+      const normalizedClient = normalizeName(client);
+      const clientTokens = tokenizeName(normalizedClient);
       
-      // Method 1: Exact match after cleaning
-      if (nameClean === clientClean) {
-        console.log(`✅ Exact match: "${customerName}" = "${client}" → ${route}`);
+      // Calculate token overlap
+      const overlap = calculateTokenOverlap(customerTokens, clientTokens);
+      
+      // Match if ≥60% of tokens overlap
+      if (overlap >= 60) {
         return route;
-      }
-      
-      // Method 2: Customer name contains client name (IMPROVED - more lenient)
-      if (clientClean.length >= 3) {
-        if (nameClean.includes(clientClean)) {
-          console.log(`✅ Contains match: "${customerName}" contains "${client}" → ${route}`);
-          return route;
-        }
-        
-        // Method 3: Client name contains customer name (IMPROVED - more lenient)
-        if (nameClean.length >= 3 && clientClean.includes(nameClean)) {
-          console.log(`✅ Reverse contains: "${client}" contains "${customerName}" → ${route}`);
-          return route;
-        }
-      }
-      
-      // Method 2b: Partial contains match (if client name is 3+ chars and appears in customer name)
-      if (clientClean.length >= 3) {
-        // Check if any significant part of client name appears in customer name
-        const clientParts = clientClean.split(/\s+/).filter(p => p.length >= 3);
-        for (const part of clientParts) {
-          if (nameClean.includes(part)) {
-            console.log(`✅ Partial contains: "${customerName}" contains "${part}" from "${client}" → ${route}`);
-            return route;
-          }
-        }
-      }
-      
-      // Method 4: Word-based matching (IMPROVED - match if 1+ significant words match)
-      let matchCount = 0;
-      let significantMatches = 0;
-      for (const nw of nameWords) {
-        for (const cw of clientWords) {
-          // Check if words match or contain each other
-          if (nw.length > 2 && cw.length > 2) {
-            if (nw === cw || nw.includes(cw) || cw.includes(nw)) {
-              matchCount++;
-              // Count significant matches (longer words are more significant)
-              if (nw.length >= 4 || cw.length >= 4) {
-                significantMatches++;
-              }
-              break; // Count each word only once
-            }
-          }
-        }
-      }
-      
-      // IMPROVED: Match if 1+ significant word OR 2+ any words match
-      if (significantMatches >= 1 || matchCount >= 2) {
-        console.log(`✅ Word match (${matchCount} words, ${significantMatches} significant): "${customerName}" ≈ "${client}" → ${route}`);
-        return route;
-      }
-      
-      // Method 4b: Single word match for very short client names (e.g., "L&M", "FSF")
-      if (clientWords.length === 1 && nameWords.length >= 1) {
-        const clientWord = clientWords[0];
-        const matched = nameWords.some(nw => 
-          nw === clientWord || nw.includes(clientWord) || clientWord.includes(nw)
-        );
-        if (matched && clientWord.length >= 2) {
-          console.log(`✅ Single word match: "${customerName}" ≈ "${client}" → ${route}`);
-          return route;
-        }
-      }
-      
-      // Method 5: Partial word matching for short names
-      // For names like "V/D PLAS" vs "Plas van der"
-      if (clientWords.length === 2 && nameWords.length >= 2) {
-        const matches = clientWords.filter(cw => 
-          nameWords.some(nw => nw.includes(cw) || cw.includes(nw))
-        );
-        if (matches.length >= 2) {
-          console.log(`✅ Partial word match: "${customerName}" ≈ "${client}" → ${route}`);
-          return route;
-        }
       }
     }
   }
   
-  // No match found - track unmapped customers
-  console.warn(`⚠️ UNMAPPED CUSTOMER: "${customerName}"`);
-  console.warn(`   Please add this customer to route-mapping.js`);
-  console.warn(`   Defaulting to: Rijnsburg`);
+  // No match found - log for debugging
+  const closest = findClosestCandidate(customerName, normalizedCustomer, customerTokens);
+  if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING) {
+    console.log(`⚠️ Unmatched customer: "${customerName}"`);
+    console.log(`   Normalized: "${normalizedCustomer}"`);
+    console.log(`   Tokens: [${customerTokens.join(', ')}]`);
+    if (closest) {
+      console.log(`   Closest Excel candidate: "${closest.client}" (${closest.overlap.toFixed(1)}% overlap, route: ${closest.route})`);
+    }
+  }
   
   // Track unmapped customers globally
   if (typeof window !== 'undefined') {
@@ -308,101 +308,39 @@ function getRouteForCustomer(customerName) {
     window.unmappedCustomers.add(customerName);
   }
   
-  return 'rijnsburg';
+  return null; // NO DEFAULT - unmatched must remain unmatched
 }
 
 /**
  * Check if customer is in our known client list (Excel-mapped clients only)
  * Returns: { matched: boolean, route: string|null }
  * CRITICAL: Only returns true for clients in CLIENT_ROUTE_MAPPING
+ * Uses SAME token-based matching as getRouteForCustomer
  */
 function isKnownClient(customerName) {
   if (!customerName) {
     return { matched: false, route: null };
   }
   
-  // Clean name function - removes legal suffixes, location names, articles, etc.
-  const cleanName = (name) => {
-    return name
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, ' ')           // Normalize spaces
-      .replace(/[&]/g, ' ')           // Remove ampersands
-      .replace(/\./g, '')             // Remove periods
-      .replace(/b\.v\.|bv|b v|b\.v/gi, '')      // Remove BV suffix
-      .replace(/v\.o\.f\.|vof/gi, '')           // Remove VOF suffix
-      .replace(/\s+(export|flowers?|bloemen|plant|swiss|holland|westland|aalsmeer|naaldwijk|rijnsburg|bleiswijk|klondike|gerbera|mini|webshop|retail|holding|group)/gi, ' ')
-      .replace(/\(.*?\)/g, '')        // Remove content in parentheses
-      .replace(/-/g, ' ')             // Replace hyphens with spaces
-      .replace(/\//g, ' ')            // Replace slashes with spaces
-      .replace(/van der|vander|vd|v d/gi, ' ')  // Normalize "van der"
-      .replace(/de |het |van |der |den /gi, ' ') // Remove articles
-      .trim();
-  };
+  // Use getRouteForCustomer for consistency (same matching logic)
+  const route = getRouteForCustomer(customerName);
   
-  // Stopwords to ignore in word matching
-  const STOPWORDS = new Set([
-    'bv', 'b.v', 'vof', 'v.o.f', 'export', 'flowers', 'flower', 'bloemen', 
-    'plant', 'swiss', 'holland', 'westland', 'aalsmeer', 'naaldwijk', 
-    'rijnsburg', 'bleiswijk', 'klondike', 'gerbera', 'mini', 'webshop', 
-    'retail', 'holding', 'group', 'holland', 'nl', 'netherlands'
-  ]);
-  
-  // Get significant words (length > 2, not stopwords)
-  const getSignificantWords = (text) => {
-    return text
-      .split(/\s+/)
-      .filter(w => w.length > 2 && !STOPWORDS.has(w))
-      .filter((w, i, arr) => arr.indexOf(w) === i); // Remove duplicates
-  };
-  
-  const nameClean = cleanName(customerName);
-  const nameWords = getSignificantWords(nameClean);
-  
-  // Check all routes
-  for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
-    for (const client of clients) {
-      const clientClean = cleanName(client);
-      const clientWords = getSignificantWords(clientClean);
-      
-      // Rule 1: Exact match after cleaning
-      if (nameClean === clientClean) {
-        return { matched: true, route: route };
-      }
-      
-      // Rule 2: Full-name contains match (safe, NOT partial word match)
-      // Only if both names are at least 3 characters
-      if (nameClean.length >= 3 && clientClean.length >= 3) {
-        if (nameClean.includes(clientClean)) {
-          return { matched: true, route: route };
-        }
-        if (clientClean.includes(nameClean)) {
-          return { matched: true, route: route };
-        }
-      }
-      
-      // Rule 3: Significant word match (>= 2 words overlap)
-      // FORBIDDEN: Single-word matches, partial word matches
-      if (nameWords.length >= 2 && clientWords.length >= 2) {
-        // Count overlapping significant words (exact word match only)
-        let matchCount = 0;
-        for (const nw of nameWords) {
-          if (clientWords.includes(nw)) {
-            matchCount++;
-          }
-        }
-        
-        // Match if >= 2 significant words overlap
-        if (matchCount >= 2) {
-          return { matched: true, route: route };
-        }
-      }
-    }
+  if (route) {
+    return { matched: true, route: route };
   }
   
   // No match found - log for debugging (optional)
   if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING) {
-    console.log(`⚠️ Unmatched customer: "${customerName}" (cleaned: "${nameClean}")`);
+    const normalizedCustomer = normalizeName(customerName);
+    const customerTokens = tokenizeName(normalizedCustomer);
+    const closest = findClosestCandidate(customerName, normalizedCustomer, customerTokens);
+    
+    console.log(`⚠️ Unmatched customer: "${customerName}"`);
+    console.log(`   Normalized: "${normalizedCustomer}"`);
+    console.log(`   Tokens: [${customerTokens.join(', ')}]`);
+    if (closest) {
+      console.log(`   Closest Excel candidate: "${closest.client}" (${closest.overlap.toFixed(1)}% overlap, route: ${closest.route})`);
+    }
   }
   
   // Not found in any route - NOT a known client
