@@ -688,7 +688,28 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
             
             if (window.__zuidplas_cart_cache) {
                 hashMatch = window.__zuidplas_cart_cache.ordersHash === ordersHash;
-                countMatch = window.__zuidplas_cart_cache.orders.length === orders.length;
+                // CRITICAL: Cache may not have orders array anymore (stores uniqueOrderIds instead)
+                // Use ordersCount if available, otherwise skip countMatch check
+                if (window.__zuidplas_cart_cache.ordersCount !== undefined) {
+                    // Compare unique order counts
+                    const currentUniqueCount = appData.uniqueOrderIds.size > 0 
+                        ? appData.uniqueOrderIds.size 
+                        : (() => {
+                            const uniqueIds = new Set();
+                            orders.forEach(o => {
+                                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                                if (orderId) uniqueIds.add(String(orderId));
+                            });
+                            return uniqueIds.size;
+                        })();
+                    countMatch = window.__zuidplas_cart_cache.ordersCount === currentUniqueCount;
+                } else if (window.__zuidplas_cart_cache.orders && Array.isArray(window.__zuidplas_cart_cache.orders)) {
+                    // Fallback: old cache format with orders array
+                    countMatch = window.__zuidplas_cart_cache.orders.length === orders.length;
+                } else {
+                    // Can't verify count - assume it matches
+                    countMatch = true;
+                }
                 dateMatch = cacheDate === currentDate;
             } else {
                 // Cache from appState or localStorage - assume it matches (can't verify hash)
