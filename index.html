@@ -1518,8 +1518,8 @@
             const routes = ['rijnsburg', 'aalsmeer', 'naaldwijk'];
             
             routes.forEach(route => {
-                // Count orders for this route (ONLY from matched orders)
-                const routeOrders = matchedOrders.filter(o => {
+                // Count orderrows for this route (ONLY from matched orders)
+                const routeOrderrows = matchedOrders.filter(o => {
                     // Use route already set by separateOrdersByClientMatch, or getRouteForCustomer
                     const routeFromOrder = o.route || (() => {
                         const customerName = o.customer_name || o.order?.customer_name || '';
@@ -1528,21 +1528,31 @@
                     return routeFromOrder === route;
                 });
                 
+                // CRITICAL: Count unique orders (not orderrows!)
+                const uniqueOrderIds = new Set();
+                routeOrderrows.forEach(o => {
+                    const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                    if (orderId) {
+                        uniqueOrderIds.add(String(orderId));
+                    }
+                });
+                const uniqueOrdersCount = uniqueOrderIds.size;
+                
                 // Count unique customers (ONLY matched customers)
-                const uniqueCustomers = new Set(routeOrders.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean));
+                const uniqueCustomers = new Set(routeOrderrows.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean));
                 
                 // Get carts for this route - check both proper case and lowercase
                 const routeName = route.charAt(0).toUpperCase() + route.slice(1);
                 let carts = cartData.byRoute[routeName] || cartData.byRoute[route] || 0;
                 
                 // CRITICAL: If we have orders but no carts, or vice versa, recalculate for this route
-                if (routeOrders.length > 0 && carts === 0) {
-                    console.warn(`⚠️ Route ${route} has ${routeOrders.length} orders but 0 carts - recalculating...`);
+                if (routeOrderrows.length > 0 && carts === 0) {
+                    console.warn(`⚠️ Route ${route} has ${uniqueOrdersCount} unique orders but 0 carts - recalculating...`);
                     // Recalculate carts for this route's orders
                     if (window.CartCalculation && window.CartCalculation.calculateCarts) {
-                        const routeCartResult = window.CartCalculation.calculateCarts(routeOrders);
+                        const routeCartResult = window.CartCalculation.calculateCarts(routeOrderrows);
                         carts = routeCartResult.byRoute[routeName] || routeCartResult.byRoute[route] || 0;
-                        console.log(`   Recalculated: ${carts} carts for ${routeOrders.length} orders`);
+                        console.log(`   Recalculated: ${carts} carts for ${uniqueOrdersCount} unique orders`);
                     }
                 }
                 
@@ -1554,12 +1564,13 @@
                 const cartsEl = document.getElementById(`${route}-carts`);
                 const trucksEl = document.getElementById(`${route}-trucks`);
                 
-                if (ordersEl) ordersEl.textContent = routeOrders.length;
+                // CRITICAL: Display unique orders count, not orderrows!
+                if (ordersEl) ordersEl.textContent = uniqueOrdersCount;
                 if (customersEl) customersEl.textContent = uniqueCustomers.size;
                 if (cartsEl) cartsEl.textContent = carts;
                 if (trucksEl) trucksEl.textContent = trucks;
                 
-                console.log(`✅ Route ${route}: ${routeOrders.length} orders, ${uniqueCustomers.size} customers, ${carts} carts, ${trucks} trucks`);
+                console.log(`✅ Route ${route}: ${uniqueOrdersCount} unique orders (from ${routeOrderrows.length} orderrows), ${uniqueCustomers.size} customers, ${carts} carts, ${trucks} trucks`);
             });
             
             console.log('✅ Route summary cards updated');
