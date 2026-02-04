@@ -321,52 +321,93 @@ function isKnownClient(customerName) {
     return { matched: false, route: null };
   }
   
-  // Use the same fuzzy matching logic as getRouteForCustomer
-  // but return early if matched (don't default to rijnsburg)
+  // Clean name function - removes legal suffixes, location names, articles, etc.
   const nameClean = (name) => {
     return name
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, ' ')
-      .replace(/[&]/g, ' ')
-      .replace(/\./g, '')
-      .replace(/b\.v\.|bv|b v|b\.v/gi, '')
-      .replace(/\s+(export|flowers?|bloemen|plant|swiss|holland|westland|aalsmeer|naaldwijk|rijnsburg|bleiswijk|klondike|gerbera|mini|webshop|retail|vof|v\.o\.f\.|vof)/gi, ' ')
-      .replace(/\(.*?\)/g, '')
-      .replace(/webshop/gi, '')
-      .replace(/retail/gi, '')
-      .replace(/-/g, ' ')
-      .replace(/\//g, ' ')
-      .replace(/van der|vander|vd|v d/gi, ' ')
-      .replace(/de |het |van |der |den /gi, ' ')
+      .replace(/\s+/g, ' ')           // Normalize spaces
+      .replace(/[&]/g, ' ')           // Remove ampersands
+      .replace(/\./g, '')             // Remove periods
+      .replace(/b\.v\.|bv|b v|b\.v/gi, '')      // Remove BV suffix
+      .replace(/v\.o\.f\.|vof/gi, '')           // Remove VOF suffix
+      .replace(/\s+(export|flowers?|bloemen|plant|swiss|holland|westland|aalsmeer|naaldwijk|rijnsburg|bleiswijk|klondike|gerbera|mini|webshop|retail|holding|group)/gi, ' ')
+      .replace(/\(.*?\)/g, '')        // Remove content in parentheses
+      .replace(/-/g, ' ')             // Replace hyphens with spaces
+      .replace(/\//g, ' ')            // Replace slashes with spaces
+      .replace(/van der|vander|vd|v d/gi, ' ')  // Normalize "van der"
+      .replace(/de |het |van |der |den /gi, ' ') // Remove articles
       .trim();
   };
   
-  const nameLower = nameClean(customerName);
-  const nameWords = nameLower.split(/\s+/).filter(w => w.length > 2);
+  // Stopwords to ignore in word matching
+  const STOPWORDS = new Set([
+    'bv', 'b.v', 'vof', 'v.o.f', 'export', 'flowers', 'flower', 'bloemen', 
+    'plant', 'swiss', 'holland', 'westland', 'aalsmeer', 'naaldwijk', 
+    'rijnsburg', 'bleiswijk', 'klondike', 'gerbera', 'mini', 'webshop', 
+    'retail', 'holding', 'group', 'holland', 'nl', 'netherlands'
+  ]);
+  
+  // Get significant words (length > 2, not stopwords)
+  const getSignificantWords = (text) => {
+    return text
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !STOPWORDS.has(w))
+      .filter((w, i, arr) => arr.indexOf(w) === i); // Remove duplicates
+  };
+  
+  const nameClean = nameClean(customerName);
+  const nameWords = getSignificantWords(nameClean);
   
   // Check all routes
   for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
     for (const client of clients) {
       const clientClean = nameClean(client);
-      const clientWords = clientClean.split(/\s+/).filter(w => w.length > 2);
+      const clientWords = getSignificantWords(clientClean);
       
-      // Method 1: Exact match after cleaning
-      if (nameLower === clientClean) {
+      // Rule 1: Exact match after cleaning
+      if (nameClean === clientClean) {
         return { matched: true, route: route };
       }
       
-      // Method 2: Contains match
-      if (clientClean.length >= 3) {
-        if (nameLower.includes(clientClean)) {
+      // Rule 2: Full-name contains match (safe, NOT partial word match)
+      // Only if both names are at least 3 characters
+      if (nameClean.length >= 3 && clientClean.length >= 3) {
+        if (nameClean.includes(clientClean)) {
           return { matched: true, route: route };
         }
-        if (nameLower.length >= 3 && clientClean.includes(nameLower)) {
+        if (clientClean.includes(nameClean)) {
           return { matched: true, route: route };
         }
       }
       
-      // Method 3: Word-based matching
+      // Rule 3: Significant word match (>= 2 words overlap)
+      // FORBIDDEN: Single-word matches, partial word matches
+      if (nameWords.length >= 2 && clientWords.length >= 2) {
+        // Count overlapping significant words (exact word match only)
+        let matchCount = 0;
+        for (const nw of nameWords) {
+          if (clientWords.includes(nw)) {
+            matchCount++;
+          }
+        }
+        
+        // Match if >= 2 significant words overlap
+        if (matchCount >= 2) {
+          return { matched: true, route: route };
+        }
+      }
+    }
+  }
+  
+  // No match found - log for debugging (optional)
+  if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING) {
+    console.log(`⚠️ Unmatched customer: "${customerName}" (cleaned: "${nameClean}")`);
+  }
+  
+  // Not found in any route - NOT a known client
+  return { matched: false, route: null };
+}
       let matchCount = 0;
       let significantMatches = 0;
       for (const nw of nameWords) {
