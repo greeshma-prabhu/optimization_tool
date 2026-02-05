@@ -293,24 +293,18 @@
         function updateInputSummary() {
             console.log('📊 Updating Input Summary...');
             
-            // CRITICAL: Check cache date BEFORE using it
-            const cacheDate = window.__zuidplas_cart_cache?.date || '';
-            const currentDate = window.__zuidplas_orders_date || new Date().toISOString().split('T')[0];
-            
-            if (cacheDate && cacheDate !== currentDate) {
-                console.error(`❌ ERROR: Cache is from different date!`);
-                console.error(`   Cache date: ${cacheDate}`);
-                console.error(`   Current date: ${currentDate}`);
-                showError(`Cache is from ${cacheDate}, but current date is ${currentDate}. Please sync data from Dashboard first.`);
-                return;
-            }
-            
             // CRITICAL: Use cartResult from SINGLE SOURCE (matched orders only)
             // forceRefresh = FALSE (only Dashboard can force refresh!)
             let cartResult = null;
             if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
                 const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                 cartResult = globalData.cartResult;
+                
+                // Log cache info for debugging
+                const cacheDate = window.__zuidplas_cart_cache?.date || '';
+                const cacheTimestamp = window.__zuidplas_cart_cache?.timestamp || '';
+                console.log(`📅 Cache date: ${cacheDate || 'N/A'}`);
+                console.log(`📅 Cache timestamp: ${cacheTimestamp || 'N/A'}`);
             }
             
             // Check if cartResult is valid (less strict - allow if total > 0 even without matchedOrdersCount)
@@ -583,26 +577,27 @@
                 if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
                     console.log('🛒 Optimization: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
                     
-                    // CRITICAL: Check cache date BEFORE using it
-                    const cacheDate = window.__zuidplas_cart_cache?.date || '';
-                    const currentDate = window.__zuidplas_orders_date || new Date().toISOString().split('T')[0];
-                    
-                    console.log(`📅 Cache date: ${cacheDate || 'N/A'}`);
-                    console.log(`📅 Current date: ${currentDate}`);
-                    
-                    // Check if cache date matches current date
-                    if (cacheDate && cacheDate !== currentDate) {
-                        console.error(`❌ ERROR: Cache is from different date!`);
-                        console.error(`   Cache date: ${cacheDate}`);
-                        console.error(`   Current date: ${currentDate}`);
-                        console.error(`   Please go to Dashboard and sync data for ${currentDate} first!`);
-                        showError(`Cache is from ${cacheDate}, but current date is ${currentDate}. Please sync data from Dashboard first.`);
-                        return;
-                    }
-                    
+                    // CRITICAL: Get cache first to check date
                     const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
+                    
+                    // CRITICAL: Check cache date AFTER getting it
+                    const cacheDate = window.__zuidplas_cart_cache?.date || '';
+                    const cacheTimestamp = window.__zuidplas_cart_cache?.timestamp || '';
+                    
+                    console.log(`📅 Cache date: ${cacheDate || 'N/A'}`);
+                    console.log(`📅 Cache timestamp: ${cacheTimestamp || 'N/A'}`);
+                    
+                    // If cache exists but is old (more than 1 hour old), warn user
+                    if (cacheTimestamp) {
+                        const cacheTime = new Date(cacheTimestamp);
+                        const now = new Date();
+                        const hoursDiff = (now - cacheTime) / (1000 * 60 * 60);
+                        if (hoursDiff > 24) {
+                            console.warn(`⚠️ Cache is ${hoursDiff.toFixed(1)} hours old - consider refreshing from Dashboard`);
+                        }
+                    }
                     
                     // CRITICAL: Check if cartResult is valid (less strict - allow if total > 0)
                     if (!cartResult || cartResult.total === 0) {
