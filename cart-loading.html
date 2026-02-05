@@ -2635,6 +2635,24 @@
                 // forceRefresh = FALSE (only Dashboard can force refresh!)
                 if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
                     console.log('🛒 Cart Optimization: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
+                    
+                    // CRITICAL: Check cache date BEFORE using it
+                    const cacheDate = window.__zuidplas_cart_cache?.date || '';
+                    const currentDate = window.__zuidplas_orders_date || new Date().toISOString().split('T')[0];
+                    
+                    console.log(`📅 Cache date: ${cacheDate || 'N/A'}`);
+                    console.log(`📅 Current date: ${currentDate}`);
+                    
+                    // Check if cache date matches current date
+                    if (cacheDate && cacheDate !== currentDate) {
+                        console.error(`❌ ERROR: Cache is from different date!`);
+                        console.error(`   Cache date: ${cacheDate}`);
+                        console.error(`   Current date: ${currentDate}`);
+                        console.error(`   Please go to Dashboard and sync data for ${currentDate} first!`);
+                        showError(`Cache is from ${cacheDate}, but current date is ${currentDate}. Please sync data from Dashboard first.`);
+                        return;
+                    }
+                    
                     const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
@@ -2647,44 +2665,28 @@
                         return;
                     }
                     
-                    // CRITICAL: Use window.AppData for consistent counts
-                    if (window.AppData && window.AppData.uniqueOrderIds) {
-                        const uniqueCount = window.AppData.uniqueOrderIds.size;
-                        console.log(`✅ Cart Optimization: Loaded ${uniqueCount} unique orders (from ${orders.length} orderrows)`);
-                        console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
-                        // Ensure cartResult has correct count
-                        if (cartResult) {
-                            cartResult.matchedOrdersCount = uniqueCount;
-                        }
-                    } else {
-                        console.log(`✅ Cart Optimization: Loaded ${orders.length} orders from SINGLE SOURCE`);
-                        console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
+                    // CRITICAL: Ensure matchedOrdersCount is set from uniqueOrderIds
+                    if (window.AppData && window.AppData.uniqueOrderIds && window.AppData.uniqueOrderIds.size > 0) {
+                        cartResult.matchedOrdersCount = window.AppData.uniqueOrderIds.size;
+                        console.log(`✅ Using unique orders count from AppData: ${cartResult.matchedOrdersCount}`);
+                    } else if (!cartResult.matchedOrdersCount && orders && orders.length > 0) {
+                        // Count unique orders from orders array as fallback
+                        const uniqueIds = new Set();
+                        orders.forEach(o => {
+                            const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                            if (orderId) uniqueIds.add(String(orderId));
+                        });
+                        cartResult.matchedOrdersCount = uniqueIds.size;
+                        console.log(`✅ Counted unique orders from array: ${cartResult.matchedOrdersCount}`);
                     }
+                    
+                    // CRITICAL: Log the correct counts
+                    console.log(`✅ Cart Optimization: Loaded ${cartResult.matchedOrdersCount || 'N/A'} UNIQUE orders (from ${orders.length} orderrows)`);
+                    console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
+                    console.log(`✅ Cache date: ${cacheDate || 'N/A'}, Current date: ${currentDate}`);
                 } else {
                     console.error('❌ getGlobalOrdersAndCarts() not available!');
                     showError('Cart calculation system not available. Please refresh the page.');
-                    return;
-                }
-                
-                // CRITICAL: Check if cache exists and is valid
-                const cacheExists = window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.cartResult;
-                
-                if (!cacheExists) {
-                    console.error('❌ ERROR: No cache found!');
-                    showError('No data available. Please sync data from Dashboard first.');
-                    return;
-                }
-                
-                // Get cache info
-                console.log('📋 Cache information:');
-                console.log(`   Date: ${window.__zuidplas_cart_cache.date}`);
-                console.log(`   Timestamp: ${window.__zuidplas_cart_cache.timestamp}`);
-                console.log(`   Matched orders: ${window.__zuidplas_cart_cache.cartResult.matchedOrdersCount || 'N/A'}`);
-                console.log(`   Total carts: ${window.__zuidplas_cart_cache.cartResult.total || 'N/A'}`);
-                
-                if (!cartResult || !cartResult.matchedOrdersCount) {
-                    console.error('❌ ERROR: Invalid cache data!');
-                    showError('No data available. Please sync data from Dashboard first.');
                     return;
                 }
                 
