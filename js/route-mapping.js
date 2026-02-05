@@ -210,41 +210,48 @@ function getWords(normalizedName) {
  * 
  * CRITICAL: This is the ONLY client-matching function!
  * 
- * MATCHING RULES:
- * 1. Exact match after normalization
- * 2. All meaningful Excel words (length > 2) must match:
- *    - As full word in API name OR
- *    - As prefix of any API word
- * 
- * Excel is the source of truth. API names may contain extra words (BV, webshop, etc).
- * 
- * NO fuzzy logic, NO bidirectional comparison - deterministic prefix matching.
+ * MATCHING RULES (STRICT WORD-BY-WORD):
+ * 1. Normalize Excel name and API name
+ * 2. Split BOTH into word arrays
+ * 3. Ignore Excel words with length <= 2
+ * 4. For EACH Excel word:
+ *    - It matches if ANY API word:
+ *      - equals the Excel word OR
+ *      - startsWith the Excel word
+ * 5. ALL meaningful Excel words must match
+ * 6. Direction MUST be Excel → API (Excel is source of truth)
+ * 7. NO substring includes() checks - strict word comparison only
  */
 function isKnownClient(customerName) {
   if (!customerName) {
     return { matched: false, route: null };
   }
   
+  // Step 1: Normalize API customer name
   const normalizedCustomer = normalizeName(customerName);
   
   if (!normalizedCustomer) {
     return { matched: false, route: null };
   }
   
-  // Get API customer words for prefix matching
-  const customerWords = getWords(normalizedCustomer);
+  // Step 2: Split API name into word array
+  const apiWords = getWords(normalizedCustomer);
   
-  // Check late delivery clients first
+  // Check late delivery clients first (word-by-word, not substring)
   const LATE_DELIVERY = ['rheinmaas', 'plantion', 'algemeen'];
   for (const late of LATE_DELIVERY) {
-    if (normalizedCustomer.includes(late)) {
-      return { matched: true, route: 'late_delivery' };
+    // Check if any API word equals or starts with late delivery keyword
+    for (const apiWord of apiWords) {
+      if (apiWord === late || apiWord.startsWith(late)) {
+        return { matched: true, route: 'late_delivery' };
+      }
     }
   }
   
   // Search through all routes
   for (const [route, clients] of Object.entries(CLIENT_ROUTE_MAPPING)) {
     for (const client of clients) {
+      // Step 1: Normalize Excel client name
       const normalizedClient = normalizeName(client);
       
       // Rule 1: Exact match after normalization
@@ -252,38 +259,27 @@ function isKnownClient(customerName) {
         return { matched: true, route: route };
       }
       
-      // Rule 2: All meaningful Excel words must match
-      // Get words from Excel client (source of truth)
-      const clientWords = getWords(normalizedClient);
+      // Step 2: Split Excel client name into word array
+      const excelWords = getWords(normalizedClient);
       
-      // Filter out short words (length <= 2) - ignore abbreviations, particles
-      const meaningfulClientWords = clientWords.filter(word => word.length > 2);
+      // Step 3: Filter out short words (length <= 2) - ignore abbreviations, particles
+      const meaningfulExcelWords = excelWords.filter(word => word.length > 2);
       
       // Skip if Excel client has no meaningful words
-      if (meaningfulClientWords.length === 0) {
+      if (meaningfulExcelWords.length === 0) {
         continue;
       }
       
-      // Check if ALL meaningful Excel words match
-      // Match if: word exists as full word OR is prefix of any API word
-      const allWordsMatch = meaningfulClientWords.every(excelWord => {
-        // Check 1: Excel word exists as full word in normalized API name
-        if (normalizedCustomer.includes(excelWord)) {
-          // Verify it's a full word (not part of another word)
-          // Check if it's surrounded by word boundaries or spaces
-          const wordBoundaryRegex = new RegExp(`(^|\\s)${excelWord}(\\s|$)`, 'i');
-          if (wordBoundaryRegex.test(normalizedCustomer)) {
+      // Step 4: Check if ALL meaningful Excel words match
+      // For EACH Excel word, check if ANY API word equals it OR startsWith it
+      const allWordsMatch = meaningfulExcelWords.every(excelWord => {
+        // Check against each API word
+        for (const apiWord of apiWords) {
+          // Match if: API word equals Excel word OR API word starts with Excel word
+          if (apiWord === excelWord || apiWord.startsWith(excelWord)) {
             return true;
           }
         }
-        
-        // Check 2: Excel word is a prefix of any API word
-        for (const apiWord of customerWords) {
-          if (apiWord.startsWith(excelWord) && excelWord.length >= 3) {
-            return true;
-          }
-        }
-        
         return false;
       });
       
@@ -297,6 +293,7 @@ function isKnownClient(customerName) {
   if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING) {
     console.log(`⚠️ Unmatched customer: "${customerName}"`);
     console.log(`   Normalized: "${normalizedCustomer}"`);
+    console.log(`   API words: [${apiWords.join(', ')}]`);
   }
   
   // Not found in any route - NOT a known client
