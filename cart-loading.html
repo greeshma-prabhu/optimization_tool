@@ -2666,43 +2666,85 @@
                     return;
                 }
                 
-                if (!orders || orders.length === 0) {
+                // CRITICAL: Check if cache exists and is valid
+                const cacheExists = window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.cartResult;
+                
+                if (!cacheExists) {
+                    console.error('❌ ERROR: No cache found!');
+                    showError('No data available. Please sync data from Dashboard first.');
+                    return;
+                }
+                
+                // Get cache info
+                console.log('📋 Cache information:');
+                console.log(`   Date: ${window.__zuidplas_cart_cache.date}`);
+                console.log(`   Timestamp: ${window.__zuidplas_cart_cache.timestamp}`);
+                console.log(`   Matched orders: ${window.__zuidplas_cart_cache.cartResult.matchedOrdersCount || 'N/A'}`);
+                console.log(`   Total carts: ${window.__zuidplas_cart_cache.cartResult.total || 'N/A'}`);
+                
+                if (!cartResult || !cartResult.matchedOrdersCount) {
+                    console.error('❌ ERROR: Invalid cache data!');
+                    showError('No data available. Please sync data from Dashboard first.');
+                    return;
+                }
+                
+                console.log('');
+                console.log('✅ CART LOADING PAGE using Dashboard cache:');
+                console.log(`   Matched orders: ${cartResult.matchedOrdersCount} (NOT ${orders.length} orderrows!)`);
+                console.log(`   Total carts: ${cartResult.total}`);
+                console.log(`   Standard: ${cartResult.standard || 0}, Danish: ${cartResult.danish || 0}`);
+                console.log('═══════════════════════════════════════════════════════════════════');
+                
+                // CRITICAL: Use matched orders from cartResult (same as Dashboard)
+                const matchedOrders = cartResult.matchedOrders || orders;
+                
+                if (!matchedOrders || matchedOrders.length === 0) {
                     // Clear display - no orders loaded
                     clearCartOptimizationDisplay();
-                    console.log('💡 No orders loaded. Please load orders from Dashboard first.');
+                    console.error('❌ No matched orders in cache!');
+                    showError('No orders available. Please sync data from Dashboard first.');
+                    return;
+                }
+                
+                // Orders are available - load them into orderManager
+                console.log(`📦 Found ${matchedOrders.length} matched orders in cache, loading...`);
+                orderManager.orders = matchedOrders;
+                orderManager.filteredOrders = [...matchedOrders];
+                
+                // CRITICAL: Update UI with CACHED cart count immediately!
+                console.log(`✅ Updating UI with cached cart count: ${cartResult.total} carts`);
+                const totalCartsEl = document.getElementById('total-carts');
+                if (totalCartsEl) {
+                    totalCartsEl.textContent = cartResult.total;
+                }
+                
+                // UPDATE UI - CRITICAL: Use matchedOrdersCount!
+                const totalOrdersEl = document.getElementById('cart-total-orders');
+                if (totalOrdersEl) {
+                    totalOrdersEl.textContent = cartResult.matchedOrdersCount;
+                }
+                const cartsAssignedEl = document.getElementById('carts-assigned');
+                if (cartsAssignedEl) {
+                    cartsAssignedEl.textContent = cartResult.total;
+                }
+                const standardEl = document.getElementById('cart-standard');
+                if (standardEl) {
+                    standardEl.textContent = cartResult.standard || 0;
+                }
+                const danishEl = document.getElementById('cart-danish');
+                if (danishEl) {
+                    danishEl.textContent = cartResult.danish || 0;
+                }
+                
+                // CRITICAL: Update cart counts using CartDisplayManager
+                // CartDisplayManager will use getGlobalOrdersAndCarts internally
+                if (window.CartDisplayManager) {
+                    const cartManager = new CartDisplayManager();
+                    cartManager.updateDOM();
+                    console.log('✅ Cart counts updated using CartDisplayManager');
                 } else {
-                    // Orders are available - load them into orderManager
-                    console.log(`📦 Found ${orders.length} orders in global state, loading...`);
-                    orderManager.orders = orders;
-                    orderManager.filteredOrders = [...orders];
-                    
-                    // CRITICAL: Update UI with CACHED cart count immediately!
-                    if (cartResult && cartResult.total > 0) {
-                        console.log(`✅ Updating UI with cached cart count: ${cartResult.total} carts`);
-                        const totalCartsEl = document.getElementById('total-carts');
-                        if (totalCartsEl) {
-                            totalCartsEl.textContent = cartResult.total;
-                            console.log(`✅ Updated total-carts element to ${cartResult.total}`);
-                        }
-                    } else {
-                        console.warn('⚠️ No cached cart result available - Dashboard may not have calculated yet!');
-                        console.warn('⚠️ Please load Dashboard and click "Sync" or "Refresh Data" to calculate carts!');
-                    }
-                    
-                    // CRITICAL: Update cart counts using CartDisplayManager
-                    // Use cartResult from SINGLE SOURCE if available
-                    if (window.CartDisplayManager) {
-                        const cartManager = new CartDisplayManager(orders);
-                        // If we got cartResult from single source, use it directly
-                        if (cartResult) {
-                            cartManager.cartData = cartResult;
-                            console.log('✅ Using cart result from SINGLE SOURCE');
-                        }
-                        cartManager.updateDOM();
-                        console.log('✅ Cart counts updated using CartDisplayManager');
-                    } else {
-                        console.warn('⚠️ CartDisplayManager not available');
-                    }
+                    console.warn('⚠️ CartDisplayManager not available');
+                }
                     
                     // Ensure truck assignments are loaded before optimizing
                     loadTruckAssignments();
