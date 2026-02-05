@@ -210,16 +210,17 @@ function getWords(normalizedName) {
  * 
  * CRITICAL: This is the ONLY client-matching function!
  * 
- * MATCHING RULES (STRICT WORD-BY-WORD):
+ * MATCHING RULES (REVERSE DIRECTION - Excel → API):
  * 1. Normalize Excel name and API name
  * 2. Split BOTH into word arrays
- * 3. Ignore Excel words with length <= 2
+ * 3. Ignore words with length <= 2 from BOTH
  * 4. For EACH Excel word:
  *    - It matches if ANY API word:
  *      - equals the Excel word OR
- *      - startsWith the Excel word
- * 5. ALL meaningful Excel words must match
- * 6. Direction MUST be Excel → API (Excel is source of truth)
+ *      - startsWith the Excel word OR
+ *      - Excel word startsWith API word (for abbreviations)
+ * 5. ALL meaningful Excel words must be found in API
+ * 6. Direction: Excel → API (Excel is source of truth, API can have extra words)
  * 7. NO substring includes() checks - strict word comparison only
  */
 function isKnownClient(customerName) {
@@ -262,29 +263,47 @@ function isKnownClient(customerName) {
       // Step 2: Split Excel client name into word array
       const excelWords = getWords(normalizedClient);
       
-      // Step 3: Filter out short words (length <= 2) - ignore abbreviations, particles
+      // Step 3: Filter out short words (length <= 2) from BOTH
       const meaningfulExcelWords = excelWords.filter(word => word.length > 2);
+      const meaningfulApiWords = apiWords.filter(word => word.length > 2);
       
       // Skip if Excel client has no meaningful words
       if (meaningfulExcelWords.length === 0) {
         continue;
       }
       
-      // Step 4: Check if ALL meaningful Excel words match
-      // For EACH Excel word, check if ANY API word equals it OR startsWith it
-      const allWordsMatch = meaningfulExcelWords.every(excelWord => {
-        // Check against each API word
-        for (const apiWord of apiWords) {
-          // Match if: API word equals Excel word OR API word starts with Excel word
-          if (apiWord === excelWord || apiWord.startsWith(excelWord)) {
+      // CRITICAL FIX: Check if ALL Excel words are found in API words
+      // API can have EXTRA words (like "MINI", "GERBERA", "BV")
+      // But ALL Excel words MUST be present in API
+      const allExcelWordsFoundInApi = meaningfulExcelWords.every(excelWord => {
+        // Check if this Excel word appears in ANY API word
+        for (const apiWord of meaningfulApiWords) {
+          // Match if:
+          // 1. Exact match: apiWord === excelWord
+          // 2. API word contains Excel word: apiWord starts with excelWord
+          // 3. Excel word contains API word: excelWord starts with apiWord (for abbreviations)
+          if (apiWord === excelWord || 
+              apiWord.startsWith(excelWord) || 
+              excelWord.startsWith(apiWord)) {
             return true;
           }
         }
         return false;
       });
       
-      if (allWordsMatch) {
-        return { matched: true, route: route };
+      if (allExcelWordsFoundInApi) {
+        // ADDITIONAL CHECK: Ensure at least 2 meaningful words match (to avoid false positives)
+        // OR if Excel only has 1 meaningful word, that's OK
+        if (meaningfulExcelWords.length === 1 || 
+            meaningfulExcelWords.filter(excelWord => 
+              meaningfulApiWords.some(apiWord => 
+                apiWord === excelWord || 
+                apiWord.startsWith(excelWord) || 
+                excelWord.startsWith(apiWord)
+              )
+            ).length >= 2) {
+          return { matched: true, route: route };
+        }
       }
     }
   }
