@@ -623,26 +623,32 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         let cacheSource = null;
         let cacheDate = '';
         
-        // CRITICAL: Check localStorage FIRST (persists across page navigations!)
-        // Then check window cache (for same-tab access)
+        // CRITICAL: localStorage is the ONLY cache that persists across page navigation.
+        // We support multiple keys for robustness:
+        // - ZUIDPLAS_CART_<date> (per-date)
+        // - ZUIDPLAS_LATEST_CART_DATA (latest)
+        // - cachedCartResult (legacy)
         let localStorageCache = null;
         try {
-            const cached = localStorage.getItem('cachedCartResult');
-            if (cached) {
-                localStorageCache = JSON.parse(cached);
+            const perDateKey = `ZUIDPLAS_CART_${currentDate}`;
+            const latestKey = 'ZUIDPLAS_LATEST_CART_DATA';
+            const legacyKey = 'cachedCartResult';
+            const raw =
+                localStorage.getItem(perDateKey) ||
+                localStorage.getItem(latestKey) ||
+                localStorage.getItem(legacyKey);
+
+            if (raw) {
+                localStorageCache = JSON.parse(raw);
                 const cacheDateFromStorage = localStorageCache.date || '';
-                // Check if cache date matches current date
                 if (cacheDateFromStorage === currentDate) {
                     cachedCartResult = localStorageCache.cartResult;
                     cacheSource = 'localStorage';
                     cacheDate = cacheDateFromStorage;
                     const timestamp = localStorage.getItem('cachedCartResultTimestamp');
-                    console.log(`   ✅ Found cache in localStorage (DASHBOARD'S CACHE - persists across pages!)`);
-                    console.log(`   Cache date: ${cacheDate || 'unknown'}`);
+                    console.log(`   ✅ Found cache in localStorage for date ${cacheDate}`);
                     console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
                     console.log(`   Cached at: ${timestamp || 'unknown'}`);
-                    console.log(`   Matched orders: ${localStorageCache.matchedOrdersCount || 'N/A'}`);
-                    console.log(`   ✅ USING DASHBOARD'S CACHE - This is the SINGLE SOURCE OF TRUTH!`);
                 } else {
                     console.warn(`   ⚠️ localStorage cache is for different date (${cacheDateFromStorage} vs ${currentDate})`);
                 }
@@ -757,22 +763,23 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 console.log('═══════════════════════════════════════════════════════════════════');
                 
                 // CRITICAL: Update window.AppData from cache
-                // Get matchedOrders from cache (localStorage or window cache)
-                const windowCache1 = window.__zuidplas_cart_cache || window._zuidplas_cart_cache;
-                const fullCache = localStorageCache || windowCache1;
+                // Rebuild matchedOrders by filtering the already-loaded orders using cached uniqueOrderIds.
+                const cachedUniqueIds = Array.isArray(localStorageCache?.uniqueOrderIds)
+                    ? localStorageCache.uniqueOrderIds
+                    : [];
+                const uniqueIdSet = new Set(cachedUniqueIds.map(id => String(id)));
                 
-                if (fullCache && fullCache.matchedOrders) {
-                    appData.orders = fullCache.matchedOrders;
-                    appData.cartResult.matchedOrders = fullCache.matchedOrders;
-                    appData.cartResult.matchedOrdersCount = fullCache.matchedOrdersCount || appData.uniqueOrderIds.size;
-                    appData.cartResult.unmatchedOrders = fullCache.unmatchedOrders || [];
-                    console.log(`✅ Using matchedOrders from cache: ${fullCache.matchedOrders.length} orders`);
-                } else {
-                    appData.orders = cachedCartResult.matchedOrders || orders;
-                }
+                const matchedOrderRows = uniqueIdSet.size > 0
+                    ? orders.filter(o => {
+                        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                        return orderId && uniqueIdSet.has(String(orderId));
+                      })
+                    : (cachedCartResult.matchedOrders || orders);
                 
-                appData.uniqueOrderIds = cachedCartResult.uniqueOrderIds ? new Set(cachedCartResult.uniqueOrderIds) : new Set();
+                appData.orders = matchedOrderRows;
+                appData.uniqueOrderIds = uniqueIdSet;
                 appData.cartResult = cachedCartResult;
+                appData.cartResult.matchedOrders = matchedOrderRows;
                 
                 // If uniqueOrderIds not in cache, rebuild from orders
                 if (appData.uniqueOrderIds.size === 0 && appData.orders.length > 0) {
@@ -783,7 +790,7 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 }
                 
                 // CRITICAL: Ensure cartResult has correct matchedOrdersCount from uniqueOrderIds
-                if (appData.cartResult && appData.uniqueOrderIds.size > 0) {
+                if (appData.cartResult) {
                     appData.cartResult.matchedOrdersCount = appData.uniqueOrderIds.size;
                 }
                 
@@ -818,22 +825,23 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 console.log('═══════════════════════════════════════════════════════════════════');
                 
                 // CRITICAL: Update window.AppData from cache
-                // Get matchedOrders from cache (localStorage or window cache)
-                const windowCache2 = window.__zuidplas_cart_cache || window._zuidplas_cart_cache;
-                const fullCache2 = localStorageCache || windowCache2;
+                // Rebuild matchedOrders by filtering the already-loaded orders using cached uniqueOrderIds.
+                const cachedUniqueIds2 = Array.isArray(localStorageCache?.uniqueOrderIds)
+                    ? localStorageCache.uniqueOrderIds
+                    : [];
+                const uniqueIdSet2 = new Set(cachedUniqueIds2.map(id => String(id)));
                 
-                if (fullCache2 && fullCache2.matchedOrders) {
-                    appData.orders = fullCache2.matchedOrders;
-                    appData.cartResult.matchedOrders = fullCache2.matchedOrders;
-                    appData.cartResult.matchedOrdersCount = fullCache2.matchedOrdersCount || appData.uniqueOrderIds.size;
-                    appData.cartResult.unmatchedOrders = fullCache2.unmatchedOrders || [];
-                    console.log(`✅ Using matchedOrders from cache: ${fullCache2.matchedOrders.length} orders`);
-                } else {
-                    appData.orders = cachedCartResult.matchedOrders || orders;
-                }
+                const matchedOrderRows2 = uniqueIdSet2.size > 0
+                    ? orders.filter(o => {
+                        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                        return orderId && uniqueIdSet2.has(String(orderId));
+                      })
+                    : (cachedCartResult.matchedOrders || orders);
                 
-                appData.uniqueOrderIds = cachedCartResult.uniqueOrderIds ? new Set(cachedCartResult.uniqueOrderIds) : new Set();
+                appData.orders = matchedOrderRows2;
+                appData.uniqueOrderIds = uniqueIdSet2;
                 appData.cartResult = cachedCartResult;
+                appData.cartResult.matchedOrders = matchedOrderRows2;
                 
                 // If uniqueOrderIds not in cache, rebuild from orders
                 if (appData.uniqueOrderIds.size === 0 && appData.orders.length > 0) {
@@ -844,7 +852,7 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 }
                 
                 // CRITICAL: Ensure cartResult has correct matchedOrdersCount from uniqueOrderIds
-                if (appData.cartResult && appData.uniqueOrderIds.size > 0) {
+                if (appData.cartResult) {
                     appData.cartResult.matchedOrdersCount = appData.uniqueOrderIds.size;
                 }
                 
@@ -960,16 +968,27 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     window.appState.cartResult = cartResult;
     
     // Location 3: localStorage (for persistence across page reloads)
-    // CRITICAL: Store ONLY uniqueOrderIds and cartResult (no raw orders!)
+    // CRITICAL: Store ONLY uniqueOrderIds + SLIM cartResult (no matchedOrders arrays; quota risk!)
     try {
+        const cartResultForStorage = { ...cartResult };
+        delete cartResultForStorage.matchedOrders;
+        delete cartResultForStorage.unmatchedOrders;
+
         const cacheData = {
             uniqueOrderIds: uniqueOrderIdsArray,
-            cartResult: cartResult,
+            cartResult: cartResultForStorage,
             timestamp: new Date().toISOString(),
             date: normalizedDate
         };
-        localStorage.setItem('cachedCartResult', JSON.stringify(cacheData));
+        localStorage.setItem('cachedCartResult', JSON.stringify(cacheData)); // legacy
+        localStorage.setItem(`ZUIDPLAS_CART_${normalizedDate}`, JSON.stringify(cacheData)); // per-date
+        localStorage.setItem('ZUIDPLAS_LATEST_CART_DATA', JSON.stringify(cacheData)); // latest
         localStorage.setItem('cachedCartResultTimestamp', new Date().toISOString());
+        try {
+            sessionStorage.setItem('ZUIDPLAS_SESSION_CART_DATA', JSON.stringify(cacheData));
+        } catch (e) {
+            // ignore
+        }
     } catch (e) {
         console.warn('⚠️ Could not save to localStorage:', e);
     }
