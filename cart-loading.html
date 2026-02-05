@@ -2665,32 +2665,6 @@
                     showError('Cart calculation system not available. Please refresh the page.');
                     return;
                 }
-                    // Fallback to old method
-                    if (window.__zuidplas_orders_memory && window.__zuidplas_orders_memory.length > 0) {
-                        orders = window.__zuidplas_orders_memory;
-                        console.log(`✅ Loaded ${orders.length} orders from global memory`);
-                    } else if (window.appState && window.appState.getOrders) {
-                        orders = window.appState.getOrders();
-                        if (orders && orders.length > 0) {
-                            console.log(`✅ Loaded ${orders.length} orders from appState`);
-                        }
-                    } else {
-                        const storedOrders = localStorage.getItem('zuidplas_orders') || localStorage.getItem('cachedOrders');
-                        if (storedOrders) {
-                            try {
-                                orders = JSON.parse(storedOrders);
-                                console.log(`✅ Loaded ${orders.length} orders from localStorage`);
-                                if (window.appState) {
-                                    window.appState.orders = orders;
-                                    window.appState.ordersLoaded = orders.length > 0;
-                                }
-                                window.__zuidplas_orders_memory = orders;
-                            } catch (e) {
-                                console.error('Failed to parse stored orders:', e);
-                            }
-                        }
-                    }
-                }
                 
                 if (!orders || orders.length === 0) {
                     // Clear display - no orders loaded
