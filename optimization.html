@@ -293,21 +293,6 @@
         function updateInputSummary() {
             console.log('📊 Updating Input Summary...');
             
-            // CRITICAL: Check if cache exists and is valid
-            const cacheExists = window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.cartResult;
-            
-            if (!cacheExists) {
-                console.error('❌ ERROR: No cache found!');
-                console.error('❌ Dashboard must calculate first!');
-                showError('No data available. Please sync data from Dashboard first.');
-                return;
-            }
-            
-            // Get cache info for logging
-            const cacheDate = window.__zuidplas_cart_cache.date;
-            const cacheTimestamp = window.__zuidplas_cart_cache.timestamp;
-            console.log(`📋 Using cache from ${cacheDate} (${cacheTimestamp})`);
-            
             // CRITICAL: Use cartResult from SINGLE SOURCE (matched orders only)
             // forceRefresh = FALSE (only Dashboard can force refresh!)
             let cartResult = null;
@@ -316,14 +301,34 @@
                 cartResult = globalData.cartResult;
             }
             
-            if (!cartResult || !cartResult.matchedOrdersCount || cartResult.total === 0) {
-                console.error('❌ ERROR: Invalid cache data!');
+            // Check if cartResult is valid (less strict - allow if total > 0 even without matchedOrdersCount)
+            if (!cartResult || cartResult.total === 0) {
+                console.error('❌ ERROR: No cart calculation found!');
                 console.error('❌ Please go to Dashboard and click "Sync" or "Refresh Data" first!');
                 showError('No data available. Please sync data from Dashboard first.');
                 return;
             }
             
-            console.log(`✅ Using Dashboard cache: ${cartResult.matchedOrdersCount} matched orders, ${cartResult.total} carts`);
+            // Ensure matchedOrdersCount is set from uniqueOrderIds if not already set
+            if (!cartResult.matchedOrdersCount && window.AppData && window.AppData.uniqueOrderIds) {
+                cartResult.matchedOrdersCount = window.AppData.uniqueOrderIds.size;
+            }
+            
+            // If still no matchedOrdersCount, use orders length as fallback
+            if (!cartResult.matchedOrdersCount) {
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
+                if (globalData.orders && globalData.orders.length > 0) {
+                    // Count unique orders from orders array
+                    const uniqueIds = new Set();
+                    globalData.orders.forEach(o => {
+                        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                        if (orderId) uniqueIds.add(String(orderId));
+                    });
+                    cartResult.matchedOrdersCount = uniqueIds.size;
+                }
+            }
+            
+            console.log(`✅ Using Dashboard cache: ${cartResult.matchedOrdersCount || 'N/A'} matched orders, ${cartResult.total} carts`);
             
             // Update DOM elements using cartResult (SAME as Dashboard)
             const ordersEl = document.getElementById('input-orders') || document.getElementById('total-orders');
