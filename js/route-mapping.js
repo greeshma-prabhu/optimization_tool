@@ -178,28 +178,45 @@ const LATE_DELIVERY_CLIENTS = [
 function normalizeName(name) {
   if (!name) return '';
   
-  return name
+  // Step 1: Basic cleanup
+  let normalized = name
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, ' ')            // Normalize spaces
-    .replace(/^\d+x\s*/i, '')        // Remove leading quantity prefixes
-    .replace(/\s*\d+x\s*/gi, ' ')    // Remove quantity prefixes anywhere
-    .replace(/[&]/g, ' ')            // Replace ampersands
-    .replace(/\./g, '')              // Remove periods
-    .replace(/b\.v\.|bv|b\s*v/gi, '')      // Remove BV
-    .replace(/v\.o\.f\.|vof/gi, '')        // Remove VOF
-    .replace(/\s+webshop\s*/gi, ' ') // Remove webshop
-    .replace(/\s+retail\s*/gi, ' ')  // Remove retail
-    .replace(/\s+export\s*/gi, ' ')  // Remove export
-    .replace(/\s+holding\s*/gi, ' ') // Remove holding
-    .replace(/\s+group\s*/gi, ' ')   // Remove group
-    .replace(/\(.*?\)/g, '')         // Remove parentheses content
-    .replace(/\[.*?\]/g, '')         // Remove brackets content
-    .replace(/-/g, ' ')              // Replace hyphens
-    .replace(/\//g, ' ')             // Replace slashes
-    .replace(/[^\w\s]/g, ' ')        // Remove special chars
-    .replace(/\s+/g, ' ')            // Normalize spaces again
+    .replace(/\s+/g, ' ');  // Normalize spaces
+  
+  // Step 2: Remove quantity prefixes (1x, 2x, 3x)
+  normalized = normalized.replace(/^\d+x\s*/i, '');
+  
+  // Step 3: Remove content in parentheses/brackets
+  normalized = normalized
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\[.*?\]/g, ' ');
+  
+  // Step 4: Remove legal suffixes (at end of string)
+  normalized = normalized
+    .replace(/\s+b\.v\.|bv|b\s*v\s*$/gi, '')
+    .replace(/\s+v\.o\.f\.|vof\s*$/gi, '')
+    .replace(/\s+webshop\s*$/gi, ' ')
+    .replace(/\s+retail\s*$/gi, ' ')
+    .replace(/\s+export\s*$/gi, ' ')
+    .replace(/\s+holding\s*$/gi, ' ')
+    .replace(/\s+group\s*$/gi, ' ')
+    .replace(/\s+s\.r\.o\.|sro\s*$/gi, '');
+  
+  // Step 5: Normalize punctuation BUT preserve & and - for matching
+  normalized = normalized
+    .replace(/\./g, '')  // Remove periods
+    .replace(/&/g, ' en ')  // Replace & with " en " for matching (L&M → l en m)
+    .replace(/-/g, ' ')  // Replace hyphens with space
+    .replace(/\//g, ' ')  // Replace slashes with space
+    .replace(/[^\w\s]/g, ' ');  // Remove other special chars
+  
+  // Step 6: Final cleanup
+  normalized = normalized
+    .replace(/\s+/g, ' ')
     .trim();
+  
+  return normalized;
 }
 
 /**
