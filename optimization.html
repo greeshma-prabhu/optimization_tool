@@ -574,12 +574,27 @@
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
                     
-                    // CRITICAL: Check if cartResult is valid
+                    // CRITICAL: Check if cartResult is valid (less strict - allow if total > 0)
                     if (!cartResult || cartResult.total === 0) {
                         console.error('❌ No cart calculation found!');
                         console.error('❌ Please go to Dashboard and click "Sync" or "Refresh Data" first!');
                         showError('No data available. Please sync data from Dashboard first.');
                         return;
+                    }
+                    
+                    // CRITICAL: Ensure matchedOrdersCount is set
+                    if (!cartResult.matchedOrdersCount && window.AppData && window.AppData.uniqueOrderIds) {
+                        cartResult.matchedOrdersCount = window.AppData.uniqueOrderIds.size;
+                    }
+                    
+                    // If still no matchedOrdersCount, count unique orders from orders array
+                    if (!cartResult.matchedOrdersCount && orders && orders.length > 0) {
+                        const uniqueIds = new Set();
+                        orders.forEach(o => {
+                            const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                            if (orderId) uniqueIds.add(String(orderId));
+                        });
+                        cartResult.matchedOrdersCount = uniqueIds.size;
                     }
                     
                     // CRITICAL: Use window.AppData for consistent counts
@@ -588,11 +603,9 @@
                         console.log(`✅ Optimization: Loaded ${uniqueCount} unique orders (from ${orders.length} orderrows)`);
                         console.log(`✅ Optimization: Cart result - ${cartResult.total} carts`);
                         // Ensure cartResult has correct count
-                        if (cartResult) {
-                            cartResult.matchedOrdersCount = uniqueCount;
-                        }
+                        cartResult.matchedOrdersCount = uniqueCount;
                     } else {
-                        console.log(`✅ Optimization: Loaded ${orders.length} orders from SINGLE SOURCE`);
+                        console.log(`✅ Optimization: Loaded ${cartResult.matchedOrdersCount || orders.length} orders from SINGLE SOURCE`);
                         console.log(`✅ Optimization: Cart result - ${cartResult.total} carts`);
                     }
                 } else {
