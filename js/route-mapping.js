@@ -25,6 +25,7 @@ const CLIENT_ROUTE_MAPPING = {
     'Kariflex',
     'kooter',
     'L&M',
+    'L&M Rijnsburg',  // ADD: API variation
     'Maat & Zoon',
     'Nagel',
     'Nic den Heijer',
@@ -36,7 +37,8 @@ const CLIENT_ROUTE_MAPPING = {
     'V/D PLAS',
     'V&E Export',
     'Vianen',
-    'St. Gabriel'
+    'St. Gabriel',
+    'St.Gabriel'  // ADD: without space variation
   ],
   
   // ========================================
@@ -87,7 +89,8 @@ const CLIENT_ROUTE_MAPPING = {
     'waterdrinker',
     'Willemsen',
     'Zandbergen',
-    'MM Flower'
+    'MM Flower',
+    'Klok Aalsmeer'  // ADD: Klok variant
   ],
   
   // ========================================
@@ -128,7 +131,10 @@ const CLIENT_ROUTE_MAPPING = {
     'Zuylen',
     'Denen',
     'Bosjes',
-    'Crocus'
+    'Crocus',
+    'Superflora',  // ADD: Danish cart client
+    'Superflora BV',  // ADD: API variation
+    'Klok Naaldwijk'  // ADD: Klok variant
   ]
 };
 
@@ -226,6 +232,40 @@ function getWords(normalizedName) {
 function isKnownClient(customerName) {
   if (!customerName) {
     return { matched: false, route: null };
+  }
+  
+  // SPECIAL CASES - Direct string matches for known problematic clients
+  // Check these BEFORE normalization to catch variations
+  const nameLower = customerName.toLowerCase();
+  
+  // Superflora - Danish cart client in Naaldwijk
+  if (nameLower.includes('superflora')) {
+    return { matched: true, route: 'naaldwijk' };
+  }
+  
+  // L&M variations - Rijnsburg
+  if (nameLower.includes('l&m') || nameLower.includes('lm ') || nameLower.includes('l en m')) {
+    return { matched: true, route: 'rijnsburg' };
+  }
+  
+  // St.Gabriel variations - Rijnsburg
+  if (nameLower.includes('st.gabriel') || nameLower.includes('st gabriel') || nameLower.includes('stgabriel')) {
+    return { matched: true, route: 'rijnsburg' };
+  }
+  
+  // Klok variations - check location
+  if (nameLower.includes('klok')) {
+    if (nameLower.includes('aalsmeer')) {
+      return { matched: true, route: 'aalsmeer' };
+    }
+    if (nameLower.includes('naaldwijk')) {
+      return { matched: true, route: 'naaldwijk' };
+    }
+    if (nameLower.includes('rijnsburg')) {
+      return { matched: true, route: 'rijnsburg' };
+    }
+    // Default Klok to Aalsmeer if no location specified
+    return { matched: true, route: 'aalsmeer' };
   }
   
   // Step 1: Normalize API customer name
