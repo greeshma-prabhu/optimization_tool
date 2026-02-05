@@ -757,7 +757,20 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 console.log('═══════════════════════════════════════════════════════════════════');
                 
                 // CRITICAL: Update window.AppData from cache
-                appData.orders = cachedCartResult.matchedOrders || orders;
+                // Get matchedOrders from cache (localStorage or window cache)
+                const windowCache1 = window.__zuidplas_cart_cache || window._zuidplas_cart_cache;
+                const fullCache = localStorageCache || windowCache1;
+                
+                if (fullCache && fullCache.matchedOrders) {
+                    appData.orders = fullCache.matchedOrders;
+                    appData.cartResult.matchedOrders = fullCache.matchedOrders;
+                    appData.cartResult.matchedOrdersCount = fullCache.matchedOrdersCount || appData.uniqueOrderIds.size;
+                    appData.cartResult.unmatchedOrders = fullCache.unmatchedOrders || [];
+                    console.log(`✅ Using matchedOrders from cache: ${fullCache.matchedOrders.length} orders`);
+                } else {
+                    appData.orders = cachedCartResult.matchedOrders || orders;
+                }
+                
                 appData.uniqueOrderIds = cachedCartResult.uniqueOrderIds ? new Set(cachedCartResult.uniqueOrderIds) : new Set();
                 appData.cartResult = cachedCartResult;
                 
@@ -772,16 +785,6 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 // CRITICAL: Ensure cartResult has correct matchedOrdersCount from uniqueOrderIds
                 if (appData.cartResult && appData.uniqueOrderIds.size > 0) {
                     appData.cartResult.matchedOrdersCount = appData.uniqueOrderIds.size;
-                }
-                
-                // CRITICAL: Get matchedOrders from cache if available
-                const windowCache1 = window.__zuidplas_cart_cache || window._zuidplas_cart_cache;
-                if (windowCache1 && windowCache1.matchedOrders) {
-                    appData.orders = windowCache1.matchedOrders;
-                    appData.cartResult.matchedOrders = windowCache1.matchedOrders;
-                    appData.cartResult.matchedOrdersCount = windowCache1.matchedOrdersCount || appData.uniqueOrderIds.size;
-                    appData.cartResult.unmatchedOrders = windowCache1.unmatchedOrders || [];
-                    console.log(`✅ Using matchedOrders from cache: ${windowCache1.matchedOrders.length} orders`);
                 }
                 
                 console.log(`✅ Using cache: ${appData.cartResult.matchedOrdersCount || appData.uniqueOrderIds.size} unique orders, ${appData.cartResult.total} carts`);
