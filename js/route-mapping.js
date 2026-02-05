@@ -187,10 +187,11 @@ function normalizeName(name) {
   // Step 2: Remove quantity prefixes (1x, 2x, 3x)
   normalized = normalized.replace(/^\d+x\s*/i, '');
   
-  // Step 3: Remove content in parentheses/brackets
+  // Step 3: Remove content in parentheses/brackets (CRITICAL - do this early!)
   normalized = normalized
-    .replace(/\(.*?\)/g, ' ')
-    .replace(/\[.*?\]/g, ' ');
+    .replace(/\([^)]*\)/g, ' ')  // Remove parentheses content (e.g., "(MINI)", "(GERBERA)")
+    .replace(/\[[^\]]*\]/g, ' ')  // Remove bracket content
+    .replace(/\{[^\}]*\}/g, ' ');  // Remove curly brace content
   
   // Step 4: Remove legal suffixes (at end of string)
   normalized = normalized
