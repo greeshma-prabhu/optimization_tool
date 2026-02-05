@@ -618,21 +618,24 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         console.log(`   Current date: ${currentDate}`);
         
         // Try to find cache in any location
+        // CRITICAL: Prioritize window.__zuidplas_cart_cache (Dashboard's cache) FIRST!
         let cachedCartResult = null;
         let cacheSource = null;
         let cacheDate = '';
         
-        // Location 1: Primary cache (window.__zuidplas_cart_cache)
+        // Location 1: Primary cache (window.__zuidplas_cart_cache) - DASHBOARD'S CACHE!
+        // THIS IS THE SINGLE SOURCE OF TRUTH - Dashboard always writes here first!
         if (window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.cartResult) {
             cachedCartResult = window.__zuidplas_cart_cache.cartResult;
             cacheSource = 'window.__zuidplas_cart_cache';
             cacheDate = window.__zuidplas_cart_cache.date || '';
-            console.log(`   ✅ Found cache in window.__zuidplas_cart_cache`);
+            console.log(`   ✅ Found cache in window.__zuidplas_cart_cache (DASHBOARD'S CACHE)`);
             console.log(`   Cache hash: ${window.__zuidplas_cart_cache.ordersHash}`);
             console.log(`   Cache date: ${cacheDate || 'unknown'}`);
             console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
             console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
             console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+            console.log(`   ✅ USING DASHBOARD'S CACHE - This is the SINGLE SOURCE OF TRUTH!`);
         }
         // Location 2: appState.cartResult (for compatibility)
         else if (window.appState && window.appState.cartResult) {
@@ -641,17 +644,19 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
             console.log(`   ✅ Found cache in window.appState.cartResult`);
             console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
         }
-        // Location 3: localStorage (for persistence)
+        // Location 3: localStorage (ONLY if window cache doesn't exist - old fallback)
         else {
             try {
                 const localStorageCache = localStorage.getItem('cachedCartResult');
                 if (localStorageCache) {
+                    console.warn(`   ⚠️ Using localStorage cache (old data) - Dashboard should sync first!`);
                     cachedCartResult = JSON.parse(localStorageCache);
                     cacheSource = 'localStorage';
                     const timestamp = localStorage.getItem('cachedCartResultTimestamp');
-                    console.log(`   ✅ Found cache in localStorage`);
+                    console.log(`   ✅ Found cache in localStorage (OLD - may be from different date)`);
                     console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
                     console.log(`   Cached at: ${timestamp || 'unknown'}`);
+                    console.warn(`   ⚠️ WARNING: This is OLD cache! Go to Dashboard and sync first!`);
                 }
             } catch (e) {
                 console.warn(`   ⚠️ Could not read from localStorage:`, e);
