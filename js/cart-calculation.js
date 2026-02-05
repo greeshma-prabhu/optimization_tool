@@ -623,46 +623,57 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         let cacheSource = null;
         let cacheDate = '';
         
-        // Location 1: Primary cache (window.__zuidplas_cart_cache) - DASHBOARD'S CACHE!
-        // THIS IS THE SINGLE SOURCE OF TRUTH - Dashboard always writes here first!
-        // CRITICAL: Check BOTH variable names (handle typos)
-        const windowCache = window.__zuidplas_cart_cache || window._zuidplas_cart_cache;
-        if (windowCache && windowCache.cartResult) {
-            cachedCartResult = windowCache.cartResult;
-            cacheSource = 'window.__zuidplas_cart_cache';
-            cacheDate = windowCache.date || '';
-            console.log(`   ✅ Found cache in window.__zuidplas_cart_cache (DASHBOARD'S CACHE)`);
-            console.log(`   Cache hash: ${windowCache.ordersHash || 'N/A'}`);
-            console.log(`   Cache date: ${cacheDate || 'unknown'}`);
-            console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
-            console.log(`   Cached by: ${windowCache.source || 'unknown'}`);
-            console.log(`   Cached at: ${windowCache.timestamp || 'unknown'}`);
-            console.log(`   Matched orders: ${windowCache.matchedOrdersCount || 'N/A'}`);
-            console.log(`   ✅ USING DASHBOARD'S CACHE - This is the SINGLE SOURCE OF TRUTH!`);
-        }
-        // Location 2: appState.cartResult (for compatibility)
-        else if (window.appState && window.appState.cartResult) {
-            cachedCartResult = window.appState.cartResult;
-            cacheSource = 'window.appState.cartResult';
-            console.log(`   ✅ Found cache in window.appState.cartResult`);
-            console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
-        }
-        // Location 3: localStorage (ONLY if window cache doesn't exist - old fallback)
-        else {
-            try {
-                const localStorageCache = localStorage.getItem('cachedCartResult');
-                if (localStorageCache) {
-                    console.warn(`   ⚠️ Using localStorage cache (old data) - Dashboard should sync first!`);
-                    cachedCartResult = JSON.parse(localStorageCache);
+        // CRITICAL: Check localStorage FIRST (persists across page navigations!)
+        // Then check window cache (for same-tab access)
+        let localStorageCache = null;
+        try {
+            const cached = localStorage.getItem('cachedCartResult');
+            if (cached) {
+                localStorageCache = JSON.parse(cached);
+                const cacheDateFromStorage = localStorageCache.date || '';
+                // Check if cache date matches current date
+                if (cacheDateFromStorage === currentDate) {
+                    cachedCartResult = localStorageCache.cartResult;
                     cacheSource = 'localStorage';
+                    cacheDate = cacheDateFromStorage;
                     const timestamp = localStorage.getItem('cachedCartResultTimestamp');
-                    console.log(`   ✅ Found cache in localStorage (OLD - may be from different date)`);
+                    console.log(`   ✅ Found cache in localStorage (DASHBOARD'S CACHE - persists across pages!)`);
+                    console.log(`   Cache date: ${cacheDate || 'unknown'}`);
                     console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
                     console.log(`   Cached at: ${timestamp || 'unknown'}`);
-                    console.warn(`   ⚠️ WARNING: This is OLD cache! Go to Dashboard and sync first!`);
+                    console.log(`   Matched orders: ${localStorageCache.matchedOrdersCount || 'N/A'}`);
+                    console.log(`   ✅ USING DASHBOARD'S CACHE - This is the SINGLE SOURCE OF TRUTH!`);
+                } else {
+                    console.warn(`   ⚠️ localStorage cache is for different date (${cacheDateFromStorage} vs ${currentDate})`);
                 }
-            } catch (e) {
-                console.warn(`   ⚠️ Could not read from localStorage:`, e);
+            }
+        } catch (e) {
+            console.warn(`   ⚠️ Could not read from localStorage:`, e);
+        }
+        
+        // Location 1: Primary cache (window.__zuidplas_cart_cache) - DASHBOARD'S CACHE!
+        // Check window cache if localStorage didn't have it
+        if (!cachedCartResult) {
+            const windowCache = window.__zuidplas_cart_cache || window._zuidplas_cart_cache;
+            if (windowCache && windowCache.cartResult) {
+                cachedCartResult = windowCache.cartResult;
+                cacheSource = 'window.__zuidplas_cart_cache';
+                cacheDate = windowCache.date || '';
+                console.log(`   ✅ Found cache in window.__zuidplas_cart_cache (DASHBOARD'S CACHE)`);
+                console.log(`   Cache hash: ${windowCache.ordersHash || 'N/A'}`);
+                console.log(`   Cache date: ${cacheDate || 'unknown'}`);
+                console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
+                console.log(`   Cached by: ${windowCache.source || 'unknown'}`);
+                console.log(`   Cached at: ${windowCache.timestamp || 'unknown'}`);
+                console.log(`   Matched orders: ${windowCache.matchedOrdersCount || 'N/A'}`);
+                console.log(`   ✅ USING DASHBOARD'S CACHE - This is the SINGLE SOURCE OF TRUTH!`);
+            }
+            // Location 2: appState.cartResult (for compatibility)
+            else if (window.appState && window.appState.cartResult) {
+                cachedCartResult = window.appState.cartResult;
+                cacheSource = 'window.appState.cartResult';
+                console.log(`   ✅ Found cache in window.appState.cartResult`);
+                console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
             }
         }
         
