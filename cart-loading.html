@@ -958,6 +958,44 @@
             }
         }
 
+        /**
+         * Show error message when no data is available
+         */
+        function showError(message) {
+            // Remove any existing error
+            const existingError = document.getElementById('cart-loading-error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.id = 'cart-loading-error-message';
+            errorDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #fff3cd;
+                border: 2px solid #ffc107;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                z-index: 9999;
+                max-width: 500px;
+            `;
+            
+            errorDiv.innerHTML = `
+                <h3 style="margin-top: 0; color: #856404;">⚠️ No Data Available</h3>
+                <p style="color: #856404;">${message}</p>
+                <button onclick="window.location.href='index.html'" 
+                        style="margin-top: 20px; padding: 10px 20px; background: #ff6b00; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">
+                    Go to Dashboard
+                </button>
+            `;
+            
+            document.body.appendChild(errorDiv);
+        }
+        
         // Make function globally accessible
         window.optimizeCartLoading = function optimizeCartLoading() {
             console.log('🚀 optimizeCartLoading() called');
