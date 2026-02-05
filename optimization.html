@@ -611,6 +611,10 @@
                 // CRITICAL: Use matched orders from cartResult (same as Dashboard)
                 const matchedOrders = cartResult ? (cartResult.matchedOrders || orders) : orders;
                 
+                // Always update summary from cache; only run algorithm if we have orders array.
+                updateInputSummary();
+                updateRouteBreakdown();
+
                 if (matchedOrders && matchedOrders.length > 0) {
                     console.log(`✅ Loaded ${matchedOrders.length} matched orders (from ${orders.length} total orderrows)`);
                     console.log(`   Using matched orders count: ${cartResult?.matchedOrdersCount || matchedOrders.length}`);
@@ -634,9 +638,10 @@
                     console.log('🔧 Running optimization with fresh data...');
                     runOptimization();
                 } else {
-                    console.error('❌ No orders in global state');
-                    console.error('❌ Please go to Dashboard and click "Sync" or "Refresh Data" first!');
-                    showError('No data available. Please sync data from Dashboard first.');
+                    // We have a valid cached cartResult, but the orders array is missing (usually old storage format).
+                    // Don't block UI; show counts and ask user to re-sync once so orders include order_id.
+                    console.warn('⚠️ Cached cart result found, but orders array is empty.');
+                    console.warn('   Please go to Dashboard and click "Sync/Refresh Data" once, then reload this page.');
                 }
             }
             

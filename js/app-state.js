@@ -38,6 +38,9 @@ window.appState = {
             
             return {
                 id: order.id,
+                // CRITICAL: Preserve unique order id so other pages can rebuild matched orders from cache
+                // This is the key used by cart-calculation cache (uniqueOrderIds).
+                order_id: order.order_id || order.order?.id || order.order?.order_id || null,
                 customer: order.customer || order.customer_name,
                 customer_name: order.customer_name,
                 customer_id: order.customer_id || order.order?.customer_id, // CRITICAL for validation

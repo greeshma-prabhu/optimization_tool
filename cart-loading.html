@@ -2688,10 +2688,17 @@
                 const matchedOrders = cartResult.matchedOrders || orders;
                 
                 if (!matchedOrders || matchedOrders.length === 0) {
-                    // Clear display - no orders loaded
+                    // We have a valid cached cartResult, but the orders array is missing (usually old storage format).
+                    // Don't block UI; keep summary numbers and ask user to re-sync once so orders include order_id.
+                    console.warn('⚠️ Cached cart result found, but orders array is empty.');
+                    console.warn('   Please go to Dashboard and click "Sync/Refresh Data" once, then reload this page.');
+                    // Keep page usable (no auto-optimize) but do not hard-block.
                     clearCartOptimizationDisplay();
-                    console.error('❌ No matched orders in cache!');
-                    showError('No orders available. Please sync data from Dashboard first.');
+                    // Update summary stats from cartResult (already cached)
+                    const cartsEl = document.getElementById('total-carts');
+                    if (cartsEl) cartsEl.textContent = String(cartResult.total || 0);
+                    const assignedEl = document.getElementById('carts-assigned');
+                    if (assignedEl) assignedEl.textContent = String(cartResult.total || 0);
                     return;
                 }
                 
