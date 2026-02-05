@@ -895,8 +895,9 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     const uniqueOrderIdsArray = Array.from(appData.uniqueOrderIds);
     
     // CRITICAL: Save to MULTIPLE locations for compatibility!
-    // Location 1: Primary cache (window.__zuidplas_cart_cache)
-    window.__zuidplas_cart_cache = {
+    // Location 1: Primary cache (window.__zuidplas_cart_cache) - DASHBOARD'S CACHE!
+    // Save to BOTH variable names to handle any typos
+    const cacheObject = {
         ordersHash: ordersHash,
         uniqueOrderIds: uniqueOrderIdsArray, // Store as Array (not Set)
         cartResult: cartResult,
