@@ -2667,7 +2667,10 @@
                     // CRITICAL: Log the correct counts
                     console.log(`✅ Cart Optimization: Loaded ${cartResult.matchedOrdersCount || 'N/A'} UNIQUE orders (from ${orders.length} orderrows)`);
                     console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
-                    console.log(`✅ Cache date: ${cacheDate || 'N/A'}, Current date: ${currentDate}`);
+                    const cacheData = JSON.parse(localStorage.getItem(`ZUIDPLAS_CART_${new Date().toISOString().split('T')[0]}`) || localStorage.getItem('ZUIDPLAS_LATEST_CART_DATA') || localStorage.getItem('cachedCartResult') || 'null');
+                    const cacheDateSafe = cacheData?.date || window.__zuidplas_cart_cache?.date || window._zuidplas_cart_cache?.date || 'N/A';
+                    const currentDateSafe = window.appState?.currentDate || window.__zuidplas_orders_date || new Date().toISOString().split('T')[0];
+                    console.log(`✅ Cache date: ${cacheDateSafe}, Current date: ${currentDateSafe}`);
                 } else {
                     console.error('❌ getGlobalOrdersAndCarts() not available!');
                     showError('Cart calculation system not available. Please refresh the page.');
