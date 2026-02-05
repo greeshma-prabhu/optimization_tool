@@ -1053,7 +1053,7 @@
                 console.log('   🔄 Dashboard loads data FIRST - will CALCULATE FRESH (not use old cache!)');
                 
                 // CRITICAL: Dashboard loads data first, so FORCE fresh calculation
-                // Clear any old cache to ensure fresh calculation
+                // Clear ALL old cache (window AND localStorage) to ensure fresh calculation
                 if (window.CartCalculation.clearCartCache) {
                     console.log('   🗑️ Clearing old cache to force fresh calculation...');
                     const oldCache = window.__zuidplas_cart_cache;
@@ -1061,6 +1061,15 @@
                         console.log(`   Old cache had: ${oldCache.cartResult?.total || 'unknown'} carts`);
                     }
                     window.CartCalculation.clearCartCache();
+                }
+                
+                // CRITICAL: Also clear localStorage cache to prevent fallback to old data
+                try {
+                    localStorage.removeItem('cachedCartResult');
+                    localStorage.removeItem('cachedCartResultTimestamp');
+                    console.log('   🗑️ Cleared localStorage cache to prevent using old data');
+                } catch (e) {
+                    console.warn('   ⚠️ Could not clear localStorage:', e);
                 }
                 
                 // Verify orders in global memory

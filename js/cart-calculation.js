@@ -956,7 +956,16 @@ function clearCartCache() {
         console.log(`   Old cache had: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
         console.log(`   Old cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
         delete window.__zuidplas_cart_cache;
-        console.log('✅ Cart cache cleared');
+        console.log('✅ Cart cache cleared from window');
+    }
+    
+    // CRITICAL: Also clear localStorage to prevent fallback to old data
+    try {
+        localStorage.removeItem('cachedCartResult');
+        localStorage.removeItem('cachedCartResultTimestamp');
+        console.log('✅ Cart cache cleared from localStorage');
+    } catch (e) {
+        console.warn('⚠️ Could not clear localStorage:', e);
     }
 }
 
