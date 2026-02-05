@@ -184,26 +184,65 @@
     <script src="js/navigation.js"></script>
     <script>
         let currentOptimizer = null;
+        
+        /**
+         * Show error message when no data is available
+         */
+        function showError(message) {
+            // Remove any existing error
+            const existingError = document.getElementById('optimization-error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.id = 'optimization-error-message';
+            errorDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #fff3cd;
+                border: 2px solid #ffc107;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                z-index: 9999;
+                max-width: 500px;
+            `;
+            
+            errorDiv.innerHTML = `
+                <h3 style="margin-top: 0; color: #856404;">⚠️ No Data Available</h3>
+                <p style="color: #856404;">${message}</p>
+                <button onclick="window.location.href='index.html'" 
+                        style="margin-top: 20px; padding: 10px 20px; background: #ff6b00; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">
+                    Go to Dashboard
+                </button>
+            `;
+            
+            document.body.appendChild(errorDiv);
+        }
 
         async function runOptimization() {
             try {
                 console.log('🔄 Starting optimization...');
                 
                 // CRITICAL: Use matched orders from cartResult (same as Dashboard)
+                // forceRefresh = FALSE (only Dashboard can force refresh!)
                 let orders = null;
                 let cartResult = null;
                 
                 if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
-                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                     cartResult = globalData.cartResult;
                     orders = cartResult.matchedOrders || globalData.orders;
-                } else {
-                    // Fallback: use orderManager if available
-                    if (orderManager && orderManager.orders && orderManager.orders.length > 0) {
-                        orders = orderManager.orders;
-                    } else {
-                        orders = window.appState.getOrders();
+                    
+                    // CRITICAL: Check if cartResult is valid
+                    if (!cartResult || cartResult.total === 0) {
+                        throw new Error('No cart calculation found! Please go to Dashboard and click "Sync" or "Refresh Data" first.');
                     }
+                } else {
+                    throw new Error('Cart calculation system not available. Please refresh the page.');
                 }
                 
                 if (!orders || orders.length === 0) {
@@ -255,21 +294,17 @@
             console.log('📊 Updating Input Summary...');
             
             // CRITICAL: Use cartResult from SINGLE SOURCE (matched orders only)
+            // forceRefresh = FALSE (only Dashboard can force refresh!)
             let cartResult = null;
             if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
-                const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                 cartResult = globalData.cartResult;
             }
             
-            if (!cartResult) {
-                console.warn('⚠️ No cart result available for Input Summary');
-                // Set all to 0
-                document.getElementById('input-orders').textContent = '0';
-                document.getElementById('input-carts').textContent = '0';
-                const danishEl = document.getElementById('input-danish') || document.getElementById('danish-wagons');
-                const standardEl = document.getElementById('input-standard') || document.getElementById('standard-cars');
-                if (danishEl) danishEl.textContent = '0';
-                if (standardEl) standardEl.textContent = '0';
+            if (!cartResult || cartResult.total === 0) {
+                console.error('❌ No cart calculation found!');
+                console.error('❌ Please go to Dashboard and click "Sync" or "Refresh Data" first!');
+                showError('No data available. Please sync data from Dashboard first.');
                 return;
             }
             
@@ -303,7 +338,25 @@
         function updateRouteBreakdown() {
             console.log('🗺️ Updating Route Breakdown...');
             
-            const orders = window.appState.getOrders();
+            // CRITICAL: Use getGlobalOrdersAndCarts() to get cached data (NOT window.appState!)
+            // forceRefresh = FALSE (only Dashboard can force refresh!)
+            let orders = null;
+            let cartResult = null;
+            
+            if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
+                orders = globalData.orders;
+                cartResult = globalData.cartResult;
+            }
+            
+            if (!cartResult || cartResult.total === 0) {
+                console.error('❌ No cart calculation found for Route Breakdown!');
+                const container = document.getElementById('route-breakdown');
+                if (container) {
+                    container.innerHTML = '<p style="color: #856404; padding: 20px;">⚠️ No data available. Please go to Dashboard and click "Sync" or "Refresh Data" first.</p>';
+                }
+                return;
+            }
             
             if (!orders || orders.length === 0) {
                 console.warn('⚠️ No orders available for Route Breakdown');
@@ -312,11 +365,9 @@
                 return;
             }
             
-            // Ensure CartDisplayManager is initialized
+            // Ensure CartDisplayManager is initialized (it will use getGlobalOrdersAndCarts internally)
             if (!cartDisplayManager) {
-                cartDisplayManager = new CartDisplayManager(orders);
-            } else {
-                cartDisplayManager.setOrders(orders);
+                cartDisplayManager = new CartDisplayManager();
             }
             
             // Get container
@@ -492,11 +543,21 @@
                 let orders = null;
                 let cartResult = null;
                 
+                // CRITICAL: Get data from single source (Dashboard's cache)
+                // forceRefresh = FALSE (only Dashboard can force refresh!)
                 if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
                     console.log('🛒 Optimization: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
-                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
+                    
+                    // CRITICAL: Check if cartResult is valid
+                    if (!cartResult || cartResult.total === 0) {
+                        console.error('❌ No cart calculation found!');
+                        console.error('❌ Please go to Dashboard and click "Sync" or "Refresh Data" first!');
+                        showError('No data available. Please sync data from Dashboard first.');
+                        return;
+                    }
                     
                     // CRITICAL: Use window.AppData for consistent counts
                     if (window.AppData && window.AppData.uniqueOrderIds) {
@@ -512,14 +573,9 @@
                         console.log(`✅ Optimization: Cart result - ${cartResult.total} carts`);
                     }
                 } else {
-                    // Fallback to old method
-                    orders = window.appState.getOrders();
-                    if ((!orders || orders.length === 0) && window.__zuidplas_orders_memory) {
-                        orders = window.__zuidplas_orders_memory;
-                        if (orders && orders.length > 0) {
-                            window.appState.setOrders(orders);
-                        }
-                    }
+                    console.error('❌ getGlobalOrdersAndCarts() not available!');
+                    showError('Cart calculation system not available. Please refresh the page.');
+                    return;
                 }
                 
                 // CRITICAL: Use matched orders from cartResult (same as Dashboard)
@@ -534,9 +590,9 @@
                     orderManager.orders = matchedOrders;
                     orderManager.filteredOrders = [...matchedOrders];
                     
-                    // CRITICAL: Initialize CartDisplayManager with MATCHED orders
-                    console.log('📦 Initializing CartDisplayManager with', matchedOrders.length, 'matched orders...');
-                    cartDisplayManager = new CartDisplayManager(matchedOrders);
+                    // CRITICAL: Initialize CartDisplayManager (it will use getGlobalOrdersAndCarts internally)
+                    console.log('📦 Initializing CartDisplayManager (using cached data)...');
+                    cartDisplayManager = new CartDisplayManager();
                     
                     // Update Input Summary with calculated values (uses cartResult.matchedOrdersCount)
                     updateInputSummary();
@@ -548,20 +604,9 @@
                     console.log('🔧 Running optimization with fresh data...');
                     runOptimization();
                 } else {
-                    console.warn('⚠️ No orders in global state');
-                    console.log('Please sync data from Dashboard first');
-                    
-                    // Show error message
-                    const summaryContainer = document.getElementById('input-summary-content');
-                    if (summaryContainer) {
-                        summaryContainer.innerHTML = `
-                            <div style="text-align: center; padding: 40px; color: #666;">
-                                <h3>No Orders Loaded</h3>
-                                <p>Please go to Dashboard and click "Refresh Data" to load orders.</p>
-                                <a href="index.html" class="btn btn-primary" style="margin-top: 20px;">Go to Dashboard</a>
-                            </div>
-                        `;
-                    }
+                    console.error('❌ No orders in global state');
+                    console.error('❌ Please go to Dashboard and click "Sync" or "Refresh Data" first!');
+                    showError('No data available. Please sync data from Dashboard first.');
                 }
             }
             
