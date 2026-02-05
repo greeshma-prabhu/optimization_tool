@@ -2631,11 +2631,21 @@
                 let orders = [];
                 let cartResult = null;
                 
+                // CRITICAL: Get data from single source (Dashboard's cache)
+                // forceRefresh = FALSE (only Dashboard can force refresh!)
                 if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
                     console.log('🛒 Cart Optimization: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
-                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                    const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
+                    
+                    // CRITICAL: Check if cartResult is valid
+                    if (!cartResult || cartResult.total === 0) {
+                        console.error('❌ No cart calculation found!');
+                        console.error('❌ Please go to Dashboard and click "Sync" or "Refresh Data" first!');
+                        showError('No data available. Please sync data from Dashboard first.');
+                        return;
+                    }
                     
                     // CRITICAL: Use window.AppData for consistent counts
                     if (window.AppData && window.AppData.uniqueOrderIds) {
@@ -2651,6 +2661,10 @@
                         console.log(`✅ Cart Optimization: Cart result - ${cartResult.total} carts`);
                     }
                 } else {
+                    console.error('❌ getGlobalOrdersAndCarts() not available!');
+                    showError('Cart calculation system not available. Please refresh the page.');
+                    return;
+                }
                     // Fallback to old method
                     if (window.__zuidplas_orders_memory && window.__zuidplas_orders_memory.length > 0) {
                         orders = window.__zuidplas_orders_memory;
