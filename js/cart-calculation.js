@@ -625,16 +625,19 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         
         // Location 1: Primary cache (window.__zuidplas_cart_cache) - DASHBOARD'S CACHE!
         // THIS IS THE SINGLE SOURCE OF TRUTH - Dashboard always writes here first!
-        if (window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.cartResult) {
-            cachedCartResult = window.__zuidplas_cart_cache.cartResult;
+        // CRITICAL: Check BOTH variable names (handle typos)
+        const windowCache = window.__zuidplas_cart_cache || window._zuidplas_cart_cache;
+        if (windowCache && windowCache.cartResult) {
+            cachedCartResult = windowCache.cartResult;
             cacheSource = 'window.__zuidplas_cart_cache';
-            cacheDate = window.__zuidplas_cart_cache.date || '';
+            cacheDate = windowCache.date || '';
             console.log(`   ✅ Found cache in window.__zuidplas_cart_cache (DASHBOARD'S CACHE)`);
-            console.log(`   Cache hash: ${window.__zuidplas_cart_cache.ordersHash}`);
+            console.log(`   Cache hash: ${windowCache.ordersHash || 'N/A'}`);
             console.log(`   Cache date: ${cacheDate || 'unknown'}`);
             console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
-            console.log(`   Cached by: ${window.__zuidplas_cart_cache.source || 'unknown'}`);
-            console.log(`   Cached at: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
+            console.log(`   Cached by: ${windowCache.source || 'unknown'}`);
+            console.log(`   Cached at: ${windowCache.timestamp || 'unknown'}`);
+            console.log(`   Matched orders: ${windowCache.matchedOrdersCount || 'N/A'}`);
             console.log(`   ✅ USING DASHBOARD'S CACHE - This is the SINGLE SOURCE OF TRUTH!`);
         }
         // Location 2: appState.cartResult (for compatibility)
@@ -904,8 +907,14 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         timestamp: new Date().toISOString(),
         ordersCount: appData.uniqueOrderIds.size, // Use unique count, not orders.length!
         date: normalizedDate,  // CRITICAL: Store normalized date so different dates don't share cache!
-        source: cacheSource
+        source: cacheSource,
+        matchedOrders: cartResult.matchedOrders || orders, // Store matched orders for other pages
+        matchedOrdersCount: cartResult.matchedOrdersCount || appData.uniqueOrderIds.size,
+        unmatchedOrders: cartResult.unmatchedOrders || []
     };
+    // Save to BOTH variable names (handle typo in some places)
+    window.__zuidplas_cart_cache = cacheObject;
+    window._zuidplas_cart_cache = cacheObject; // Backup with typo name
     
     // Location 2: appState.cartResult (for compatibility with old code)
     if (!window.appState) {
@@ -952,12 +961,17 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
  * Clear the cart calculation cache
  */
 function clearCartCache() {
+    // Clear BOTH variable names (handle typos)
     if (window.__zuidplas_cart_cache) {
         console.log('🗑️ clearCartCache: Clearing cart cache...');
-        console.log(`   Old cache had: ${window.__zuidplas_cart_cache.cartResult.total} carts`);
+        console.log(`   Old cache had: ${window.__zuidplas_cart_cache.cartResult?.total || 'unknown'} carts`);
         console.log(`   Old cache timestamp: ${window.__zuidplas_cart_cache.timestamp || 'unknown'}`);
         delete window.__zuidplas_cart_cache;
-        console.log('✅ Cart cache cleared from window');
+        console.log('✅ Cart cache cleared from window.__zuidplas_cart_cache');
+    }
+    if (window._zuidplas_cart_cache) {
+        delete window._zuidplas_cart_cache;
+        console.log('✅ Cart cache cleared from window._zuidplas_cart_cache');
     }
     
     // CRITICAL: Also clear localStorage to prevent fallback to old data
