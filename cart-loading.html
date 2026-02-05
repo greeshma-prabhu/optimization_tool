@@ -2731,14 +2731,13 @@
                 } else {
                     console.warn('⚠️ CartDisplayManager not available');
                 }
-                    
-                    // Ensure truck assignments are loaded before optimizing
-                    loadTruckAssignments();
-                    
-                    // Auto-optimize
-                    console.log('🔧 Auto-optimizing cart loading...');
-                    optimizeCartLoading();
-                }
+                
+                // Ensure truck assignments are loaded before optimizing
+                loadTruckAssignments();
+                
+                // Auto-optimize
+                console.log('🔧 Auto-optimizing cart loading...');
+                optimizeCartLoading();
             }
             
             checkOrdersAndDisplay();
