@@ -137,6 +137,17 @@
             <div id="route-breakdown">
                 <!-- Populated by JavaScript -->
             </div>
+            <div class="route-truck-allocation">
+                <h3>Vrachtwagen Toewijzing</h3>
+                <div id="route1-truck-selector" class="truck-selector-section"></div>
+                <div id="route2-truck-selector" class="truck-selector-section"></div>
+                <div id="route3-truck-selector" class="truck-selector-section"></div>
+                <div class="truck-allocation-summary">
+                    <button onclick="showTruckAllocationSummary()" class="btn-primary">
+                        📋 Bekijk Toewijzingsoverzicht
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Optimization Options -->
@@ -181,6 +192,7 @@
     <script src="js/ordermanager-shim.js"></script>
     <script src="js/orders.js"></script>
     <script src="js/optimizer.js"></script>
+    <script src="js/truck-selector.js"></script>
     <script src="js/navigation.js"></script>
     <script>
         let currentOptimizer = null;
