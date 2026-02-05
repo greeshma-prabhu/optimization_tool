@@ -286,6 +286,12 @@ function isKnownClient(customerName) {
     return { matched: true, route: 'aalsmeer' };
   }
   
+  // E- Flowers / eFlowers variations - Naaldwijk
+  // Excel: "E- Flowers" → API: "eFlowers B.V." or "eFlowers"
+  if (nameLower.includes('eflowers') || nameLower.includes('e flowers') || nameLower === 'e- flowers') {
+    return { matched: true, route: 'naaldwijk' };
+  }
+  
   // Step 1: Normalize API customer name
   const normalizedCustomer = normalizeName(customerName);
   
