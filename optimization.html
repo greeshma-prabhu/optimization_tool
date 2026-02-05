@@ -293,6 +293,21 @@
         function updateInputSummary() {
             console.log('📊 Updating Input Summary...');
             
+            // CRITICAL: Check if cache exists and is valid
+            const cacheExists = window.__zuidplas_cart_cache && window.__zuidplas_cart_cache.cartResult;
+            
+            if (!cacheExists) {
+                console.error('❌ ERROR: No cache found!');
+                console.error('❌ Dashboard must calculate first!');
+                showError('No data available. Please sync data from Dashboard first.');
+                return;
+            }
+            
+            // Get cache info for logging
+            const cacheDate = window.__zuidplas_cart_cache.date;
+            const cacheTimestamp = window.__zuidplas_cart_cache.timestamp;
+            console.log(`📋 Using cache from ${cacheDate} (${cacheTimestamp})`);
+            
             // CRITICAL: Use cartResult from SINGLE SOURCE (matched orders only)
             // forceRefresh = FALSE (only Dashboard can force refresh!)
             let cartResult = null;
@@ -301,12 +316,14 @@
                 cartResult = globalData.cartResult;
             }
             
-            if (!cartResult || cartResult.total === 0) {
-                console.error('❌ No cart calculation found!');
+            if (!cartResult || !cartResult.matchedOrdersCount || cartResult.total === 0) {
+                console.error('❌ ERROR: Invalid cache data!');
                 console.error('❌ Please go to Dashboard and click "Sync" or "Refresh Data" first!');
                 showError('No data available. Please sync data from Dashboard first.');
                 return;
             }
+            
+            console.log(`✅ Using Dashboard cache: ${cartResult.matchedOrdersCount} matched orders, ${cartResult.total} carts`);
             
             // Update DOM elements using cartResult (SAME as Dashboard)
             const ordersEl = document.getElementById('input-orders') || document.getElementById('total-orders');
@@ -314,9 +331,10 @@
             const danishEl = document.getElementById('input-danish') || document.getElementById('danish-wagons');
             const standardEl = document.getElementById('input-standard') || document.getElementById('standard-cars');
             
-            // CRITICAL: Use matchedOrdersCount (unique matched orders), not orders.length
+            // CRITICAL: Use matchedOrdersCount (unique matched orders), NOT orders.length!
             if (ordersEl) {
                 ordersEl.textContent = cartResult.matchedOrdersCount || 0;
+                console.log(`✅ Updated input-orders: ${cartResult.matchedOrdersCount} (NOT ${ordersEl.textContent} orderrows!)`);
             }
             if (cartsEl) {
                 cartsEl.textContent = cartResult.total || 0;
