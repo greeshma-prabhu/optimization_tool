@@ -299,12 +299,6 @@
             if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
                 const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                 cartResult = globalData.cartResult;
-                
-                // Log cache info for debugging
-                const cacheDate = window.__zuidplas_cart_cache?.date || '';
-                const cacheTimestamp = window.__zuidplas_cart_cache?.timestamp || '';
-                console.log(`📅 Cache date: ${cacheDate || 'N/A'}`);
-                console.log(`📅 Cache timestamp: ${cacheTimestamp || 'N/A'}`);
             }
             
             // Check if cartResult is valid (less strict - allow if total > 0 even without matchedOrdersCount)
@@ -577,27 +571,10 @@
                 if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
                     console.log('🛒 Optimization: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
                     
-                    // CRITICAL: Get cache first to check date
+                    // CRITICAL: Get cache from Dashboard (SAME SOURCE OF TRUTH)
                     const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
-                    
-                    // CRITICAL: Check cache date AFTER getting it
-                    const cacheDate = window.__zuidplas_cart_cache?.date || '';
-                    const cacheTimestamp = window.__zuidplas_cart_cache?.timestamp || '';
-                    
-                    console.log(`📅 Cache date: ${cacheDate || 'N/A'}`);
-                    console.log(`📅 Cache timestamp: ${cacheTimestamp || 'N/A'}`);
-                    
-                    // If cache exists but is old (more than 1 hour old), warn user
-                    if (cacheTimestamp) {
-                        const cacheTime = new Date(cacheTimestamp);
-                        const now = new Date();
-                        const hoursDiff = (now - cacheTime) / (1000 * 60 * 60);
-                        if (hoursDiff > 24) {
-                            console.warn(`⚠️ Cache is ${hoursDiff.toFixed(1)} hours old - consider refreshing from Dashboard`);
-                        }
-                    }
                     
                     // CRITICAL: Check if cartResult is valid (less strict - allow if total > 0)
                     if (!cartResult || cartResult.total === 0) {
@@ -625,7 +602,7 @@
                     // CRITICAL: Log the correct counts
                     console.log(`✅ Optimization: Loaded ${cartResult.matchedOrdersCount || 'N/A'} UNIQUE orders (from ${orders.length} orderrows)`);
                     console.log(`✅ Optimization: Cart result - ${cartResult.total} carts`);
-                    console.log(`✅ Cache date: ${cacheDate || 'N/A'}, Current date: ${currentDate}`);
+                    console.log(`✅ Using Dashboard cache: ${cartResult.matchedOrdersCount} orders, ${cartResult.total} carts`);
                 } else {
                     console.error('❌ getGlobalOrdersAndCarts() not available!');
                     showError('Cart calculation system not available. Please refresh the page.');

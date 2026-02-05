@@ -2636,16 +2636,10 @@
                 if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
                     console.log('🛒 Cart Optimization: Using SINGLE SOURCE OF TRUTH (getGlobalOrdersAndCarts)...');
                     
-                    // CRITICAL: Get cache first
+                    // CRITICAL: Get cache from Dashboard (SAME SOURCE OF TRUTH)
                     const globalData = window.CartCalculation.getGlobalOrdersAndCarts(false);
                     orders = globalData.orders;
                     cartResult = globalData.cartResult;
-                    
-                    // Log cache info for debugging
-                    const cacheDate = window.__zuidplas_cart_cache?.date || '';
-                    const cacheTimestamp = window.__zuidplas_cart_cache?.timestamp || '';
-                    console.log(`📅 Cache date: ${cacheDate || 'N/A'}`);
-                    console.log(`📅 Cache timestamp: ${cacheTimestamp || 'N/A'}`);
                     
                     // CRITICAL: Check if cartResult is valid
                     if (!cartResult || cartResult.total === 0) {
