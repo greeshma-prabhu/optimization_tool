@@ -697,6 +697,31 @@
                         }
                         ordersByCustomer[customerName].push(order);
                     });
+
+                    // Build per-route unique customer lists so we don't repeat one name for all carts
+                    const routeCustomers = {
+                        rijnsburg: [],
+                        aalsmeer: [],
+                        naaldwijk: []
+                    };
+                    this.orders.forEach(order => {
+                        const customerName = order.customer_name || order.customer || order.customerName || 'Unknown';
+                        let orderRoute = order.route;
+                        if (!orderRoute && this.cartManager && this.cartManager.determineRoute) {
+                            try {
+                                orderRoute = this.cartManager.determineRoute(order);
+                            } catch (e) {
+                                orderRoute = null;
+                            }
+                        }
+                        if (orderRoute) {
+                            const key = String(orderRoute).toLowerCase();
+                            if (routeCustomers[key] && !routeCustomers[key].includes(customerName)) {
+                                routeCustomers[key].push(customerName);
+                            }
+                        }
+                    });
+                    const routeCustomerIndex = { rijnsburg: 0, aalsmeer: 0, naaldwijk: 0 };
                     
                     // Create cart objects based on the breakdown
                     if (cartResult.breakdown && Array.isArray(cartResult.breakdown)) {
@@ -707,14 +732,23 @@
                                     // Create carts for this fust type
                                     for (let i = 0; i < fustData.carts; i++) {
                                         // Find a customer for this route
-                                        const customerName = Object.keys(ordersByCustomer).find(cust => {
-                                            const order = ordersByCustomer[cust][0];
-                                            if (order && this.cartManager && this.cartManager.determineRoute) {
-                                                const orderRoute = this.cartManager.determineRoute(order).toLowerCase();
-                                                return orderRoute === route;
-                                            }
-                                            return false;
-                                        }) || 'Unknown';
+                                        let customerName = 'Unknown';
+                                        const customersForRoute = routeCustomers[route] || [];
+                                        if (customersForRoute.length > 0) {
+                                            const idx = routeCustomerIndex[route] % customersForRoute.length;
+                                            customerName = customersForRoute[idx];
+                                            routeCustomerIndex[route] += 1;
+                                        } else {
+                                            // Fallback to any customer that maps to this route
+                                            customerName = Object.keys(ordersByCustomer).find(cust => {
+                                                const order = ordersByCustomer[cust][0];
+                                                if (order && this.cartManager && this.cartManager.determineRoute) {
+                                                    const orderRoute = this.cartManager.determineRoute(order).toLowerCase();
+                                                    return orderRoute === route;
+                                                }
+                                                return false;
+                                            }) || 'Unknown';
+                                        }
                                         
                                         allCarts.push({
                                             id: `cart-${cartIdCounter++}`,
