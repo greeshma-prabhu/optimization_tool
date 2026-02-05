@@ -680,17 +680,9 @@
                         const unmatchedCount = cartResult?.unmatchedOrdersCount || 0;
                         
                         if (hasChanges) {
-                            if (unmatchedCount > 0) {
-                                statusMsg.innerHTML = `✅ Updated: Found ${ordersWithCarts.length} orders from API (${matchedCount} matched, ${unmatchedCount} unmatched) - was ${existingCount}`;
-                            } else {
-                                statusMsg.innerHTML = `✅ Updated: Found ${matchedCount} matched orders (was ${existingCount})`;
-                            }
+                            statusMsg.innerHTML = `✅ Updated: Found ${matchedCount} orders from API - was ${existingCount}`;
                         } else {
-                            if (unmatchedCount > 0) {
-                                statusMsg.innerHTML = `✅ Refreshed: ${ordersWithCarts.length} orders from API (${matchedCount} matched, ${unmatchedCount} unmatched) - no changes`;
-                            } else {
-                                statusMsg.innerHTML = `✅ Refreshed: ${matchedCount} matched orders (no changes)`;
-                            }
+                            statusMsg.innerHTML = `✅ Refreshed: ${matchedCount} orders from API - no changes`;
                         }
                         statusMsg.classList.add('show', 'success');
                     }
@@ -1001,13 +993,8 @@
                             });
                             
                             const uniqueMatched = uniqueMatchedIds.size;
-                            const uniqueUnmatched = uniqueUnmatchedIds.size;
                             
-                            if (uniqueUnmatched > 0) {
-                                statusMsg.innerHTML = `✅ Found ${uniqueMatched} orders from API (${uniqueMatched} matched, ${uniqueUnmatched} unmatched)`;
-                            } else {
-                                statusMsg.innerHTML = `✅ Found ${uniqueMatched} orders from API`;
-                            }
+                            statusMsg.innerHTML = `✅ Found ${uniqueMatched} orders from API`;
                         }
                         statusMsg.classList.add('show', 'success');
                     }
