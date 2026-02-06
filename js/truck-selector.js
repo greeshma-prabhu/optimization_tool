@@ -20,11 +20,15 @@ class TruckAllocationManager {
 
   getAvailableTrucksForRoute(routeNumber) {
     if (routeNumber === 1) {
-      return this.availableTrucks.map(truck => ({ ...truck, available: true }));
+      return this.availableTrucks.map(truck => ({
+        ...truck,
+        available: true,
+        reason: null
+      }));
     }
 
     if (routeNumber === 2) {
-      const route1Trucks = this.allocations.route1;
+      const route1Trucks = this.allocations.route1 || [];
       return this.availableTrucks.map(truck => ({
         ...truck,
         available: !route1Trucks.includes(truck.id),
@@ -35,7 +39,7 @@ class TruckAllocationManager {
     }
 
     if (routeNumber === 3) {
-      const route2Trucks = this.allocations.route2;
+      const route2Trucks = this.allocations.route2 || [];
       return this.availableTrucks.map(truck => ({
         ...truck,
         available: !route2Trucks.includes(truck.id),
@@ -80,7 +84,7 @@ class TruckAllocationManager {
     container.innerHTML = `
       <div class="truck-selector-container">
         <h4>${routeNames[routeNumber]}</h4>
-        <p class="truck-selector-hint">Selecteer welke vrachtwagens voor deze route:</p>
+        <p class="truck-selector-hint">${window.Language ? window.Language.t('select_truck') : 'Selecteer welke vrachtwagens voor deze route:'}</p>
 
         <div class="truck-options">
           ${availableTrucks.map(truck => `
@@ -92,19 +96,17 @@ class TruckAllocationManager {
                 ${!truck.available ? 'disabled' : ''}
                 onchange="window.truckManager.handleTruckChange(${routeNumber}, this)"
               />
-              <span class="truck-name">${truck.name}</span>
+              <span class="truck-name">${window.Language ? window.Language.t(truck.id) : truck.name}</span>
               ${!truck.available ? `<span class="truck-unavailable">(${truck.reason})</span>` : ''}
             </label>
           `).join('')}
         </div>
 
         <div class="selected-trucks-summary">
-          <strong>Geselecteerd:</strong>
+          <strong>${window.Language ? window.Language.t('selected') : 'Geselecteerd'}:</strong>
           ${selectedTrucks.length > 0
-            ? selectedTrucks.map(id =>
-                availableTrucks.find(t => t.id === id)?.name || id
-              ).join(' + ')
-            : 'Geen vrachtwagens geselecteerd'
+            ? selectedTrucks.map(id => window.Language ? window.Language.t(id) : (availableTrucks.find(t => t.id === id)?.name || id)).join(' + ')
+            : (window.Language ? window.Language.t('no_trucks_selected') : 'Geen vrachtwagens geselecteerd')
           }
         </div>
       </div>

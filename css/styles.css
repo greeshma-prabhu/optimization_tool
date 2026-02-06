@@ -136,6 +136,20 @@ body {
     text-align: right;
 }
 
+/* === Language Selector === */
+.language-selector {
+    margin-right: 16px;
+}
+
+.language-selector select {
+    padding: 8px 12px;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    background: #ffffff;
+    cursor: pointer;
+    font-size: 14px;
+}
+
 .allocation-summary-content {
     margin: 15px 0;
 }

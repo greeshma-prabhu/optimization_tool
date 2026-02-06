@@ -30,6 +30,12 @@
                 <span style="font-size: 14px; color: #374151;">Admin User</span>
                 <div class="user-badge">Admin</div>
             </div>
+            <div class="language-selector">
+                <select id="language-select" onchange="changeLanguage(this.value)">
+                    <option value="nl">🇳🇱 Nederlands</option>
+                    <option value="en">🇬🇧 English</option>
+                </select>
+            </div>
             <button class="logout-btn-header" onclick="handleLogout()" data-i18n="common.logout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -115,6 +121,19 @@
     <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
+    <script src="js/language.js"></script>
+    <script>
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect && window.Language) {
+            languageSelect.value = window.Language.getCurrentLanguage();
+        }
+        function changeLanguage(lang) {
+            if (window.Language) {
+                window.Language.setLanguage(lang);
+            }
+            location.reload();
+        }
+    </script>
     
     <!-- GLOBAL STATE MANAGER - CRITICAL FOR DATA SYNC -->
     <script src="js/app-state.js"></script>

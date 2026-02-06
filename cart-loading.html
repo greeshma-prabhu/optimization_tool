@@ -491,6 +491,12 @@
                 <span style="font-size: 14px; color: #374151;">Admin User</span>
                 <div class="user-badge">Admin</div>
             </div>
+            <div class="language-selector">
+                <select id="language-select" onchange="changeLanguage(this.value)">
+                    <option value="nl">🇳🇱 Nederlands</option>
+                    <option value="en">🇬🇧 English</option>
+                </select>
+            </div>
             <button class="logout-btn-header" onclick="handleLogout()" data-i18n="common.logout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -625,6 +631,19 @@
     <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
+    <script src="js/language.js"></script>
+    <script>
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect && window.Language) {
+            languageSelect.value = window.Language.getCurrentLanguage();
+        }
+        function changeLanguage(lang) {
+            if (window.Language) {
+                window.Language.setLanguage(lang);
+            }
+            location.reload();
+        }
+    </script>
     
     <!-- GLOBAL STATE MANAGER - BEFORE PAGE SCRIPTS -->
     <script src="js/app-state.js"></script>
@@ -1366,25 +1385,38 @@
         }
 
         // Smart truck options for UI (single trucks with availability rules)
+        function langText(key, fallback) {
+            if (window.Language && typeof window.Language.t === 'function') {
+                return window.Language.t(key);
+            }
+            return fallback;
+        }
+
         function getSmartTruckOptions(routeKey) {
             const baseTrucks = [
-                { id: 'truck1', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1' },
-                { id: 'truck2', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2' },
-                { id: 'neighbor', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck' },
-                { id: 'external', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck' }
+                { id: 'truck1', name: langText('truck1', typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1') },
+                { id: 'truck2', name: langText('truck2', typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2') },
+                { id: 'neighbor', name: langText('neighbor', typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck') },
+                { id: 'external', name: langText('external', typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck') }
             ];
 
             const route1Trucks = parseTruckAssignment(routeTruckAssignments.rijnsburg || '');
             const route2Trucks = parseTruckAssignment(routeTruckAssignments.aalsmeer || '');
+            const usedByRouteText = langText('used_by_route', 'Gebruikt door Route');
+            const routeNames = {
+                rijnsburg: langText('rijnsburg', 'Rijnsburg'),
+                aalsmeer: langText('aalsmeer', 'Aalsmeer'),
+                naaldwijk: langText('naaldwijk', 'Naaldwijk')
+            };
 
             const blocked = new Set();
             let reason = null;
             if (routeKey === 'aalsmeer') {
                 route1Trucks.forEach(id => blocked.add(id));
-                reason = 'Gebruikt door Route 1 (Rijnsburg)';
+                reason = `${usedByRouteText} 1 (${routeNames.rijnsburg})`;
             } else if (routeKey === 'naaldwijk') {
                 route2Trucks.forEach(id => blocked.add(id));
-                reason = 'Gebruikt door Route 2 (Aalsmeer)';
+                reason = `${usedByRouteText} 2 (${routeNames.aalsmeer})`;
             }
 
             return baseTrucks.map(truck => ({
@@ -1398,15 +1430,28 @@
             return parseTruckAssignment(routeTruckAssignments[routeKey] || '');
         }
 
+        function sanitizeRouteSelection(routeKey) {
+            const selected = getSelectedTruckIds(routeKey);
+            if (selected.length === 0) return selected;
+            const options = getSmartTruckOptions(routeKey);
+            const allowed = selected.filter(id => {
+                const opt = options.find(t => t.id === id);
+                return opt && opt.available;
+            });
+            if (allowed.length !== selected.length) {
+                routeTruckAssignments[routeKey] = allowed.length > 0 ? allowed.join('+') : null;
+                localStorage.setItem('zuidplas_route_truck_assignments', JSON.stringify(routeTruckAssignments));
+            }
+            return allowed;
+        }
+
         function renderSmartTruckSelector(routeKey) {
             const availableTrucks = getSmartTruckOptions(routeKey);
-            const selectedTrucks = getSelectedTruckIds(routeKey);
+            const selectedTrucks = sanitizeRouteSelection(routeKey);
 
             return `
                 <div class="truck-selector-container">
-                    <label style="display:block; font-weight: 600; margin-bottom: 6px;">
-                        ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruck', 'Select Truck:') : 'Select Truck:'}
-                    </label>
+                    <label style="display:block; font-weight: 600; margin-bottom: 6px;">${langText('select_truck', typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruck', 'Select Truck:') : 'Select Truck:')}</label>
                     <div class="truck-options">
                         ${availableTrucks.map(truck => `
                             <label class="truck-option ${!truck.available ? 'disabled' : ''}">
@@ -1423,10 +1468,10 @@
                         `).join('')}
                     </div>
                     <div class="selected-trucks-summary">
-                        <strong>Geselecteerd:</strong>
+                        <strong>${langText('selected', 'Geselecteerd')}:</strong>
                         ${selectedTrucks.length > 0
                             ? selectedTrucks.map(id => availableTrucks.find(t => t.id === id)?.name || id).join(' + ')
-                            : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.noTruckSelected', 'Geen vrachtwagens geselecteerd') : 'Geen vrachtwagens geselecteerd')
+                            : langText('no_trucks_selected', typeof i18n !== 'undefined' ? i18n.t('cartLoading.noTruckSelected', 'Geen vrachtwagens geselecteerd') : 'Geen vrachtwagens geselecteerd')
                         }
                     </div>
                 </div>
@@ -1434,7 +1479,7 @@
         }
 
         function handleSmartTruckChange(routeKey, checkbox) {
-            let selectedTrucks = getSelectedTruckIds(routeKey);
+            let selectedTrucks = sanitizeRouteSelection(routeKey);
             const truckId = checkbox.value;
 
             if (checkbox.checked) {
@@ -1453,9 +1498,9 @@
 
             if (unavailable) {
                 checkbox.checked = false;
-                alert(typeof i18n !== 'undefined'
+                alert(langText('time_conflict_error', typeof i18n !== 'undefined'
                     ? i18n.t('cartLoading.truckUnavailable', 'This truck is unavailable due to time conflict with another route.')
-                    : 'This truck is unavailable due to time conflict with another route.');
+                    : 'This truck is unavailable due to time conflict with another route.'));
                 return;
             }
 
@@ -1869,9 +1914,9 @@
             });
             
             if (unavailable) {
-                alert(typeof i18n !== 'undefined' 
+                alert(langText('time_conflict_error', typeof i18n !== 'undefined'
                     ? i18n.t('cartLoading.truckUnavailable', 'This truck combination is unavailable due to time conflict with another route.')
-                    : 'This truck combination is unavailable due to time conflict with another route.');
+                    : 'This truck combination is unavailable due to time conflict with another route.'));
                 routeTruckAssignments[routeKey] = previousSelection;
                 // Refresh UI back to previous state
                 if (cartLoadingOptimizer && orderManager && orderManager.orders && orderManager.orders.length > 0) {
