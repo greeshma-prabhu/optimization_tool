@@ -3433,6 +3433,15 @@
                 // Ensure truck assignments are loaded before optimizing
                 loadTruckAssignments();
                 
+                // Ensure "Carts by Route" is visible even before optimization
+                try {
+                    cartLoadingOptimizer = new CartLoadingOptimizer(orderManager.orders);
+                    const allCarts = cartLoadingOptimizer.getAllCarts();
+                    updateCartList(allCarts);
+                } catch (e) {
+                    console.warn('⚠️ Could not build cart list before optimize:', e);
+                }
+
                 // Auto-optimize
                 console.log('🔧 Auto-optimizing cart loading...');
                 optimizeCartLoading();
