@@ -10,8 +10,8 @@
         .truck-container {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
-            margin: 30px 0;
+            gap: 18px;
+            margin: 20px 0;
         }
         
         @media (max-width: 1200px) {
@@ -74,20 +74,22 @@
         
         .truck-slots {
             display: grid;
-            grid-template-columns: repeat(17, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(17, minmax(10px, 1fr));
+            gap: 3px;
             align-items: start;
-            margin: 20px 0;
+            margin: 12px 0;
         }
         
         .cart-slot {
             aspect-ratio: 1;
-            border: 2px solid var(--border);
-            border-radius: 6px;
+            min-width: 10px;
+            min-height: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
+            font-size: 0.5rem;
             font-weight: 600;
             position: relative;
             transition: all 0.2s;
@@ -101,24 +103,24 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 14px;
-            height: 14px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
             color: #fff;
-            font-size: 10px;
+            font-size: 5px;
             font-weight: 700;
             margin: 0 1px;
         }
         
         .cart-slot.filled-standard {
             color: white;
-            border-width: 2px;
+            border-width: 1px;
             font-weight: 600;
         }
         
         .cart-slot.filled-danish {
             color: white;
-            border-width: 3px;
+            border-width: 2px;
             font-weight: 600;
         }
         
@@ -239,19 +241,19 @@
 
         .cart-layer-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(22px, 1fr));
-            gap: 6px;
+            grid-template-columns: repeat(auto-fit, minmax(14px, 1fr));
+            gap: 3px;
             overflow-x: auto;
         }
 
         .cart-layer-slot {
-            height: 22px;
-            border-radius: 6px;
+            height: 14px;
+            border-radius: 4px;
             border: 1px solid rgba(0,0,0,0.08);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
+            font-size: 0.5rem;
             color: #fff;
             font-weight: 600;
         }
@@ -2897,7 +2899,7 @@
                             <span>Layer ${layer.index + 1} (top → bottom)</span>
                             <span>${layer.used}/${layer.capacity} used, ${layer.empty} empty</span>
                         </div>
-                        <div class="cart-layer-grid" style="grid-template-columns: repeat(${layer.capacity}, 22px);">
+                        <div class="cart-layer-grid" style="grid-template-columns: repeat(${layer.capacity}, 14px);">
                             ${layer.slots.map(slot => slot ? `
                                 <div class="cart-layer-slot" style="background:${slot.color}" title="${slot.client} • ${slot.crateType}">
                                     ${slot.client ? slot.client.charAt(0).toUpperCase() : ''}
