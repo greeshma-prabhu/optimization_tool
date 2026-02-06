@@ -2673,11 +2673,17 @@
 
         function updateCartList(allCarts) {
             const container = document.getElementById('cart-list-by-route');
+            if (!container) return;
             container.innerHTML = '';
             window.__cartDetailMap = (allCarts || []).reduce((acc, cart) => {
                 if (cart && cart.id) acc[cart.id] = cart;
                 return acc;
             }, {});
+
+            if (!allCarts || allCarts.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">No cart data available</div>';
+                return;
+            }
 
             const cartsByRoute = {
                 rijnsburg_morning: [],
@@ -2703,8 +2709,19 @@
                 external: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck'
             };
 
-            Object.keys(ROUTES).forEach(routeKey => {
-                const route = ROUTES[routeKey];
+            const routesConfig = (typeof ROUTES !== 'undefined' && ROUTES)
+                ? ROUTES
+                : {
+                    rijnsburg_morning: { id: 1, name: 'Rijnsburg', departureTime: '09:00' },
+                    aalsmeer_morning: { id: 2, name: 'Aalsmeer', departureTime: '10:00' },
+                    naaldwijk_morning: { id: 3, name: 'Naaldwijk', departureTime: '11:00' },
+                    rijnsburg_evening: { id: 4, name: 'Rijnsburg', departureTime: '17:00' },
+                    aalsmeer_evening: { id: 5, name: 'Aalsmeer', departureTime: '18:00' },
+                    naaldwijk_evening: { id: 6, name: 'Naaldwijk', departureTime: '19:00' }
+                };
+
+            Object.keys(routesConfig).forEach(routeKey => {
+                const route = routesConfig[routeKey];
                 const cartsKey = ['rijnsburg', 'aalsmeer', 'naaldwijk'].includes(routeKey)
                     ? `${routeKey}_morning`
                     : routeKey;
@@ -2892,6 +2909,13 @@
                     <div><strong>Used:</strong> ${usedSlots} / ${capacity}</div>
                     <div><strong>Empty:</strong> ${emptySlots} (${emptyLayers} shelves)</div>
                     <div><strong>Capacity Note:</strong> ${capacityNote}</div>
+                </div>
+                <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px;">
+                    <strong>Why layers differ:</strong> Layer count depends on crate type.
+                    612 = 3 layers, 575/996 = 2 layers, 902/588/821 = 4 layers, Danish carts use 4 layers.
+                    <br>
+                    <strong>Why a new cart can appear:</strong> Carts are calculated per crate type.
+                    Empty slots in a 902 cart cannot be used for 612 crates, so a new cart is created.
                 </div>
                 ${layerData.map(layer => `
                     <div class="cart-layer">
