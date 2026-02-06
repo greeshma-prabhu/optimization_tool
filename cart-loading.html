@@ -593,7 +593,7 @@
             <div class="stat-card info">
                 <div class="icon">🎯</div>
                 <div class="label" data-i18n="cartLoading.routesCovered">Routes Covered</div>
-                <div class="value" id="routes-covered">0/3</div>
+                <div class="value" id="routes-covered">0/6</div>
             </div>
         </div>
 
@@ -719,13 +719,17 @@
 
                     // Build per-route unique customer lists so we don't repeat one name for all carts
                     const routeCustomers = {
-                        rijnsburg: [],
-                        aalsmeer: [],
-                        naaldwijk: []
+                        rijnsburg_morning: [],
+                        aalsmeer_morning: [],
+                        naaldwijk_morning: [],
+                        rijnsburg_evening: [],
+                        aalsmeer_evening: [],
+                        naaldwijk_evening: []
                     };
                     this.orders.forEach(order => {
                         const customerName = order.customer_name || order.customer || order.customerName || 'Unknown';
                         let orderRoute = order.route;
+                        const orderPeriod = order.period || 'morning';
                         if (!orderRoute && this.cartManager && this.cartManager.determineRoute) {
                             try {
                                 orderRoute = this.cartManager.determineRoute(order);
@@ -734,57 +738,72 @@
                             }
                         }
                         if (orderRoute) {
-                            const key = String(orderRoute).toLowerCase();
+                            const key = `${String(orderRoute).toLowerCase()}_${orderPeriod}`;
                             if (routeCustomers[key] && !routeCustomers[key].includes(customerName)) {
                                 routeCustomers[key].push(customerName);
                             }
                         }
                     });
-                    const routeCustomerIndex = { rijnsburg: 0, aalsmeer: 0, naaldwijk: 0 };
+                    const routeCustomerIndex = {
+                        rijnsburg_morning: 0,
+                        aalsmeer_morning: 0,
+                        naaldwijk_morning: 0,
+                        rijnsburg_evening: 0,
+                        aalsmeer_evening: 0,
+                        naaldwijk_evening: 0
+                    };
                     
                     // Create cart objects based on the breakdown
-                    if (cartResult.breakdown && Array.isArray(cartResult.breakdown)) {
-                        cartResult.breakdown.forEach(routeData => {
-                            const route = routeData.route.toLowerCase();
-                            if (routeData.fustBreakdown && Array.isArray(routeData.fustBreakdown)) {
-                                routeData.fustBreakdown.forEach(fustData => {
-                                    // Create carts for this fust type
-                                    for (let i = 0; i < fustData.carts; i++) {
-                                        // Find a customer for this route
-                                        let customerName = 'Unknown';
-                                        const customersForRoute = routeCustomers[route] || [];
-                                        if (customersForRoute.length > 0) {
-                                            const idx = routeCustomerIndex[route] % customersForRoute.length;
-                                            customerName = customersForRoute[idx];
-                                            routeCustomerIndex[route] += 1;
-                                        } else {
-                                            // Fallback to any customer that maps to this route
-                                            customerName = Object.keys(ordersByCustomer).find(cust => {
-                                                const order = ordersByCustomer[cust][0];
-                                                if (order && this.cartManager && this.cartManager.determineRoute) {
-                                                    const orderRoute = this.cartManager.determineRoute(order).toLowerCase();
-                                                    return orderRoute === route;
-                                                }
-                                                return false;
-                                            }) || 'Unknown';
-                                        }
-                                        
-                                        allCarts.push({
-                                            id: `cart-${cartIdCounter++}`,
-                                            client: customerName,
-                                            customer: customerName,
-                                            route: route,
-                                            type: 'standard', // TODO: Determine Danish vs Standard
-                                            orders: ordersByCustomer[customerName] || [],
-                                            cartNumber: i + 1,
-                                            totalCarts: fustData.carts,
-                                            fustType: fustData.fustType
-                                        });
-                                    }
-                                });
-                            }
-                        });
+                    const breakdowns = [];
+                    if (cartResult.morning?.breakdown) breakdowns.push(...cartResult.morning.breakdown);
+                    if (cartResult.evening?.breakdown) breakdowns.push(...cartResult.evening.breakdown);
+                    if (breakdowns.length === 0 && cartResult.breakdown && Array.isArray(cartResult.breakdown)) {
+                        breakdowns.push(...cartResult.breakdown);
                     }
+
+                    breakdowns.forEach(routeData => {
+                        const route = routeData.route ? routeData.route.toLowerCase() : routeData.routeKey.replace('_morning', '').replace('_evening', '');
+                        const period = routeData.period || (routeData.routeKey && routeData.routeKey.includes('_evening') ? 'evening' : 'morning');
+                        const routeKey = routeData.routeKey || `${route}_${period}`;
+
+                        if (routeData.fustBreakdown && Array.isArray(routeData.fustBreakdown)) {
+                            routeData.fustBreakdown.forEach(fustData => {
+                                for (let i = 0; i < fustData.carts; i++) {
+                                    let customerName = 'Unknown';
+                                    const customersForRoute = routeCustomers[routeKey] || [];
+                                    if (customersForRoute.length > 0) {
+                                        const idx = routeCustomerIndex[routeKey] % customersForRoute.length;
+                                        customerName = customersForRoute[idx];
+                                        routeCustomerIndex[routeKey] += 1;
+                                    } else {
+                                        customerName = Object.keys(ordersByCustomer).find(cust => {
+                                            const order = ordersByCustomer[cust][0];
+                                            if (order && this.cartManager && this.cartManager.determineRoute) {
+                                                const orderRoute = this.cartManager.determineRoute(order).toLowerCase();
+                                                const orderPeriod = order.period || 'morning';
+                                                return orderRoute === route && orderPeriod === period;
+                                            }
+                                            return false;
+                                        }) || 'Unknown';
+                                    }
+
+                                    allCarts.push({
+                                        id: `cart-${cartIdCounter++}`,
+                                        client: customerName,
+                                        customer: customerName,
+                                        route: route,
+                                        routeKey: routeKey,
+                                        period: period,
+                                        type: 'standard',
+                                        orders: ordersByCustomer[customerName] || [],
+                                        cartNumber: i + 1,
+                                        totalCarts: fustData.carts,
+                                        fustType: fustData.fustType
+                                    });
+                                }
+                            });
+                        }
+                    });
                     
                     console.log(`   Standard: ${allCarts.filter(c => c.type === 'standard').length}`);
                     console.log(`   Danish: ${allCarts.filter(c => c.type === 'danish').length}`);
@@ -1104,14 +1123,55 @@
             cartLoadingOptimizer = new CartLoadingOptimizer(orderManager.orders);
             const result = cartLoadingOptimizer.optimizeAssignment();
             
-            // Override route analysis with dashboard's route analysis for consistency
-            // This ensures cart counts match dashboard exactly
-            // Use ACTUAL cart count (totalCarts), not equivalent standard - NO HARDCODING!
-            if (routeAnalysis) {
+            const globalData = window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts
+                ? window.CartCalculation.getGlobalOrdersAndCarts(false)
+                : null;
+            const cartResult = globalData?.cartResult;
+
+            if (cartResult && cartResult.morning && cartResult.evening) {
+                const getRouteStats = (period, routeKey, routeName) => {
+                    const periodData = cartResult[period];
+                    const breakdownEntry = periodData.breakdown?.find(b => b.routeKey === routeKey) || {};
+                    const totalCarts = periodData.byRoute?.[routeName] || 0;
+                    return {
+                        totalCarts,
+                        standardCarts: breakdownEntry.standardCarts || 0,
+                        danishCarts: breakdownEntry.danishCarts || 0
+                    };
+                };
+
+                const buildRouteAnalysis = (period, routeKey, routeName) => {
+                    const stats = getRouteStats(period, routeKey, routeName);
+                    const maxCapacity = 17;
+                    const overflow = Math.max(0, stats.totalCarts - maxCapacity);
+                    return {
+                        fits: stats.totalCarts <= maxCapacity,
+                        used: stats.totalCarts,
+                        max: maxCapacity,
+                        overflow: overflow,
+                        totalCarts: stats.totalCarts,
+                        danishCount: stats.danishCarts,
+                        standardCount: stats.standardCarts
+                    };
+                };
+
+                result.routeAnalysis = {
+                    rijnsburg_morning: buildRouteAnalysis('morning', 'rijnsburg_morning', 'Rijnsburg'),
+                    aalsmeer_morning: buildRouteAnalysis('morning', 'aalsmeer_morning', 'Aalsmeer'),
+                    naaldwijk_morning: buildRouteAnalysis('morning', 'naaldwijk_morning', 'Naaldwijk'),
+                    rijnsburg_evening: buildRouteAnalysis('evening', 'rijnsburg_evening', 'Rijnsburg'),
+                    aalsmeer_evening: buildRouteAnalysis('evening', 'aalsmeer_evening', 'Aalsmeer'),
+                    naaldwijk_evening: buildRouteAnalysis('evening', 'naaldwijk_evening', 'Naaldwijk')
+                };
+                // Backward compatibility for code that expects morning keys
+                result.routeAnalysis.rijnsburg = result.routeAnalysis.rijnsburg_morning;
+                result.routeAnalysis.aalsmeer = result.routeAnalysis.aalsmeer_morning;
+                result.routeAnalysis.naaldwijk = result.routeAnalysis.naaldwijk_morning;
+            } else if (routeAnalysis) {
                 result.routeAnalysis = {
                     rijnsburg: {
                         fits: routeAnalysis.rijnsburg?.fits !== undefined ? routeAnalysis.rijnsburg.fits : true,
-                        used: routeAnalysis.rijnsburg?.totalCarts || 0, // ACTUAL cart count from dashboard
+                        used: routeAnalysis.rijnsburg?.totalCarts || 0,
                         max: routeAnalysis.rijnsburg?.maxCapacity || 17,
                         overflow: routeAnalysis.rijnsburg?.overflow || 0,
                         totalCarts: routeAnalysis.rijnsburg?.totalCarts || 0,
@@ -1119,9 +1179,8 @@
                         standardCount: routeAnalysis.rijnsburg?.standardCarts || 0
                     },
                     aalsmeer: {
-                        // CRITICAL: Use dashboard's calculation - if 37 carts > 16 capacity = overflow!
                         fits: routeAnalysis.aalsmeer?.fits !== undefined ? routeAnalysis.aalsmeer.fits : ((routeAnalysis.aalsmeer?.totalCarts || 0) <= (routeAnalysis.aalsmeer?.maxCapacity || 17)),
-                        used: routeAnalysis.aalsmeer?.totalCarts || 0, // ACTUAL cart count from dashboard
+                        used: routeAnalysis.aalsmeer?.totalCarts || 0,
                         max: routeAnalysis.aalsmeer?.maxCapacity || 17,
                         overflow: routeAnalysis.aalsmeer?.overflow || 0,
                         totalCarts: routeAnalysis.aalsmeer?.totalCarts || 0,
@@ -1130,7 +1189,7 @@
                     },
                     naaldwijk: {
                         fits: routeAnalysis.naaldwijk?.fits !== undefined ? routeAnalysis.naaldwijk.fits : true,
-                        used: routeAnalysis.naaldwijk?.totalCarts || 0, // ACTUAL cart count from dashboard
+                        used: routeAnalysis.naaldwijk?.totalCarts || 0,
                         max: routeAnalysis.naaldwijk?.maxCapacity || 17,
                         overflow: routeAnalysis.naaldwijk?.overflow || 0,
                         totalCarts: routeAnalysis.naaldwijk?.totalCarts || 0,
@@ -1157,7 +1216,7 @@
             document.getElementById('total-carts').textContent = '0';
             document.getElementById('carts-assigned').textContent = '0';
             document.getElementById('overflow-count').textContent = '0';
-            document.getElementById('routes-covered').textContent = '0/3';
+            document.getElementById('routes-covered').textContent = '0/6';
             
             // Clear truck visualization - use i18n for proper language
             const truckContainer = document.getElementById('truck-container');
@@ -1190,9 +1249,12 @@
         // Load from localStorage to persist across navigation
         // Only cleared when new orders are synced (handled in index.html and orders.js)
         let routeTruckAssignments = {
-            rijnsburg: null,  // No default - user must select
-            aalsmeer: null,   // No default - user must select
-            naaldwijk: null   // No default - user must select
+            rijnsburg_morning: null,
+            aalsmeer_morning: null,
+            naaldwijk_morning: null,
+            rijnsburg_evening: null,
+            aalsmeer_evening: null,
+            naaldwijk_evening: null
         };
         
         // Load saved assignments from localStorage (persists across navigation)
@@ -1204,9 +1266,12 @@
                     // Only restore if we have valid assignments
                     if (parsed && typeof parsed === 'object') {
                         routeTruckAssignments = {
-                            rijnsburg: parsed.rijnsburg || null,
-                            aalsmeer: parsed.aalsmeer || null,
-                            naaldwijk: parsed.naaldwijk || null
+                            rijnsburg_morning: parsed.rijnsburg_morning || parsed.rijnsburg || null,
+                            aalsmeer_morning: parsed.aalsmeer_morning || parsed.aalsmeer || null,
+                            naaldwijk_morning: parsed.naaldwijk_morning || parsed.naaldwijk || null,
+                            rijnsburg_evening: parsed.rijnsburg_evening || null,
+                            aalsmeer_evening: parsed.aalsmeer_evening || null,
+                            naaldwijk_evening: parsed.naaldwijk_evening || null
                         };
                         console.log('✅ Restored truck assignments from localStorage:', routeTruckAssignments);
                     }
@@ -1221,7 +1286,7 @@
         
         // Parse truck assignment string to get array of truck IDs
         function parseTruckAssignment(assignment) {
-            if (!assignment) return ['truck1'];
+            if (!assignment) return [];
             if (assignment.includes('+')) {
                 return assignment.split('+').map(t => t.trim());
             }
@@ -1290,7 +1355,13 @@
         const routeTimes = {
             rijnsburg: { time: '09:00', hour: 9 },
             aalsmeer: { time: '10:00', hour: 10 },
-            naaldwijk: { time: '11:00', hour: 11 }
+            naaldwijk: { time: '11:00', hour: 11 },
+            rijnsburg_morning: { time: '09:00', hour: 9 },
+            aalsmeer_morning: { time: '10:00', hour: 10 },
+            naaldwijk_morning: { time: '11:00', hour: 11 },
+            rijnsburg_evening: { time: '17:00', hour: 17 },
+            aalsmeer_evening: { time: '18:00', hour: 18 },
+            naaldwijk_evening: { time: '19:00', hour: 19 }
         };
         
         // Check if two routes have time conflict
@@ -1400,8 +1471,6 @@
                 { id: 'external', name: langText('external', typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck') }
             ];
 
-            const route1Trucks = parseTruckAssignment(routeTruckAssignments.rijnsburg || '');
-            const route2Trucks = parseTruckAssignment(routeTruckAssignments.aalsmeer || '');
             const usedByRouteText = langText('used_by_route', 'Gebruikt door Route');
             const routeNames = {
                 rijnsburg: langText('rijnsburg', 'Rijnsburg'),
@@ -1411,12 +1480,24 @@
 
             const blocked = new Set();
             let reason = null;
-            if (routeKey === 'aalsmeer') {
-                route1Trucks.forEach(id => blocked.add(id));
-                reason = `${usedByRouteText} 1 (${routeNames.rijnsburg})`;
-            } else if (routeKey === 'naaldwijk') {
-                route2Trucks.forEach(id => blocked.add(id));
-                reason = `${usedByRouteText} 2 (${routeNames.aalsmeer})`;
+
+            const blockers = {
+                aalsmeer_morning: 'rijnsburg_morning',
+                naaldwijk_morning: 'aalsmeer_morning',
+                aalsmeer_evening: 'rijnsburg_evening',
+                naaldwijk_evening: 'aalsmeer_evening'
+            };
+
+            const blockingRoute = blockers[routeKey];
+            if (blockingRoute) {
+                const blockingTrucks = parseTruckAssignment(routeTruckAssignments[blockingRoute] || '');
+                blockingTrucks.forEach(id => blocked.add(id));
+                const baseRoute = blockingRoute.includes('rijnsburg') ? routeNames.rijnsburg :
+                                  blockingRoute.includes('aalsmeer') ? routeNames.aalsmeer :
+                                  routeNames.naaldwijk;
+                const routeNumber = blockingRoute.includes('rijnsburg') ? '1' :
+                                    blockingRoute.includes('aalsmeer') ? '2' : '3';
+                reason = `${usedByRouteText} ${routeNumber} (${baseRoute})`;
             }
 
             return baseTrucks.map(truck => ({
@@ -1517,9 +1598,12 @@
             
             // Get route definitions
             const routes = [
-                { key: 'rijnsburg', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', time: '09:00', color: '#3b82f6', bgColor: '#eff6ff' },
-                { key: 'aalsmeer', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', time: '10:00', color: '#10b981', bgColor: '#f0fdf4' },
-                { key: 'naaldwijk', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', time: '11:00', color: '#f59e0b', bgColor: '#fffbeb' }
+                { key: 'rijnsburg_morning', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', time: '09:00', color: '#3b82f6', bgColor: '#eff6ff', period: 'morning' },
+                { key: 'aalsmeer_morning', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', time: '10:00', color: '#10b981', bgColor: '#f0fdf4', period: 'morning' },
+                { key: 'naaldwijk_morning', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', time: '11:00', color: '#f59e0b', bgColor: '#fffbeb', period: 'morning' },
+                { key: 'rijnsburg_evening', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', time: '17:00', color: '#3b82f6', bgColor: '#eff6ff', period: 'evening' },
+                { key: 'aalsmeer_evening', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', time: '18:00', color: '#10b981', bgColor: '#f0fdf4', period: 'evening' },
+                { key: 'naaldwijk_evening', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', time: '19:00', color: '#f59e0b', bgColor: '#fffbeb', period: 'evening' }
             ];
 
             // Create separate card for EACH route
@@ -1528,7 +1612,7 @@
                 if (!routeInfo) return;
 
                 // Get carts for this route only
-                const routeCarts = result.allCarts.filter(cart => cart.route === route.key);
+                const routeCarts = result.allCarts.filter(cart => cart.routeKey === route.key);
                 
                 // Get assigned trucks (can be single or multiple)
                 // CRITICAL: No default - if null, show "Select Truck" message
@@ -2307,10 +2391,13 @@
 
                 <div class="route-assignment">
                     <strong>Routes:</strong>
-                    ${routes.map(route => {
+                ${routes.map(route => {
                         const routeName = route === 'rijnsburg' ? 'Rijnsburg (09:00)' :
                                          route === 'aalsmeer' ? 'Aalsmeer (10:00)' :
-                                         route === 'naaldwijk' ? 'Naaldwijk (11:00)' : route;
+                                         route === 'naaldwijk' ? 'Naaldwijk (11:00)' :
+                                         route === 'rijnsburg_evening' ? 'Rijnsburg (17:00)' :
+                                         route === 'aalsmeer_evening' ? 'Aalsmeer (18:00)' :
+                                         route === 'naaldwijk_evening' ? 'Naaldwijk (19:00)' : route;
                         const routeClass = `route-${route}`;
                         return `<span class="route-badge ${routeClass}">${routeName}</span>`;
                     }).join('')}
@@ -2332,14 +2419,18 @@
             container.innerHTML = '';
 
             const cartsByRoute = {
-                rijnsburg: [],
-                aalsmeer: [],
-                naaldwijk: []
+                rijnsburg_morning: [],
+                aalsmeer_morning: [],
+                naaldwijk_morning: [],
+                rijnsburg_evening: [],
+                aalsmeer_evening: [],
+                naaldwijk_evening: []
             };
 
             allCarts.forEach(cart => {
-                if (cartsByRoute[cart.route]) {
-                    cartsByRoute[cart.route].push(cart);
+                const key = cart.routeKey || `${cart.route}_${cart.period || 'morning'}`;
+                if (cartsByRoute[key]) {
+                    cartsByRoute[key].push(cart);
                 }
             });
 
@@ -2353,10 +2444,13 @@
 
             Object.keys(ROUTES).forEach(routeKey => {
                 const route = ROUTES[routeKey];
-                const carts = cartsByRoute[routeKey] || [];
+                const cartsKey = ['rijnsburg', 'aalsmeer', 'naaldwijk'].includes(routeKey)
+                    ? `${routeKey}_morning`
+                    : routeKey;
+                const carts = cartsByRoute[cartsKey] || [];
                 
                 // Get the actual selected truck assignment for this route
-                const assignedTrucksStr = routeTruckAssignments[routeKey] || null;
+                const assignedTrucksStr = routeTruckAssignments[cartsKey] || null;
                 let truckDisplayName = typeof i18n !== 'undefined' ? i18n.t('cartLoading.notAssigned', 'Not Assigned') : 'Not Assigned';
                 
                 if (assignedTrucksStr) {
@@ -2427,7 +2521,7 @@
             document.getElementById('total-carts').textContent = totalCartsFromCache;
             document.getElementById('carts-assigned').textContent = result.truck1.carts.length + result.truck2.carts.length;
             document.getElementById('overflow-count').textContent = totalOverflow;
-            document.getElementById('routes-covered').textContent = `${routesCovered}/3`;
+            document.getElementById('routes-covered').textContent = `${routesCovered}/6`;
         }
 
         // Feature 1: Route Timeline Visualization
@@ -2456,9 +2550,12 @@
             timelineDiv.style.display = 'block';
             
             const routes = [
-                { key: 'rijnsburg', time: '09:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', class: 'route1', routeName: 'Rijnsburg' },
-                { key: 'aalsmeer', time: '10:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', class: 'route2', routeName: 'Aalsmeer' },
-                { key: 'naaldwijk', time: '11:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', class: 'route3', routeName: 'Naaldwijk' }
+                { key: 'rijnsburg_morning', time: '09:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', class: 'route1', routeName: 'Rijnsburg', period: 'morning' },
+                { key: 'aalsmeer_morning', time: '10:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', class: 'route2', routeName: 'Aalsmeer', period: 'morning' },
+                { key: 'naaldwijk_morning', time: '11:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', class: 'route3', routeName: 'Naaldwijk', period: 'morning' },
+                { key: 'rijnsburg_evening', time: '17:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg', class: 'route1', routeName: 'Rijnsburg', period: 'evening' },
+                { key: 'aalsmeer_evening', time: '18:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer', class: 'route2', routeName: 'Aalsmeer', period: 'evening' },
+                { key: 'naaldwijk_evening', time: '19:00', name: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk', class: 'route3', routeName: 'Naaldwijk', period: 'evening' }
             ];
             
             // Determine which truck handles which route
@@ -2469,17 +2566,30 @@
             
             routes.forEach(route => {
                 // Get cart count from SINGLE SOURCE (cartResult)
-                const carts = cartResult.byRoute[route.routeName] || 0;
+                const carts = cartResult[route.period]?.byRoute?.[route.routeName] || 0;
                 const maxCapacity = 17;
                 const fits = carts <= maxCapacity;
                 
                 // Determine truck assignment
-                const isTruck1 = truck1Routes.includes(route.key);
-                const truckName = isTruck1 
-                    ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1')
-                    : (truck2Routes.includes(route.key) 
-                        ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2')
-                        : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.notAssigned', 'Not Assigned') : 'Not Assigned'));
+                const assigned = routeTruckAssignments[route.key] || null;
+                let truckName = typeof i18n !== 'undefined' ? i18n.t('cartLoading.notAssigned', 'Not Assigned') : 'Not Assigned';
+                if (assigned) {
+                    const assignedTruckIds = parseTruckAssignment(assigned);
+                    const names = {
+                        truck1: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1',
+                        truck2: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2',
+                        neighbor: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck',
+                        external: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck'
+                    };
+                    truckName = assignedTruckIds.map(id => names[id] || id).join(' + ');
+                } else {
+                    const isTruck1 = truck1Routes.includes(route.key);
+                    truckName = isTruck1 
+                        ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1')
+                        : (truck2Routes.includes(route.key) 
+                            ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2')
+                            : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.notAssigned', 'Not Assigned') : 'Not Assigned'));
+                }
                 
                 const statusIcon = fits ? '✅' : '⚠️';
                 const statusText = fits 

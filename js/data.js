@@ -57,6 +57,39 @@ const ROUTES = {
         specialLocations: ['MM Flowers', 'Dijk Flora'],
         typicalTruck: 'own-truck-1-returning',
         notes: 'Mixed - some clients at different location'
+    },
+    rijnsburg_evening: {
+        id: 4,
+        name: 'Rijnsburg (Avond)',
+        hub: 'Royal FloraHolland Rijnsburg',
+        departureTime: '17:00',
+        type: 'single_hub',
+        clients: 15,
+        clientList: [],
+        typicalTruck: 'external',
+        notes: 'Evening route'
+    },
+    aalsmeer_evening: {
+        id: 5,
+        name: 'Aalsmeer (Avond)',
+        hub: 'Royal FloraHolland Aalsmeer',
+        departureTime: '18:00',
+        type: 'multiple_dropoff',
+        clients: 30,
+        clientList: [],
+        typicalTruck: 'own-truck-2',
+        notes: 'Evening route'
+    },
+    naaldwijk_evening: {
+        id: 6,
+        name: 'Naaldwijk (Avond)',
+        hub: 'Royal FloraHolland Naaldwijk',
+        departureTime: '19:00',
+        type: 'mixed',
+        clients: 23,
+        clientList: [],
+        typicalTruck: 'own-truck-1-returning',
+        notes: 'Evening route'
     }
 };
 

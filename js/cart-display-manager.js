@@ -83,32 +83,42 @@ class CartDisplayManager {
      * Calculate cart types (Standard vs Danish)
      */
     getCartTypes() {
-        if (!this.cartData || !this.cartData.breakdown) {
+        if (!this.cartData) {
             return { standard: 0, danish: 0 };
         }
-        
+
+        // Prefer explicit totals from calculation
+        if (typeof this.cartData.standard !== 'undefined' && typeof this.cartData.danish !== 'undefined') {
+            return { standard: this.cartData.standard || 0, danish: this.cartData.danish || 0 };
+        }
+
         let standardCarts = 0;
         let danishCarts = 0;
-        
-        this.cartData.breakdown.forEach(routeData => {
-            routeData.fustBreakdown.forEach(fust => {
-                // Standard: 612 (Gerbera box 12cm), 614 (Gerbera mini)
+
+        const breakdowns = [];
+        if (this.cartData.morning?.breakdown) breakdowns.push(this.cartData.morning.breakdown);
+        if (this.cartData.evening?.breakdown) breakdowns.push(this.cartData.evening.breakdown);
+        if (breakdowns.length === 0 && Array.isArray(this.cartData.breakdown)) {
+            breakdowns.push(this.cartData.breakdown);
+        }
+
+        breakdowns.flat().forEach(routeData => {
+            routeData.fustBreakdown?.forEach(fust => {
                 if (fust.fustType === '612' || fust.fustType === '614') {
                     standardCarts += fust.carts;
                 } else {
-                    // Danish/Other: 575, 902, 588, 996, 856, 821
                     danishCarts += fust.carts;
                 }
             });
         });
-        
+
         return { standard: standardCarts, danish: danishCarts };
     }
     
     /**
      * Get route-specific data
      */
-    getRouteData(routeName) {
+    getRouteData(routeName, period = null) {
         if (!this.cartData) {
             this.calculate();
         }
@@ -124,14 +134,21 @@ class CartDisplayManager {
             return { carts: 0, trucks: 0, orders: 0 };
         }
         
-        const carts = this.cartData.byRoute[routeName] || 0;
+        let carts = 0;
+        if (period && this.cartData[period]?.byRoute) {
+            carts = this.cartData[period].byRoute[routeName] || 0;
+        } else {
+            carts = this.cartData.byRoute[routeName] || 0;
+        }
         const trucks = Math.ceil(carts / 17);
         
         // Count orders for this route
         const orders = this.orders.filter(order => {
             const orderLocationId = order.delivery_location_id || order.order?.delivery_location_id;
+            const periodMatch = period ? (order.period || 'morning') === period : true;
             return orderLocationId === locationId &&
-                   (order.assembly_amount || 0) > 0;
+                   (order.assembly_amount || 0) > 0 &&
+                   periodMatch;
         }).length;
         
         return { carts, trucks, orders };
@@ -174,7 +191,8 @@ class CartDisplayManager {
         
         // Update routes covered
         const activeRoutes = Object.values(summary.routes).filter(carts => carts > 0).length;
-        this.updateElement(['routes-covered', '.routes-covered'], `${activeRoutes}/3`);
+        const totalRoutes = (this.cartData && this.cartData.morning && this.cartData.evening) ? 6 : 3;
+        this.updateElement(['routes-covered', '.routes-covered'], `${activeRoutes}/${totalRoutes}`);
         
         console.log('✅ CartDisplayManager: DOM updated');
         console.log('   Summary:', summary);
@@ -231,18 +249,21 @@ class CartDisplayManager {
         container.innerHTML = '';
         
         const routes = [
-            { name: 'Rijnsburg', id: 36, time: '09:00' },
-            { name: 'Aalsmeer', id: 32, time: '10:00' },
-            { name: 'Naaldwijk', id: 34, time: '11:00' }
+            { name: 'Rijnsburg', id: 36, time: '09:00', period: 'morning' },
+            { name: 'Aalsmeer', id: 32, time: '10:00', period: 'morning' },
+            { name: 'Naaldwijk', id: 34, time: '11:00', period: 'morning' },
+            { name: 'Rijnsburg', id: 36, time: '17:00', period: 'evening' },
+            { name: 'Aalsmeer', id: 32, time: '18:00', period: 'evening' },
+            { name: 'Naaldwijk', id: 34, time: '19:00', period: 'evening' }
         ];
         
         routes.forEach((route, index) => {
-            const routeData = this.getRouteData(route.name);
-            const cartTypes = this.getRouteCartTypes(route.name);
+            const routeData = this.getRouteData(route.name, route.period);
+            const cartTypes = this.getRouteCartTypes(route.name, route.period);
             
             const routeCard = this.createRouteCard(
                 index + 1,
-                route.name,
+                `${route.name} (${route.period === 'evening' ? 'Avond' : 'Ochtend'})`,
                 route.time,
                 routeData,
                 cartTypes
@@ -259,12 +280,20 @@ class CartDisplayManager {
     /**
      * Get cart types for a specific route
      */
-    getRouteCartTypes(routeName) {
-        if (!this.cartData || !this.cartData.breakdown) {
+    getRouteCartTypes(routeName, period = null) {
+        if (!this.cartData) {
             return { standard: 0, danish: 0 };
         }
-        
-        const routeBreakdown = this.cartData.breakdown.find(r => r.route === routeName);
+
+        let breakdown = this.cartData.breakdown;
+        if (period && this.cartData[period]?.breakdown) {
+            breakdown = this.cartData[period].breakdown;
+        }
+        if (!breakdown) {
+            return { standard: 0, danish: 0 };
+        }
+
+        const routeBreakdown = breakdown.find(r => r.route === routeName);
         if (!routeBreakdown) {
             return { standard: 0, danish: 0 };
         }

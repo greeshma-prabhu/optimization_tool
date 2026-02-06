@@ -367,13 +367,25 @@
                             const routeNames = {
                                 rijnsburg: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg',
                                 aalsmeer: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer',
-                                naaldwijk: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk'
+                                naaldwijk: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk',
+                                rijnsburg_morning: typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg',
+                                aalsmeer_morning: typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer',
+                                naaldwijk_morning: typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk',
+                                rijnsburg_evening: (typeof i18n !== 'undefined' ? i18n.t('routes.rijnsburg', 'Rijnsburg') : 'Rijnsburg') + ' (Avond)',
+                                aalsmeer_evening: (typeof i18n !== 'undefined' ? i18n.t('routes.aalsmeer', 'Aalsmeer') : 'Aalsmeer') + ' (Avond)',
+                                naaldwijk_evening: (typeof i18n !== 'undefined' ? i18n.t('routes.naaldwijk', 'Naaldwijk') : 'Naaldwijk') + ' (Avond)'
                             };
                             
                             const routeTimes = {
                                 rijnsburg: '09:00',
                                 aalsmeer: '10:00',
-                                naaldwijk: '11:00'
+                                naaldwijk: '11:00',
+                                rijnsburg_morning: '09:00',
+                                aalsmeer_morning: '10:00',
+                                naaldwijk_morning: '11:00',
+                                rijnsburg_evening: '17:00',
+                                aalsmeer_evening: '18:00',
+                                naaldwijk_evening: '19:00'
                             };
                             
                             Object.keys(routeAssignments).forEach(routeKey => {

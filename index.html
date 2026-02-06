@@ -228,98 +228,184 @@
         <!-- Route Summary by Departure Time -->
         <div class="card route-summary">
             <h2>📍 Route Breakdown by Departure Time</h2>
-            <div class="route-cards-grid">
-                <!-- Route 1: Rijnsburg -->
-                <div class="route-summary-card rijnsburg">
-                    <div class="route-header">
-                        <h3>🚛 Route 1: Rijnsburg</h3>
-                        <span class="departure-time">🕐 09:00</span>
+            <div class="time-period-section">
+                <h3>🌅 Morning Routes (09:00 - 11:00)</h3>
+                <div class="route-cards-grid">
+                    <div class="route-summary-card rijnsburg">
+                        <div class="route-header">
+                            <h3>🚛 Route 1: Rijnsburg</h3>
+                            <span class="departure-time">🕐 09:00</span>
+                        </div>
+                        <div class="route-stats">
+                            <div class="stat">
+                                <label>Orders</label>
+                                <span id="rijnsburg-morning-orders">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Customers</label>
+                                <span id="rijnsburg-morning-customers">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Carts</label>
+                                <span id="rijnsburg-morning-carts">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Trucks</label>
+                                <span id="rijnsburg-morning-trucks">0</span>
+                            </div>
+                        </div>
+                        <button class="btn-view-details" onclick="viewRouteDetails('rijnsburg', 'morning')">
+                            View Customer List
+                        </button>
                     </div>
-                    <div class="route-stats">
-                        <div class="stat">
-                            <label>Orders</label>
-                            <span id="rijnsburg-orders">0</span>
+                    
+                    <div class="route-summary-card aalsmeer">
+                        <div class="route-header">
+                            <h3>🚛 Route 2: Aalsmeer</h3>
+                            <span class="departure-time">🕐 10:00</span>
                         </div>
-                        <div class="stat">
-                            <label>Customers</label>
-                            <span id="rijnsburg-customers">0</span>
+                        <div class="route-stats">
+                            <div class="stat">
+                                <label>Orders</label>
+                                <span id="aalsmeer-morning-orders">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Customers</label>
+                                <span id="aalsmeer-morning-customers">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Carts</label>
+                                <span id="aalsmeer-morning-carts">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Trucks</label>
+                                <span id="aalsmeer-morning-trucks">0</span>
+                            </div>
                         </div>
-                        <div class="stat">
-                            <label>Carts</label>
-                            <span id="rijnsburg-carts">0</span>
+                        <div class="danish-indicator">
+                            🇩🇰 Includes Danish Cart Clients
                         </div>
-                        <div class="stat">
-                            <label>Trucks</label>
-                            <span id="rijnsburg-trucks">0</span>
-                        </div>
+                        <button class="btn-view-details" onclick="viewRouteDetails('aalsmeer', 'morning')">
+                            View Customer List
+                        </button>
                     </div>
-                    <button class="btn-view-details" onclick="viewRouteDetails('rijnsburg')">
-                        View Customer List
-                    </button>
-                </div>
-                
-                <!-- Route 2: Aalsmeer -->
-                <div class="route-summary-card aalsmeer">
-                    <div class="route-header">
-                        <h3>🚛 Route 2: Aalsmeer</h3>
-                        <span class="departure-time">🕐 10:00</span>
+                    
+                    <div class="route-summary-card naaldwijk">
+                        <div class="route-header">
+                            <h3>🚛 Route 3: Naaldwijk</h3>
+                            <span class="departure-time">🕐 11:00</span>
+                        </div>
+                        <div class="route-stats">
+                            <div class="stat">
+                                <label>Orders</label>
+                                <span id="naaldwijk-morning-orders">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Customers</label>
+                                <span id="naaldwijk-morning-customers">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Carts</label>
+                                <span id="naaldwijk-morning-carts">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Trucks</label>
+                                <span id="naaldwijk-morning-trucks">0</span>
+                            </div>
+                        </div>
+                        <button class="btn-view-details" onclick="viewRouteDetails('naaldwijk', 'morning')">
+                            View Customer List
+                        </button>
                     </div>
-                    <div class="route-stats">
-                        <div class="stat">
-                            <label>Orders</label>
-                            <span id="aalsmeer-orders">0</span>
-                        </div>
-                        <div class="stat">
-                            <label>Customers</label>
-                            <span id="aalsmeer-customers">0</span>
-                        </div>
-                        <div class="stat">
-                            <label>Carts</label>
-                            <span id="aalsmeer-carts">0</span>
-                        </div>
-                        <div class="stat">
-                            <label>Trucks</label>
-                            <span id="aalsmeer-trucks">0</span>
-                        </div>
-                    </div>
-                    <div class="danish-indicator">
-                        🇩🇰 Includes Danish Cart Clients
-                    </div>
-                    <button class="btn-view-details" onclick="viewRouteDetails('aalsmeer')">
-                        View Customer List
-                    </button>
-                </div>
-                
-                <!-- Route 3: Naaldwijk -->
-                <div class="route-summary-card naaldwijk">
-                    <div class="route-header">
-                        <h3>🚛 Route 3: Naaldwijk</h3>
-                        <span class="departure-time">🕐 11:00</span>
-                    </div>
-                    <div class="route-stats">
-                        <div class="stat">
-                            <label>Orders</label>
-                            <span id="naaldwijk-orders">0</span>
-                        </div>
-                        <div class="stat">
-                            <label>Customers</label>
-                            <span id="naaldwijk-customers">0</span>
-                        </div>
-                        <div class="stat">
-                            <label>Carts</label>
-                            <span id="naaldwijk-carts">0</span>
-                        </div>
-                        <div class="stat">
-                            <label>Trucks</label>
-                            <span id="naaldwijk-trucks">0</span>
-                        </div>
-                    </div>
-                    <button class="btn-view-details" onclick="viewRouteDetails('naaldwijk')">
-                        View Customer List
-                    </button>
                 </div>
             </div>
-            <div style="margin-top: 1.5rem; text-align: center;">
+            <div class="time-period-section" style="margin-top: 1.5rem;">
+                <h3>🌆 Evening Routes (17:00 - 19:00)</h3>
+                <div class="route-cards-grid">
+                    <div class="route-summary-card rijnsburg">
+                        <div class="route-header">
+                            <h3>🚚 Route 4: Rijnsburg (Avond)</h3>
+                            <span class="departure-time">🕐 17:00</span>
+                        </div>
+                        <div class="route-stats">
+                            <div class="stat">
+                                <label>Orders</label>
+                                <span id="rijnsburg-evening-orders">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Customers</label>
+                                <span id="rijnsburg-evening-customers">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Carts</label>
+                                <span id="rijnsburg-evening-carts">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Trucks</label>
+                                <span id="rijnsburg-evening-trucks">0</span>
+                            </div>
+                        </div>
+                        <button class="btn-view-details" onclick="viewRouteDetails('rijnsburg', 'evening')">
+                            View Customer List
+                        </button>
+                    </div>
+                    
+                    <div class="route-summary-card aalsmeer">
+                        <div class="route-header">
+                            <h3>🚚 Route 5: Aalsmeer (Avond)</h3>
+                            <span class="departure-time">🕐 18:00</span>
+                        </div>
+                        <div class="route-stats">
+                            <div class="stat">
+                                <label>Orders</label>
+                                <span id="aalsmeer-evening-orders">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Customers</label>
+                                <span id="aalsmeer-evening-customers">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Carts</label>
+                                <span id="aalsmeer-evening-carts">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Trucks</label>
+                                <span id="aalsmeer-evening-trucks">0</span>
+                            </div>
+                        </div>
+                        <button class="btn-view-details" onclick="viewRouteDetails('aalsmeer', 'evening')">
+                            View Customer List
+                        </button>
+                    </div>
+                    
+                    <div class="route-summary-card naaldwijk">
+                        <div class="route-header">
+                            <h3>🚚 Route 6: Naaldwijk (Avond)</h3>
+                            <span class="departure-time">🕐 19:00</span>
+                        </div>
+                        <div class="route-stats">
+                            <div class="stat">
+                                <label>Orders</label>
+                                <span id="naaldwijk-evening-orders">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Customers</label>
+                                <span id="naaldwijk-evening-customers">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Carts</label>
+                                <span id="naaldwijk-evening-carts">0</span>
+                            </div>
+                            <div class="stat">
+                                <label>Trucks</label>
+                                <span id="naaldwijk-evening-trucks">0</span>
+                            </div>
+                        </div>
+                        <button class="btn-view-details" onclick="viewRouteDetails('naaldwijk', 'evening')">
+                            View Customer List
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1565,17 +1651,24 @@
             console.log(`   Matched orders: ${matchedOrders.length}`);
             console.log(`   Unmatched orders (excluded): ${(cartData.unmatchedOrders || []).length}`);
             
-            const routes = ['rijnsburg', 'aalsmeer', 'naaldwijk'];
+            const routes = [
+                { route: 'rijnsburg', period: 'morning', idPrefix: 'rijnsburg-morning' },
+                { route: 'aalsmeer', period: 'morning', idPrefix: 'aalsmeer-morning' },
+                { route: 'naaldwijk', period: 'morning', idPrefix: 'naaldwijk-morning' },
+                { route: 'rijnsburg', period: 'evening', idPrefix: 'rijnsburg-evening' },
+                { route: 'aalsmeer', period: 'evening', idPrefix: 'aalsmeer-evening' },
+                { route: 'naaldwijk', period: 'evening', idPrefix: 'naaldwijk-evening' }
+            ];
             
-            routes.forEach(route => {
-                // Count orderrows for this route (ONLY from matched orders)
+            routes.forEach(({ route, period, idPrefix }) => {
+                // Count orderrows for this route + period (ONLY from matched orders)
                 const routeOrderrows = matchedOrders.filter(o => {
-                    // Use route already set by separateOrdersByClientMatch, or getRouteForCustomer
                     const routeFromOrder = o.route || (() => {
                         const customerName = o.customer_name || o.order?.customer_name || '';
                         return window.RouteMapping.getRouteForCustomer(customerName);
                     })();
-                    return routeFromOrder === route;
+                    const periodFromOrder = o.period || 'morning';
+                    return routeFromOrder === route && periodFromOrder === period;
                 });
                 
                 // CRITICAL: Count unique orders (not orderrows!)
@@ -1591,9 +1684,13 @@
                 // Count unique customers (ONLY matched customers)
                 const uniqueCustomers = new Set(routeOrderrows.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean));
                 
-                // Get carts for this route - check both proper case and lowercase
                 const routeName = route.charAt(0).toUpperCase() + route.slice(1);
-                let carts = cartData.byRoute[routeName] || cartData.byRoute[route] || 0;
+                let carts = 0;
+                if (cartData[period] && cartData[period].byRoute) {
+                    carts = cartData[period].byRoute[routeName] || 0;
+                } else {
+                    carts = cartData.byRoute[routeName] || cartData.byRoute[route] || 0;
+                }
                 
                 // CRITICAL: If we have orders but no carts, or vice versa, recalculate for this route
                 if (routeOrderrows.length > 0 && carts === 0) {
@@ -1609,10 +1706,10 @@
                 const trucks = Math.ceil(carts / 17);
                 
                 // Update UI
-                const ordersEl = document.getElementById(`${route}-orders`);
-                const customersEl = document.getElementById(`${route}-customers`);
-                const cartsEl = document.getElementById(`${route}-carts`);
-                const trucksEl = document.getElementById(`${route}-trucks`);
+                const ordersEl = document.getElementById(`${idPrefix}-orders`);
+                const customersEl = document.getElementById(`${idPrefix}-customers`);
+                const cartsEl = document.getElementById(`${idPrefix}-carts`);
+                const trucksEl = document.getElementById(`${idPrefix}-trucks`);
                 
                 // CRITICAL: Display unique orders count, not orderrows!
                 if (ordersEl) ordersEl.textContent = uniqueOrdersCount;
@@ -1620,14 +1717,14 @@
                 if (cartsEl) cartsEl.textContent = carts;
                 if (trucksEl) trucksEl.textContent = trucks;
                 
-                console.log(`✅ Route ${route}: ${uniqueOrdersCount} unique orders (from ${routeOrderrows.length} orderrows), ${uniqueCustomers.size} customers, ${carts} carts, ${trucks} trucks`);
+                console.log(`✅ Route ${route} (${period}): ${uniqueOrdersCount} unique orders (from ${routeOrderrows.length} orderrows), ${uniqueCustomers.size} customers, ${carts} carts, ${trucks} trucks`);
             });
             
             console.log('✅ Route summary cards updated');
         }
         
         // View route details - show customer list in scrollable modal
-        function viewRouteDetails(route) {
+        function viewRouteDetails(route, period = 'morning') {
             // CRITICAL: Get cart result to access matched orders
             const cartResult = window.__zuidplas_cart_cache?.cartResult;
             if (!cartResult) {
@@ -1656,7 +1753,8 @@
                     const customerName = o.customer_name || o.order?.customer_name || '';
                     return window.RouteMapping.getRouteForCustomer(customerName);
                 })();
-                return routeFromOrder === route;
+                const periodFromOrder = o.period || 'morning';
+                return routeFromOrder === route && periodFromOrder === period;
             });
             
             // CRITICAL: Count unique orders (not orderrows!)
@@ -1669,13 +1767,14 @@
             });
             const uniqueOrdersCount = uniqueOrderIds.size;
             
-            console.log(`📋 viewRouteDetails(${route}): Showing ${uniqueOrdersCount} unique matched orders (from ${routeOrderrows.length} orderrows, Excel clients only)`);
+            console.log(`📋 viewRouteDetails(${route}, ${period}): Showing ${uniqueOrdersCount} unique matched orders (from ${routeOrderrows.length} orderrows, Excel clients only)`);
             console.log(`   Total matched orderrows: ${matchedOrders.length}`);
             console.log(`   Unmatched orders (excluded): ${(cartResult.unmatchedOrders || []).length}`);
             
             const customers = [...new Set(routeOrderrows.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean))].sort();
-            const departureTime = window.RouteMapping.getDepartureTime(route);
-            const cartsEl = document.getElementById(route + '-carts');
+            const routeKey = `${route}_${period}`;
+            const departureTime = window.RouteMapping.getDepartureTime(routeKey);
+            const cartsEl = document.getElementById(`${route}-${period}-carts`);
             const carts = cartsEl ? cartsEl.textContent : '0';
             
             // Remove any existing modals
@@ -1696,8 +1795,9 @@
             const routeName = route.charAt(0).toUpperCase() + route.slice(1);
             
             // Add content
+            const periodLabel = period === 'evening' ? 'Avond' : 'Ochtend';
             modal.innerHTML = `
-                <h3>📍 Route: ${routeName} - All Customers</h3>
+                <h3>📍 Route: ${routeName} - ${periodLabel} Customers</h3>
                 <div class="modal-stats">
                     <p><strong>🕐 Departure:</strong> ${departureTime}</p>
                     <p><strong>📦 Total Orders:</strong> ${uniqueOrdersCount}</p>
@@ -1961,8 +2061,12 @@
                 
                 // Check if defaulted (route is rijnsburg and customer not in mapping)
                 if (route === 'rijnsburg') {
-                    // Check if customer is actually in rijnsburg list
-                    const inMapping = window.RouteMapping.CLIENT_ROUTE_MAPPING.rijnsburg.some(c => {
+                    // Check if customer is actually in rijnsburg list (morning + evening)
+                    const rijnsburgClients = [
+                        ...window.RouteMapping.CLIENT_ROUTE_MAPPING.rijnsburg_morning,
+                        ...window.RouteMapping.CLIENT_ROUTE_MAPPING.rijnsburg_evening
+                    ];
+                    const inMapping = rijnsburgClients.some(c => {
                         const clean = (n) => n.toLowerCase().trim();
                         return clean(c) === clean(customerName) || 
                                clean(customerName).includes(clean(c)) ||
@@ -2220,61 +2324,70 @@
             const section = document.getElementById('unmatched-section');
             if (!section) return;
             
-            if (!unmatchedOrders || unmatchedOrders.length === 0) {
+            const morningOrders = cartResult?.unmatchedMorning || unmatchedOrders.filter(o => (o.period || 'morning') === 'morning');
+            const eveningOrders = cartResult?.unmatchedEvening || unmatchedOrders.filter(o => (o.period || 'morning') === 'evening');
+            const totalUnmatched = morningOrders.length + eveningOrders.length;
+
+            if (!unmatchedOrders || totalUnmatched === 0) {
                 section.style.display = 'none';
                 return;
             }
-            
-            // CRITICAL: Count unique orders (not orderrows!)
-            const uniqueUnmatchedOrderIds = new Set();
-            unmatchedOrders.forEach(o => {
-                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
-                if (orderId) {
-                    uniqueUnmatchedOrderIds.add(String(orderId));
-                }
-            });
-            const uniqueUnmatchedOrdersCount = uniqueUnmatchedOrderIds.size;
-            
-            // Get unique customer names
-            const uniqueCustomers = [...new Set(unmatchedOrders.map(o => 
-                o.customer_name || o.order?.customer_name || 'Unknown'
-            ))].filter(Boolean).sort();
-            
+
             section.style.display = 'block';
-            section.innerHTML = `
-                <div class="card" style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px;">
-                    <h3 style="margin-top: 0; color: #856404;">⚠️ DUMP BASKET - Unmatched Orders</h3>
-                    <p style="color: #856404; margin: 10px 0;">
-                        These orders are <strong>NOT</strong> in the Excel client list and are <strong>excluded from calculations</strong>.
-                    </p>
-                    <div style="margin: 15px 0; padding: 10px; background: white; border-radius: 5px;">
-                        <strong style="color: #856404;">Total Unmatched Orders: ${uniqueUnmatchedOrdersCount}</strong>
-                        <br>
-                        <strong style="color: #856404;">Unique Unmatched Customers: ${uniqueCustomers.length}</strong>
-                        ${cartResult ? `<br><small style="color: #856404;">Matched Orders (processed): ${cartResult.matchedOrdersCount || 0}</small>` : ''}
+
+            function renderUnmatchedCard(label, orders, period) {
+                const uniqueUnmatchedOrderIds = new Set();
+                orders.forEach(o => {
+                    const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                    if (orderId) {
+                        uniqueUnmatchedOrderIds.add(String(orderId));
+                    }
+                });
+                const uniqueUnmatchedOrdersCount = uniqueUnmatchedOrderIds.size;
+                const uniqueCustomers = [...new Set(orders.map(o =>
+                    o.customer_name || o.order?.customer_name || 'Unknown'
+                ))].filter(Boolean).sort();
+                return `
+                    <div class="card" style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px; margin-top: 12px;">
+                        <h3 style="margin-top: 0; color: #856404;">⚠️ DUMP BASKET - ${label} Unmatched Orders</h3>
+                        <p style="color: #856404; margin: 10px 0;">
+                            These orders are <strong>NOT</strong> in the Excel client list and are <strong>excluded from calculations</strong>.
+                        </p>
+                        <div style="margin: 15px 0; padding: 10px; background: white; border-radius: 5px;">
+                            <strong style="color: #856404;">Total Unmatched Orders: ${uniqueUnmatchedOrdersCount}</strong>
+                            <br>
+                            <strong style="color: #856404;">Unique Unmatched Customers: ${uniqueCustomers.length}</strong>
+                            ${cartResult ? `<br><small style="color: #856404;">Matched Orders (processed): ${cartResult.matchedOrdersCount || 0}</small>` : ''}
+                        </div>
+                        <button onclick="viewUnmatchedOrdersDetail('${period}')" 
+                                style="background: #ffc107; color: #856404; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;">
+                            📋 View Unmatched Orders List
+                        </button>
                     </div>
-                    <button onclick="viewUnmatchedOrdersDetail()" 
-                            style="background: #ffc107; color: #856404; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;">
-                        📋 View Unmatched Orders List
-                    </button>
-                </div>
+                `;
+            }
+
+            section.innerHTML = `
+                ${renderUnmatchedCard('Morning', morningOrders, 'morning')}
+                ${renderUnmatchedCard('Evening', eveningOrders, 'evening')}
             `;
         }
         
         /**
          * Show detailed modal with unmatched customers
          */
-        function viewUnmatchedOrdersDetail() {
+        function viewUnmatchedOrdersDetail(period = null) {
             const unmatched = window.unmatchedOrders || [];
+            const filtered = period ? unmatched.filter(o => (o.period || 'morning') === period) : unmatched;
             
-            if (unmatched.length === 0) {
+            if (filtered.length === 0) {
                 alert('No unmatched orders found.');
                 return;
             }
             
             // CRITICAL: Count unique orders per customer (not orderrows!)
             const customerGroups = {};
-            unmatched.forEach(orderrow => {
+            filtered.forEach(orderrow => {
                 const name = orderrow.customer_name || orderrow.order?.customer_name || 'Unknown';
                 const orderId = orderrow.order_id || orderrow.order?.id || orderrow.order?.order_id || orderrow.id;
                 

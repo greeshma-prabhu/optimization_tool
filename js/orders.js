@@ -305,14 +305,17 @@ class OrderManager {
             return [];
         }
 
-        console.log(`🔍 PROCESSING ${rawOrders.length} ORDERROWS (RAW DATA)`);
+        const businessDate = this.currentDate || (window.appState && window.appState.currentDate) || null;
+        const filteredOrders = businessDate ? this.filterOrdersByBusinessDay(rawOrders, businessDate) : rawOrders;
+        
+        console.log(`🔍 PROCESSING ${filteredOrders.length} ORDERROWS (RAW DATA)`);
         console.log('=================================');
         
         // CRITICAL FIX: Group orderrows by order_id
         // Each order has multiple rows (line items), we need to group them!
         const orderGroupsMap = new Map();
         
-        rawOrders.forEach((row, index) => {
+        filteredOrders.forEach((row, index) => {
             // Get order_id - try multiple possible fields
             const orderId = row.order_id || row.orderId || row.id || `order_${index}`;
             
@@ -543,6 +546,37 @@ class OrderManager {
         }
         
         return processedOrders;
+    }
+
+    /**
+     * Filter orders by business day (07:00 - 07:00) in local time
+     */
+    filterOrdersByBusinessDay(orderRows, dateStr) {
+        if (!dateStr) return orderRows;
+        const dateOnly = dateStr instanceof Date
+            ? dateStr.toISOString().split('T')[0]
+            : String(dateStr);
+        const start = new Date(`${dateOnly}T07:00:00`);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+
+        const getOrderDate = (row) => {
+            const value = row.delivery_date || row.order?.delivery_date || row.deliveryDate;
+            if (!value) return null;
+            const hasTime = /\d{1,2}:\d{2}/.test(String(value));
+            if (!hasTime) return null;
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? null : date;
+        };
+
+        const filtered = orderRows.filter(row => {
+            const orderDate = getOrderDate(row);
+            if (!orderDate) return true;
+            return orderDate >= start && orderDate < end;
+        });
+
+        console.log(`🕒 Business day filter (07:00-07:00): ${filtered.length}/${orderRows.length} orderrows`);
+        return filtered;
     }
 
 

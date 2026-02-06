@@ -39,6 +39,9 @@ const LOCATION_ID_TO_ROUTE = {
  * Falls back to location_id if RouteMapping is not available
  */
 function getRoute(order) {
+    if (order && order.route) {
+        return String(order.route).toLowerCase();
+    }
     // Priority 1: Use customer name mapping (more reliable - customer names never change)
     if (window.RouteMapping && window.RouteMapping.getRouteForCustomer) {
         const customerName = order.customer_name || order.order?.customer_name || '';
@@ -160,17 +163,81 @@ function calculateFustForOrderrow(orderrow) {
     };
 }
 
+function calculateCarts(orders) {
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('🔵 FUST CALCULATION (MORNING + EVENING)');
+    console.log(`Input: ${orders.length} total orderrows`);
+    console.log('═══════════════════════════════════════════════════════════════════');
+
+    let matchedOrders = orders;
+    let unmatchedOrders = [];
+
+    if (window.RouteMapping && window.RouteMapping.separateOrdersByClientMatch) {
+        const separation = window.RouteMapping.separateOrdersByClientMatch(orders);
+        matchedOrders = separation.matched;
+        unmatchedOrders = separation.unmatched;
+        window.unmatchedOrders = unmatchedOrders;
+    }
+
+    const morningOrders = matchedOrders.filter(o => (o.period || 'morning') === 'morning');
+    const eveningOrders = matchedOrders.filter(o => (o.period || 'morning') === 'evening');
+    const unmatchedMorning = unmatchedOrders.filter(o => (o.period || 'morning') === 'morning');
+    const unmatchedEvening = unmatchedOrders.filter(o => (o.period || 'morning') === 'evening');
+
+    console.log(`✅ Morning orders: ${morningOrders.length}`);
+    console.log(`✅ Evening orders: ${eveningOrders.length}`);
+    console.log(`⚠️ Unmatched: ${unmatchedOrders.length}`);
+
+    const morningResult = calculateCartsForPeriod(morningOrders, 'morning');
+    const eveningResult = calculateCartsForPeriod(eveningOrders, 'evening');
+
+    const combinedByRoute = {
+        Aalsmeer: (morningResult.byRoute?.Aalsmeer || 0) + (eveningResult.byRoute?.Aalsmeer || 0),
+        Naaldwijk: (morningResult.byRoute?.Naaldwijk || 0) + (eveningResult.byRoute?.Naaldwijk || 0),
+        Rijnsburg: (morningResult.byRoute?.Rijnsburg || 0) + (eveningResult.byRoute?.Rijnsburg || 0)
+    };
+    const combinedByRouteInternal = {
+        aalsmeer: (morningResult.byRouteInternal?.aalsmeer || 0) + (eveningResult.byRouteInternal?.aalsmeer || 0),
+        naaldwijk: (morningResult.byRouteInternal?.naaldwijk || 0) + (eveningResult.byRouteInternal?.naaldwijk || 0),
+        rijnsburg: (morningResult.byRouteInternal?.rijnsburg || 0) + (eveningResult.byRouteInternal?.rijnsburg || 0)
+    };
+
+    const uniqueOrderIds = new Set([
+        ...(morningResult.uniqueOrderIds ? Array.from(morningResult.uniqueOrderIds) : []),
+        ...(eveningResult.uniqueOrderIds ? Array.from(eveningResult.uniqueOrderIds) : [])
+    ]);
+    const uniqueUnmatchedOrderIds = new Set();
+    unmatchedOrders.forEach(o => {
+        const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+        if (orderId) uniqueUnmatchedOrderIds.add(String(orderId));
+    });
+
+    return {
+        total: (morningResult.total || 0) + (eveningResult.total || 0),
+        standard: (morningResult.standard || 0) + (eveningResult.standard || 0),
+        danish: (morningResult.danish || 0) + (eveningResult.danish || 0),
+        trucks: (morningResult.trucks || 0) + (eveningResult.trucks || 0),
+        byRoute: combinedByRoute,
+        byRouteInternal: combinedByRouteInternal,
+        breakdown: [], // combined breakdown not used; use morning/evening separately
+        morning: morningResult,
+        evening: eveningResult,
+        matchedOrders: [...(morningResult.matchedOrders || []), ...(eveningResult.matchedOrders || [])],
+        unmatchedOrders: unmatchedOrders,
+        unmatchedMorning: unmatchedMorning,
+        unmatchedEvening: unmatchedEvening,
+        matchedOrdersCount: uniqueOrderIds.size,
+        unmatchedOrdersCount: uniqueUnmatchedOrderIds.size,
+        uniqueOrderIds: uniqueOrderIds
+    };
+}
+
 /**
- * MAIN CALCULATION FUNCTION
+ * MAIN CALCULATION FUNCTION (PER PERIOD)
  * CRITICAL: Aggregate ALL fust by type per route FIRST, then calculate carts
  * CRITICAL BUSINESS RULE: ONLY process orders from Excel-mapped clients!
- * 
- * Formula:
- * 1. For each orderrow: fust = assembly_amount ÷ bundles_per_fust
- * 2. Sum ALL fust of SAME TYPE in SAME ROUTE
- * 3. Calculate carts: carts = total_fust ÷ fust_capacity
  */
-function calculateCarts(orders) {
+function calculateCartsForPeriod(orders, period) {
     console.log('═══════════════════════════════════════════════════════════════════');
     console.log('🔵 FUST CALCULATION (EXCEL CLIENTS ONLY - SINGLE SOURCE OF TRUTH)');
     console.log(`Input: ${orders.length} total orderrows`);
@@ -181,26 +248,9 @@ function calculateCarts(orders) {
     console.log('NOT: stems ÷ 72 (WRONG!)');
     console.log('');
     
-    // CRITICAL: Separate matched (Excel clients) vs unmatched (DUMP BASKET)
-    let matchedOrders = orders;
-    let unmatchedOrders = [];
-    
-    if (window.RouteMapping && window.RouteMapping.separateOrdersByClientMatch) {
-        console.log('🔍 Filtering orders: Excel-mapped clients ONLY...');
-        const separation = window.RouteMapping.separateOrdersByClientMatch(orders);
-        matchedOrders = separation.matched;
-        unmatchedOrders = separation.unmatched;
-        
-        // Store unmatched globally for display
-        window.unmatchedOrders = unmatchedOrders;
-        
-        console.log(`✅ Processing ${matchedOrders.length} matched orders (Excel clients)`);
-        console.log(`⚠️ Ignoring ${unmatchedOrders.length} unmatched orders (DUMP BASKET)`);
-        console.log('');
-    } else {
-        console.warn('⚠️ RouteMapping.separateOrdersByClientMatch not available - processing ALL orders');
-        console.warn('⚠️ This should not happen - all orders will be processed!');
-    }
+    // Orders passed in are already matched for this period
+    const matchedOrders = orders;
+    const unmatchedOrders = [];
     
     // Step 1: Filter valid orders (from matched only)
     const validOrders = matchedOrders.filter(order => {
@@ -395,8 +445,11 @@ function calculateCarts(orders) {
         totalStandardCarts += routeStandardCarts;
         totalDanishCarts += routeDanishCarts;
         
+        const routeKey = `${route}_${period || 'morning'}`;
         breakdown.push({
             route: displayRoute, // Use display name in breakdown
+            routeKey: routeKey,
+            period: period || 'morning',
             carts: routeTotalCarts,
             standardCarts: routeStandardCarts,
             danishCarts: routeDanishCarts,
@@ -456,6 +509,7 @@ function calculateCarts(orders) {
     };
     
     return {
+        period: period || 'morning',
         total: totalCarts,  // Source of truth: standard + danish
         standard: totalStandardCarts,
         danish: totalDanishCarts,
@@ -973,6 +1027,18 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         const cartResultForStorage = { ...cartResult };
         delete cartResultForStorage.matchedOrders;
         delete cartResultForStorage.unmatchedOrders;
+        delete cartResultForStorage.unmatchedMorning;
+        delete cartResultForStorage.unmatchedEvening;
+        if (cartResultForStorage.morning) {
+            cartResultForStorage.morning = { ...cartResultForStorage.morning };
+            delete cartResultForStorage.morning.matchedOrders;
+            delete cartResultForStorage.morning.unmatchedOrders;
+        }
+        if (cartResultForStorage.evening) {
+            cartResultForStorage.evening = { ...cartResultForStorage.evening };
+            delete cartResultForStorage.evening.matchedOrders;
+            delete cartResultForStorage.evening.unmatchedOrders;
+        }
 
         const cacheData = {
             uniqueOrderIds: uniqueOrderIdsArray,

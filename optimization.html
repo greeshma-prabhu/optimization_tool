@@ -109,6 +109,14 @@
         <div class="page-header">
             <h1 class="page-title" data-i18n="optimization.title">Route Optimization Engine</h1>
             <p class="page-subtitle" data-i18n="optimization.subtitle">Automated route planning and truck allocation</p>
+            <div style="margin-top: 15px; display: flex; gap: 12px; align-items: center;">
+                <label for="time-period-selector" style="font-weight: 600;">Select Time Period:</label>
+                <select id="time-period-selector" style="padding: 8px 12px; border: 2px solid var(--border); border-radius: 6px;">
+                    <option value="morning">Morning Routes (09:00 - 11:00)</option>
+                    <option value="evening">Evening Routes (17:00 - 19:00)</option>
+                    <option value="both" selected>Both (All Day)</option>
+                </select>
+            </div>
             <button class="btn btn-primary" onclick="runOptimization()" style="margin-top: 20px;" data-i18n="optimization.runOptimization">
                 🔄 Run Optimization
             </button>
@@ -268,7 +276,13 @@
                     throw new Error('No orders available. Please load orders from Dashboard first.');
                 }
 
-                console.log('📊 Orders loaded:', orders.length);
+                const periodSelect = document.getElementById('time-period-selector');
+                const period = periodSelect ? periodSelect.value : 'both';
+                if (period === 'morning' || period === 'evening') {
+                    orders = orders.filter(o => (o.period || 'morning') === period);
+                }
+
+                console.log('📊 Orders loaded:', orders.length, `(${period})`);
                 if (cartResult) {
                     console.log(`   Matched orders count: ${cartResult.matchedOrdersCount || orders.length}`);
                 }
@@ -346,6 +360,9 @@
                 }
             }
             
+            const periodSelect = document.getElementById('time-period-selector');
+            const period = periodSelect ? periodSelect.value : 'both';
+            const periodResult = (period === 'morning' || period === 'evening') ? cartResult[period] : cartResult;
             console.log(`✅ Using Dashboard cache: ${cartResult.matchedOrdersCount || 'N/A'} UNIQUE orders, ${cartResult.total} carts`);
             
             // Update DOM elements using cartResult (SAME as Dashboard)
@@ -355,18 +372,33 @@
             const standardEl = document.getElementById('input-standard') || document.getElementById('standard-cars');
             
             // CRITICAL: Use matchedOrdersCount (unique matched orders), NOT orders.length!
+            const ordersForPeriod = (() => {
+                if (period === 'morning' || period === 'evening') {
+                    return (window.AppData?.orders || []).filter(o => (o.period || 'morning') === period);
+                }
+                return window.AppData?.orders || [];
+            })();
+            const uniqueIds = new Set();
+            ordersForPeriod.forEach(o => {
+                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                if (orderId) uniqueIds.add(String(orderId));
+            });
+            const uniqueCount = (period === 'morning' || period === 'evening')
+                ? (periodResult?.matchedOrdersCount || uniqueIds.size)
+                : (cartResult.matchedOrdersCount || uniqueIds.size);
+
             if (ordersEl) {
-                ordersEl.textContent = cartResult.matchedOrdersCount || 0;
-                console.log(`✅ Updated input-orders: ${cartResult.matchedOrdersCount} (NOT ${ordersEl.textContent} orderrows!)`);
+                ordersEl.textContent = uniqueCount || 0;
+                console.log(`✅ Updated input-orders: ${uniqueCount}`);
             }
             if (cartsEl) {
-                cartsEl.textContent = cartResult.total || 0;
+                cartsEl.textContent = periodResult?.total || 0;
             }
             if (danishEl) {
-                danishEl.textContent = cartResult.danish || 0;
+                danishEl.textContent = periodResult?.danish || 0;
             }
             if (standardEl) {
-                standardEl.textContent = cartResult.standard || 0;
+                standardEl.textContent = periodResult?.standard || 0;
             }
             
             console.log('✅ Input Summary updated:');
@@ -423,17 +455,20 @@
             
             // Create route cards using CartDisplayManager
             const routes = [
-                { name: 'Rijnsburg', id: 36, time: '09:00' },
-                { name: 'Aalsmeer', id: 32, time: '10:00' },
-                { name: 'Naaldwijk', id: 34, time: '11:00' }
+                { name: 'Rijnsburg', id: 36, time: '09:00', period: 'morning' },
+                { name: 'Aalsmeer', id: 32, time: '10:00', period: 'morning' },
+                { name: 'Naaldwijk', id: 34, time: '11:00', period: 'morning' },
+                { name: 'Rijnsburg', id: 36, time: '17:00', period: 'evening' },
+                { name: 'Aalsmeer', id: 32, time: '18:00', period: 'evening' },
+                { name: 'Naaldwijk', id: 34, time: '19:00', period: 'evening' }
             ];
             
             routes.forEach((route, index) => {
-                const routeData = cartDisplayManager.getRouteData(route.name);
-                const cartTypes = cartDisplayManager.getRouteCartTypes(route.name);
+                const routeData = cartDisplayManager.getRouteData(route.name, route.period);
+                const cartTypes = cartDisplayManager.getRouteCartTypes(route.name, route.period);
                 const card = cartDisplayManager.createRouteCard(
                     index + 1,
-                    route.name,
+                    `${route.name} (${route.period === 'evening' ? 'Avond' : 'Ochtend'})`,
                     route.time,
                     routeData,
                     cartTypes

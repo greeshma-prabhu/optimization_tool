@@ -6,10 +6,9 @@
 
 const CLIENT_ROUTE_MAPPING = {
   // ========================================
-  // RIJNSBURG ROUTE (09:00 departure)
-  // 27 clients from Excel (OFFICIAL - from Planningstabel_2_0__2_.xlsx)
+  // MORNING ROUTES (09:00 / 10:00 / 11:00)
   // ========================================
-  'rijnsburg': [
+  'rijnsburg_morning': [
     'A. Heemskerk',
     'Aad van Duijn',
     'Albert Noort',
@@ -42,10 +41,7 @@ const CLIENT_ROUTE_MAPPING = {
   ],
   
   // ========================================
-  // AALSMEER ROUTE (10:00 departure)  
-  // 44 clients from Excel (OFFICIAL - from Planningstabel_2_0__2_.xlsx)
-  // ========================================
-  'aalsmeer': [
+  'aalsmeer_morning': [
     'Akkus',
     'Albert Heijn',
     'Behne Blumen',
@@ -94,10 +90,7 @@ const CLIENT_ROUTE_MAPPING = {
   ],
   
   // ========================================
-  // NAALDWIJK ROUTE (11:00 departure)
-  // 34 clients from Excel (OFFICIAL - from Planningstabel_2_0__2_.xlsx)
-  // ========================================
-  'naaldwijk': [
+  'naaldwijk_morning': [
     'Astrafund',
     'Bloomer Flowers',
     'Bachetle',
@@ -135,6 +128,84 @@ const CLIENT_ROUTE_MAPPING = {
     'Superflora',  // ADD: Danish cart client
     'Superflora BV',  // ADD: API variation
     'Klok Naaldwijk'  // ADD: Klok variant
+  ],
+
+  // ========================================
+  // EVENING ROUTES (17:00 / 18:00 / 19:00)
+  // Provided by user (Avond. tabs)
+  // ========================================
+  'rijnsburg_evening': [
+    'A. Heemskerk',
+    'Albert Noort',
+    'Esmeralda',
+    'Floral Sourcing',
+    'HGR',
+    'Heyer inkoop',
+    'L&M Zaterdag',
+    'L&M',
+    'Nagel',
+    'Ransom',
+    'Retail Flowers',
+    'Vianen',
+    'V/D Plas',
+    'V&E Export',
+    'karren Bosjes'
+  ],
+  'aalsmeer_evening': [
+    'Akkus',
+    'Albert Heijn',
+    'Bloem Fleurtiek',
+    'By Special Zaterdag',
+    'By Special',
+    'Dobbe',
+    'Fleura Metz',
+    'Floral Connection',
+    'Flower Direct',
+    'Greenflor',
+    'FTC Aalsmeer',
+    'Guchtenaere',
+    'Hans Visser SK-SV',
+    'Hans Visser B-SV',
+    'Hans Visser B',
+    'Hans Visser P-SV',
+    'Hans Visser P',
+    'Hoekhuis Aalsmeer',
+    'Nijssen',
+    'Hoorn',
+    'Trans-Fleur',
+    'Slootman',
+    'Verbeek en Bol',
+    'Waterdrinker',
+    'Willemsen',
+    'Zurel',
+    'Bosjes',
+    'Klok Dozen',
+    'MM Flowers',
+    'Dijkflora'
+  ],
+  'naaldwijk_evening': [
+    'Bachetle',
+    'Bloombouquet',
+    'Blumen Aschof',
+    'Capitol Flowers',
+    'Flamingo',
+    'H. Star',
+    'H.P Nieuwkerk & Zn.',
+    'Hoekhuis',
+    'Kontikiflor',
+    'Leeuwenburg',
+    'Premium',
+    'Penning',
+    'Vliet',
+    'Goedegeburen',
+    'Zalam',
+    'CON',
+    'Superflora',
+    'F.T.C. Bleiswijk',
+    'Rhein-Maas',
+    'Bosjes Overig',
+    'Klok Dozen',
+    'Klok Bosjes'
   ]
 };
 
@@ -147,7 +218,8 @@ const DANISH_CART_CLIENTS = [
   'Flamingo Flowers',
   'Flower Trade Consult',
   'MM Flowers',
-  'Dijk Flora'
+  'Dijk Flora',
+  'Dijkflora'
 ];
 
 // Departure times per route
@@ -155,6 +227,12 @@ const ROUTE_DEPARTURE_TIMES = {
   'rijnsburg': '09:00',
   'aalsmeer': '10:00',
   'naaldwijk': '11:00',
+  'rijnsburg_morning': '09:00',
+  'aalsmeer_morning': '10:00',
+  'naaldwijk_morning': '11:00',
+  'rijnsburg_evening': '17:00',
+  'aalsmeer_evening': '18:00',
+  'naaldwijk_evening': '19:00',
   'late_delivery': 'End middag / avond'
 };
 
@@ -228,28 +306,32 @@ function getWords(normalizedName) {
   return normalizedName.split(/\s+/).filter(w => w.length > 0);
 }
 
+function getPeriodHintFromName(nameLower) {
+  if (!nameLower) return null;
+  if (nameLower.includes('avond') || nameLower.includes('zaterdag')) {
+    return 'evening';
+  }
+  return null;
+}
+
+function makeRouteResult(route, period) {
+  const safePeriod = period || 'morning';
+  const routeKey = `${route}_${safePeriod}`;
+  return {
+    matched: true,
+    route,
+    period: safePeriod,
+    routeKey
+  };
+}
+
 /**
  * Check if customer is in our known client list (Excel-mapped clients only)
- * Returns: { matched: boolean, route: string|null }
- * 
- * CRITICAL: This is the ONLY client-matching function!
- * 
- * MATCHING RULES (REVERSE DIRECTION - Excel → API):
- * 1. Normalize Excel name and API name
- * 2. Split BOTH into word arrays
- * 3. Ignore words with length <= 2 from BOTH
- * 4. For EACH Excel word:
- *    - It matches if ANY API word:
- *      - equals the Excel word OR
- *      - startsWith the Excel word OR
- *      - Excel word startsWith API word (for abbreviations)
- * 5. ALL meaningful Excel words must be found in API
- * 6. Direction: Excel → API (Excel is source of truth, API can have extra words)
- * 7. NO substring includes() checks - strict word comparison only
+ * Returns: { matched: boolean, route: string|null, period: 'morning'|'evening'|null, routeKey: string|null }
  */
 function isKnownClient(customerName) {
   if (!customerName) {
-    return { matched: false, route: null };
+    return { matched: false, route: null, period: null, routeKey: null };
   }
   
   // SPECIAL CASES - Direct string matches for known problematic clients
@@ -258,38 +340,42 @@ function isKnownClient(customerName) {
   
   // Superflora - Danish cart client in Naaldwijk
   if (nameLower.includes('superflora')) {
-    return { matched: true, route: 'naaldwijk' };
+    const periodHint = getPeriodHintFromName(nameLower);
+    return makeRouteResult('naaldwijk', periodHint);
   }
   
   // L&M variations - Rijnsburg
   if (nameLower.includes('l&m') || nameLower.includes('lm ') || nameLower.includes('l en m')) {
-    return { matched: true, route: 'rijnsburg' };
+    const periodHint = getPeriodHintFromName(nameLower);
+    return makeRouteResult('rijnsburg', periodHint);
   }
   
   // St.Gabriel variations - Rijnsburg
   if (nameLower.includes('st.gabriel') || nameLower.includes('st gabriel') || nameLower.includes('stgabriel')) {
-    return { matched: true, route: 'rijnsburg' };
+    const periodHint = getPeriodHintFromName(nameLower);
+    return makeRouteResult('rijnsburg', periodHint);
   }
   
   // Klok variations - check location
   if (nameLower.includes('klok')) {
+    const periodHint = getPeriodHintFromName(nameLower);
     if (nameLower.includes('aalsmeer')) {
-      return { matched: true, route: 'aalsmeer' };
+      return makeRouteResult('aalsmeer', periodHint);
     }
     if (nameLower.includes('naaldwijk')) {
-      return { matched: true, route: 'naaldwijk' };
+      return makeRouteResult('naaldwijk', periodHint);
     }
     if (nameLower.includes('rijnsburg')) {
-      return { matched: true, route: 'rijnsburg' };
+      return makeRouteResult('rijnsburg', periodHint);
     }
-    // Default Klok to Aalsmeer if no location specified
-    return { matched: true, route: 'aalsmeer' };
+    return makeRouteResult('aalsmeer', periodHint);
   }
   
   // E- Flowers / eFlowers variations - Naaldwijk
   // Excel: "E- Flowers" → API: "eFlowers B.V." or "eFlowers"
   if (nameLower.includes('eflowers') || nameLower.includes('e flowers') || nameLower === 'e- flowers') {
-    return { matched: true, route: 'naaldwijk' };
+    const periodHint = getPeriodHintFromName(nameLower);
+    return makeRouteResult('naaldwijk', periodHint);
   }
   
   // Step 1: Normalize API customer name
@@ -308,7 +394,7 @@ function isKnownClient(customerName) {
     // Check if any API word equals or starts with late delivery keyword
     for (const apiWord of apiWords) {
       if (apiWord === late || apiWord.startsWith(late)) {
-        return { matched: true, route: 'late_delivery' };
+        return { matched: true, route: 'late_delivery', period: null, routeKey: 'late_delivery' };
       }
     }
   }
@@ -321,7 +407,9 @@ function isKnownClient(customerName) {
       
       // Rule 1: Exact match after normalization
       if (normalizedCustomer === normalizedClient) {
-        return { matched: true, route: route };
+        const period = route.includes('_evening') ? 'evening' : 'morning';
+        const baseRoute = route.replace('_morning', '').replace('_evening', '');
+        return { matched: true, route: baseRoute, period: period, routeKey: route };
       }
       
       // Step 2: Split Excel client name into word array
@@ -366,7 +454,9 @@ function isKnownClient(customerName) {
                 excelWord.startsWith(apiWord)
               )
             ).length >= 2) {
-          return { matched: true, route: route };
+          const period = route.includes('_evening') ? 'evening' : 'morning';
+          const baseRoute = route.replace('_morning', '').replace('_evening', '');
+          return { matched: true, route: baseRoute, period: period, routeKey: route };
         }
       }
     }
@@ -380,7 +470,7 @@ function isKnownClient(customerName) {
   }
   
   // Not found in any route - NOT a known client
-  return { matched: false, route: null };
+  return { matched: false, route: null, period: null, routeKey: null };
 }
 
 /**
@@ -401,6 +491,28 @@ function getRouteForCustomer(customerName) {
   return null; // NO DEFAULT - unmatched must remain unmatched
 }
 
+function inferPeriodFromOrder(order) {
+  const timeCandidates = [
+    order.delivery_time,
+    order.order?.delivery_time,
+    order.delivery_date,
+    order.order?.delivery_date,
+    order.deliveryDate
+  ].filter(Boolean);
+
+  for (const candidate of timeCandidates) {
+    const match = String(candidate).match(/(\d{1,2}):(\d{2})/);
+    if (match) {
+      const hour = parseInt(match[1], 10);
+      if (!Number.isNaN(hour)) {
+        return hour >= 15 ? 'evening' : 'morning';
+      }
+    }
+  }
+
+  return 'morning';
+}
+
 /**
  * Separate orders into matched (Excel clients) and unmatched (DUMP BASKET)
  * CRITICAL BUSINESS RULE: Only process orders from Excel-mapped clients
@@ -415,10 +527,14 @@ function separateOrdersByClientMatch(orders) {
     
     if (result.matched) {
       order.route = result.route;
+      order.period = result.period || 'morning';
+      order.routeKey = result.routeKey || `${result.route}_${order.period}`;
       order.isKnownClient = true;
       matched.push(order);
     } else {
       order.route = 'unmatched';
+      order.period = inferPeriodFromOrder(order);
+      order.routeKey = null;
       order.isKnownClient = false;
       unmatched.push(order);
     }
@@ -426,9 +542,12 @@ function separateOrdersByClientMatch(orders) {
   
   // Count by route for logging
   const matchedByRoute = {
-    rijnsburg: matched.filter(o => o.route === 'rijnsburg').length,
-    aalsmeer: matched.filter(o => o.route === 'aalsmeer').length,
-    naaldwijk: matched.filter(o => o.route === 'naaldwijk').length
+    rijnsburg_morning: matched.filter(o => o.routeKey === 'rijnsburg_morning').length,
+    aalsmeer_morning: matched.filter(o => o.routeKey === 'aalsmeer_morning').length,
+    naaldwijk_morning: matched.filter(o => o.routeKey === 'naaldwijk_morning').length,
+    rijnsburg_evening: matched.filter(o => o.routeKey === 'rijnsburg_evening').length,
+    aalsmeer_evening: matched.filter(o => o.routeKey === 'aalsmeer_evening').length,
+    naaldwijk_evening: matched.filter(o => o.routeKey === 'naaldwijk_evening').length
   };
   
   // Get unique unmatched customers for optional logging
@@ -437,11 +556,21 @@ function separateOrdersByClientMatch(orders) {
   console.log('═══════════════════════════════════════════════════════════════════');
   console.log('🔍 CLIENT MATCHING RESULTS (EXCEL CLIENTS ONLY):');
   console.log(`✅ Matched (in Excel): ${matched.length} orders`);
-  console.log(`   - Rijnsburg: ${matchedByRoute.rijnsburg} orders`);
-  console.log(`   - Aalsmeer: ${matchedByRoute.aalsmeer} orders`);
-  console.log(`   - Naaldwijk: ${matchedByRoute.naaldwijk} orders`);
+  console.log(`   - Rijnsburg (morning): ${matchedByRoute.rijnsburg_morning} orders`);
+  console.log(`   - Aalsmeer (morning): ${matchedByRoute.aalsmeer_morning} orders`);
+  console.log(`   - Naaldwijk (morning): ${matchedByRoute.naaldwijk_morning} orders`);
+  console.log(`   - Rijnsburg (evening): ${matchedByRoute.rijnsburg_evening} orders`);
+  console.log(`   - Aalsmeer (evening): ${matchedByRoute.aalsmeer_evening} orders`);
+  console.log(`   - Naaldwijk (evening): ${matchedByRoute.naaldwijk_evening} orders`);
   console.log(`⚠️ Unmatched (DUMP BASKET): ${unmatched.length} orders`);
-  console.log(`📊 Total clients in Excel: ${CLIENT_ROUTE_MAPPING.rijnsburg.length + CLIENT_ROUTE_MAPPING.aalsmeer.length + CLIENT_ROUTE_MAPPING.naaldwijk.length}`);
+  const totalClientCount =
+    CLIENT_ROUTE_MAPPING.rijnsburg_morning.length +
+    CLIENT_ROUTE_MAPPING.aalsmeer_morning.length +
+    CLIENT_ROUTE_MAPPING.naaldwijk_morning.length +
+    CLIENT_ROUTE_MAPPING.rijnsburg_evening.length +
+    CLIENT_ROUTE_MAPPING.aalsmeer_evening.length +
+    CLIENT_ROUTE_MAPPING.naaldwijk_evening.length;
+  console.log(`📊 Total clients in Excel: ${totalClientCount}`);
   
   // Optional logging for unmatched customers (for debugging)
   if (typeof window !== 'undefined' && window.DEBUG_CLIENT_MATCHING && unmatchedCustomers.length > 0) {
@@ -525,12 +654,14 @@ function getCartCapacity(fustType, isDanish) {
 if (typeof window !== 'undefined') {
   window.RouteMapping = {
     getRouteForCustomer: getRouteForCustomer,
+    getRouteInfoForCustomer: isKnownClient,
     usesDanishCarts: usesDanishCarts,
     getDepartureTime: getDepartureTime,
     getCartCapacity: getCartCapacity,
     showUnmappedCustomersSummary: showUnmappedCustomersSummary,
     isKnownClient: isKnownClient,
     separateOrdersByClientMatch: separateOrdersByClientMatch,
+    inferPeriodFromOrder: inferPeriodFromOrder,
     CLIENT_ROUTE_MAPPING: CLIENT_ROUTE_MAPPING,
     DANISH_CART_CLIENTS: DANISH_CART_CLIENTS,
     ROUTE_DEPARTURE_TIMES: ROUTE_DEPARTURE_TIMES,
@@ -538,13 +669,19 @@ if (typeof window !== 'undefined') {
   };
   
   console.log('✅ Route mapping loaded successfully!');
-  console.log('   Rijnsburg:', CLIENT_ROUTE_MAPPING.rijnsburg.length, 'clients');
-  console.log('   Aalsmeer:', CLIENT_ROUTE_MAPPING.aalsmeer.length, 'clients');
-  console.log('   Naaldwijk:', CLIENT_ROUTE_MAPPING.naaldwijk.length, 'clients');
-  console.log('   TOTAL:', 
-    CLIENT_ROUTE_MAPPING.rijnsburg.length + 
-    CLIENT_ROUTE_MAPPING.aalsmeer.length + 
-    CLIENT_ROUTE_MAPPING.naaldwijk.length, 
+  console.log('   Rijnsburg (morning):', CLIENT_ROUTE_MAPPING.rijnsburg_morning.length, 'clients');
+  console.log('   Aalsmeer (morning):', CLIENT_ROUTE_MAPPING.aalsmeer_morning.length, 'clients');
+  console.log('   Naaldwijk (morning):', CLIENT_ROUTE_MAPPING.naaldwijk_morning.length, 'clients');
+  console.log('   Rijnsburg (evening):', CLIENT_ROUTE_MAPPING.rijnsburg_evening.length, 'clients');
+  console.log('   Aalsmeer (evening):', CLIENT_ROUTE_MAPPING.aalsmeer_evening.length, 'clients');
+  console.log('   Naaldwijk (evening):', CLIENT_ROUTE_MAPPING.naaldwijk_evening.length, 'clients');
+  console.log('   TOTAL:',
+    CLIENT_ROUTE_MAPPING.rijnsburg_morning.length +
+    CLIENT_ROUTE_MAPPING.aalsmeer_morning.length +
+    CLIENT_ROUTE_MAPPING.naaldwijk_morning.length +
+    CLIENT_ROUTE_MAPPING.rijnsburg_evening.length +
+    CLIENT_ROUTE_MAPPING.aalsmeer_evening.length +
+    CLIENT_ROUTE_MAPPING.naaldwijk_evening.length,
     'Excel-mapped clients (ONLY these are processed)');
   console.log('   Danish cart clients:', DANISH_CART_CLIENTS.length);
   console.log('   ⚠️ CRITICAL: Only Excel-mapped clients are processed!');

@@ -47,6 +47,8 @@ window.appState = {
                 location: order.location || order.location_name,
                 location_name: order.location_name,
                 route: order.route,
+                routeKey: order.routeKey,
+                period: order.period,
                 delivery_location_id: order.delivery_location_id || order.order?.delivery_location_id, // CRITICAL for route detection
                 assembly_amount: order.assembly_amount, // CRITICAL for cart calculation - MUST KEEP!
                 fust_count: order.fust_count, // CRITICAL for cart calculation
