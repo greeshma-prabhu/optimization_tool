@@ -67,7 +67,11 @@ const TRANSLATIONS = {
     }
 };
 
-let currentLanguage = localStorage.getItem('appLanguage') || 'nl';
+let currentLanguage =
+    localStorage.getItem('appLanguage') ||
+    localStorage.getItem('zuidplas_user_language') ||
+    localStorage.getItem('zuidplas_language') ||
+    'nl';
 
 function t(key) {
     return (TRANSLATIONS[currentLanguage] && TRANSLATIONS[currentLanguage][key]) || key;
@@ -80,6 +84,9 @@ function setLanguage(lang) {
     }
     currentLanguage = lang;
     localStorage.setItem('appLanguage', lang);
+    // Keep existing i18n keys in sync so the rest of the UI updates
+    localStorage.setItem('zuidplas_user_language', lang);
+    localStorage.setItem('zuidplas_language', lang);
     if (typeof updatePageLanguage === 'function') {
         updatePageLanguage();
     }
