@@ -2683,6 +2683,13 @@
                 if (cart && cart.id) acc[cart.id] = cart;
                 return acc;
             }, {});
+            const clientColorMap = {};
+            const getColorForClient = (client) => {
+                if (!clientColorMap[client]) {
+                    clientColorMap[client] = getClientColor(client, Object.keys(clientColorMap).length);
+                }
+                return clientColorMap[client];
+            };
 
             if (!allCarts || allCarts.length === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">No cart data available</div>';
@@ -2761,7 +2768,7 @@
                                 ? cart.clients
                                 : [cart.client || 'Unknown'];
                             const clientBadges = cartClients.map(client => {
-                                const color = clientColorMap[client] || getClientColor(client, 0);
+                                const color = getColorForClient(client);
                                 const initial = client ? client.charAt(0).toUpperCase() : '?';
                                 return `<span style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;">
                                             <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span>
