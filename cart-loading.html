@@ -1463,6 +1463,13 @@
             return fallback;
         }
 
+        const routeConflictMap = {
+            aalsmeer_morning: 'rijnsburg_morning',
+            naaldwijk_morning: 'aalsmeer_morning',
+            aalsmeer_evening: 'rijnsburg_evening',
+            naaldwijk_evening: 'aalsmeer_evening'
+        };
+
         function getSmartTruckOptions(routeKey) {
             const baseTrucks = [
                 { id: 'truck1', name: langText('truck1', typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1') },
@@ -1481,14 +1488,7 @@
             const blocked = new Set();
             let reason = null;
 
-            const blockers = {
-                aalsmeer_morning: 'rijnsburg_morning',
-                naaldwijk_morning: 'aalsmeer_morning',
-                aalsmeer_evening: 'rijnsburg_evening',
-                naaldwijk_evening: 'aalsmeer_evening'
-            };
-
-            const blockingRoute = blockers[routeKey];
+            const blockingRoute = routeConflictMap[routeKey];
             if (blockingRoute) {
                 const blockingTrucks = parseTruckAssignment(routeTruckAssignments[blockingRoute] || '');
                 blockingTrucks.forEach(id => blocked.add(id));
@@ -1583,6 +1583,22 @@
                     ? i18n.t('cartLoading.truckUnavailable', 'This truck is unavailable due to time conflict with another route.')
                     : 'This truck is unavailable due to time conflict with another route.'));
                 return;
+            }
+
+            // Prevent selections that would invalidate already-selected overlapping routes
+            const conflictingRoute = Object.entries(routeConflictMap)
+                .find(([blocked, blocker]) => blocker === routeKey);
+            if (conflictingRoute) {
+                const [blockedRoute] = conflictingRoute;
+                const blockedSelection = parseTruckAssignment(routeTruckAssignments[blockedRoute] || '');
+                const conflict = selectedTrucks.find(id => blockedSelection.includes(id));
+                if (conflict) {
+                    checkbox.checked = false;
+                    alert(langText('time_conflict_error', typeof i18n !== 'undefined'
+                        ? i18n.t('cartLoading.truckUnavailable', 'This truck is unavailable due to time conflict with another route.')
+                        : 'This truck is unavailable due to time conflict with another route.'));
+                    return;
+                }
             }
 
             const selection = selectedTrucks.length > 0 ? selectedTrucks.join('+') : '';

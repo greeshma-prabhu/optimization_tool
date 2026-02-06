@@ -1298,17 +1298,13 @@
             try {
                 // CRITICAL: Use cartResult to determine active routes
                 // A route is active if it has carts > 0
-                if (cartResult && cartResult.byRoute) {
-                    const routes = ['Aalsmeer', 'Naaldwijk', 'Rijnsburg'];
-                    const activeRoutes = routes.filter(routeName => {
-                        const carts = cartResult.byRoute[routeName] || 0;
-                        return carts > 0;
-                    }).length;
-                    console.log(`📊 Routes Status: ${activeRoutes}/3 active routes`);
-                    console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
-                    console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
-                    console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
-                    document.getElementById('routes-status').textContent = `${activeRoutes}/3`;
+                if (cartResult && (cartResult.morning || cartResult.evening)) {
+                    const routeNames = ['Aalsmeer', 'Naaldwijk', 'Rijnsburg'];
+                    const activeMorning = routeNames.filter(routeName => (cartResult.morning?.byRoute?.[routeName] || 0) > 0).length;
+                    const activeEvening = routeNames.filter(routeName => (cartResult.evening?.byRoute?.[routeName] || 0) > 0).length;
+                    const activeRoutes = activeMorning + activeEvening;
+                    console.log(`📊 Routes Status: ${activeRoutes}/6 active routes`);
+                    document.getElementById('routes-status').textContent = `${activeRoutes}/6`;
                 } else {
                     console.warn('⚠️ cartResult.byRoute not available, using fallback');
                     // Fallback: Count routes with orders
@@ -1325,11 +1321,11 @@
                         else if (locationId === 36) routeCounts['Rijnsburg']++;
                     });
                     const activeRoutes = Object.values(routeCounts).filter(count => count > 0).length;
-                    document.getElementById('routes-status').textContent = `${activeRoutes}/3`;
+                    document.getElementById('routes-status').textContent = `${activeRoutes}/6`;
                 }
             } catch (error) {
                 console.error('Error updating routes status:', error);
-                document.getElementById('routes-status').textContent = '0/3';
+                document.getElementById('routes-status').textContent = '0/6';
             }
             
             // Update routes
@@ -1364,10 +1360,13 @@
                     cartResult = globalData.cartResult;
                     console.log('✅ Route overview using SINGLE SOURCE:');
                     console.log(`   Orders: ${ordersWithCarts.length}`);
-                    if (cartResult && cartResult.byRoute) {
-                        console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
-                        console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
-                        console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
+                    if (cartResult && (cartResult.morning || cartResult.evening)) {
+                        console.log(`   Morning Aalsmeer: ${cartResult.morning?.byRoute?.Aalsmeer || 0} carts`);
+                        console.log(`   Morning Naaldwijk: ${cartResult.morning?.byRoute?.Naaldwijk || 0} carts`);
+                        console.log(`   Morning Rijnsburg: ${cartResult.morning?.byRoute?.Rijnsburg || 0} carts`);
+                        console.log(`   Evening Aalsmeer: ${cartResult.evening?.byRoute?.Aalsmeer || 0} carts`);
+                        console.log(`   Evening Naaldwijk: ${cartResult.evening?.byRoute?.Naaldwijk || 0} carts`);
+                        console.log(`   Evening Rijnsburg: ${cartResult.evening?.byRoute?.Rijnsburg || 0} carts`);
                     } else {
                         console.warn('⚠️ cartResult or cartResult.byRoute not available');
                     }
@@ -1388,9 +1387,12 @@
                 
                 // Route mapping
                 const routeMap = {
-                    'rijnsburg': { id: 1, name: 'Rijnsburg', locationId: 36, time: '09:00' },
-                    'aalsmeer': { id: 2, name: 'Aalsmeer', locationId: 32, time: '10:00' },
-                    'naaldwijk': { id: 3, name: 'Naaldwijk', locationId: 34, time: '11:00' }
+                    'rijnsburg_morning': { id: 1, name: 'Rijnsburg', locationId: 36, time: '09:00', period: 'morning' },
+                    'aalsmeer_morning': { id: 2, name: 'Aalsmeer', locationId: 32, time: '10:00', period: 'morning' },
+                    'naaldwijk_morning': { id: 3, name: 'Naaldwijk', locationId: 34, time: '11:00', period: 'morning' },
+                    'rijnsburg_evening': { id: 4, name: 'Rijnsburg (Afternoon)', locationId: 36, time: '17:00', period: 'evening' },
+                    'aalsmeer_evening': { id: 5, name: 'Aalsmeer (Afternoon)', locationId: 32, time: '18:00', period: 'evening' },
+                    'naaldwijk_evening': { id: 6, name: 'Naaldwijk (Afternoon)', locationId: 34, time: '19:00', period: 'evening' }
                 };
                 
                 Object.keys(routeMap).forEach(routeKey => {
@@ -1398,12 +1400,15 @@
                     
                     // Get cart count from FUST calculation
                     const routeName = route.name;
-                    const carts = cartResult ? (cartResult.byRoute[routeName] || 0) : 0;
+                    const carts = cartResult && cartResult[route.period]
+                        ? (cartResult[route.period].byRoute[routeName] || 0)
+                        : (cartResult ? (cartResult.byRoute[routeName] || 0) : 0);
                     
                     // Count orderrows for this route
                     const routeOrderrows = ordersWithCarts.filter(order => {
                         const orderLocationId = order.delivery_location_id || order.order?.delivery_location_id;
-                        return orderLocationId === route.locationId && (order.assembly_amount || 0) > 0;
+                        const periodMatch = (order.period || 'morning') === route.period;
+                        return orderLocationId === route.locationId && (order.assembly_amount || 0) > 0 && periodMatch;
                     });
                     
                     // CRITICAL: Count unique orders (not orderrows!)
@@ -2347,6 +2352,9 @@
                 const uniqueCustomers = [...new Set(orders.map(o =>
                     o.customer_name || o.order?.customer_name || 'Unknown'
                 ))].filter(Boolean).sort();
+                const matchedCount = period && cartResult?.[period]?.matchedOrdersCount
+                    ? cartResult[period].matchedOrdersCount
+                    : (cartResult?.matchedOrdersCount || 0);
                 return `
                     <div class="card" style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px; margin-top: 12px;">
                         <h3 style="margin-top: 0; color: #856404;">⚠️ DUMP BASKET - ${label} Unmatched Orders</h3>
@@ -2357,7 +2365,7 @@
                             <strong style="color: #856404;">Total Unmatched Orders: ${uniqueUnmatchedOrdersCount}</strong>
                             <br>
                             <strong style="color: #856404;">Unique Unmatched Customers: ${uniqueCustomers.length}</strong>
-                            ${cartResult ? `<br><small style="color: #856404;">Matched Orders (processed): ${cartResult.matchedOrdersCount || 0}</small>` : ''}
+                            ${cartResult ? `<br><small style="color: #856404;">Matched Orders (processed): ${matchedCount}</small>` : ''}
                         </div>
                         <button onclick="viewUnmatchedOrdersDetail('${period}')" 
                                 style="background: #ffc107; color: #856404; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;">
@@ -2369,7 +2377,7 @@
 
             section.innerHTML = `
                 ${renderUnmatchedCard('Morning', morningOrders, 'morning')}
-                ${renderUnmatchedCard('Evening', eveningOrders, 'evening')}
+                ${renderUnmatchedCard('Evening (Afternoon)', eveningOrders, 'evening')}
             `;
         }
         
