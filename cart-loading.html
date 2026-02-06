@@ -92,6 +92,23 @@
             position: relative;
             transition: all 0.2s;
         }
+
+        .cart-detail-trigger {
+            cursor: pointer;
+        }
+
+        .cart-client-dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            margin: 0 1px;
+        }
         
         .cart-slot.filled-standard {
             color: white;
@@ -157,6 +174,121 @@
             background: #fee2e2;
             border-color: #ef4444;
             color: #ef4444;
+        }
+
+        .cart-detail-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .cart-detail-modal.active {
+            display: flex;
+        }
+
+        .cart-detail-content {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            width: min(900px, 92vw);
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .cart-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .cart-detail-header h3 {
+            margin: 0;
+        }
+
+        .cart-detail-close {
+            border: none;
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .cart-layer {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+
+        .cart-layer-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-primary);
+        }
+
+        .cart-layer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(22px, 1fr));
+            gap: 6px;
+            overflow-x: auto;
+        }
+
+        .cart-layer-slot {
+            height: 22px;
+            border-radius: 6px;
+            border: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .cart-layer-slot.empty {
+            background: #e5e7eb;
+            border-style: dashed;
+            color: #6b7280;
+        }
+
+        .cart-detail-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .cart-detail-legend {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .cart-detail-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .cart-detail-legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
         }
         
         .route-assignment {
@@ -628,6 +760,16 @@
         </div>
     </main>
 
+    <div id="cart-detail-modal" class="cart-detail-modal" aria-hidden="true">
+        <div class="cart-detail-content">
+            <div class="cart-detail-header">
+                <h3 id="cart-detail-title">Cart Details</h3>
+                <button class="cart-detail-close" type="button" onclick="closeCartDetail()">Close</button>
+            </div>
+            <div id="cart-detail-body"></div>
+        </div>
+    </div>
+
     <!-- LANGUAGE SCRIPTS - MUST BE FIRST -->
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
@@ -752,6 +894,14 @@
                         aalsmeer_evening: 0,
                         naaldwijk_evening: 0
                     };
+                    const routeCartIndex = {
+                        rijnsburg_morning: 0,
+                        aalsmeer_morning: 0,
+                        naaldwijk_morning: 0,
+                        rijnsburg_evening: 0,
+                        aalsmeer_evening: 0,
+                        naaldwijk_evening: 0
+                    };
                     
                     // Create cart objects based on the breakdown
                     const breakdowns = [];
@@ -803,6 +953,14 @@
 
                         if (routeData.fustBreakdown && Array.isArray(routeData.fustBreakdown)) {
                             routeData.fustBreakdown.forEach(fustData => {
+                                const fustTypeCode = String(fustData.fustType || '').split(' ')[0];
+                                const isDanish = String(fustData.fustType || '').toLowerCase().includes('danish');
+                                const capacity = window.RouteMapping && window.RouteMapping.getCartCapacity
+                                    ? window.RouteMapping.getCartCapacity(fustTypeCode, isDanish)
+                                    : 17;
+                                const totalFust = typeof fustData.totalFust === 'number'
+                                    ? fustData.totalFust
+                                    : (fustData.carts * capacity);
                                 for (let i = 0; i < fustData.carts; i++) {
                                     let customerName = 'Unknown';
                                     const customersForRoute = routeCustomers[routeKey] || [];
@@ -822,8 +980,16 @@
                                         }) || 'Unknown';
                                     }
 
-                                    const routeIndex = (routeCustomerIndex[routeKey] || 1) - 1;
-                                    const cartClients = routeClientBuckets[routeKey]?.[routeIndex] || [];
+                                    const cartIndex = routeCartIndex[routeKey] || 0;
+                                    let cartClients = routeClientBuckets[routeKey]?.[cartIndex] || [];
+                                    if ((!cartClients || cartClients.length <= 1) && customersForRoute.length > 1) {
+                                        const primary = customersForRoute[cartIndex % customersForRoute.length];
+                                        const secondary = customersForRoute[(cartIndex + 1) % customersForRoute.length];
+                                        cartClients = primary === secondary ? [primary] : [primary, secondary];
+                                    }
+                                    routeCartIndex[routeKey] = cartIndex + 1;
+                                    const remaining = totalFust - (capacity * i);
+                                    const usedSlots = Math.max(0, Math.min(capacity, Math.ceil(remaining)));
 
                                     allCarts.push({
                                         id: `cart-${cartIdCounter++}`,
@@ -833,11 +999,14 @@
                                         route: route,
                                         routeKey: routeKey,
                                         period: period,
-                                        type: 'standard',
+                                        type: isDanish ? 'danish' : 'standard',
                                         orders: ordersByCustomer[customerName] || [],
                                         cartNumber: i + 1,
                                         totalCarts: fustData.carts,
-                                        fustType: fustData.fustType
+                                        fustType: fustData.fustType,
+                                        fustTypeCode: fustTypeCode,
+                                        capacity: capacity,
+                                        usedSlots: usedSlots
                                     });
                                 }
                             });
@@ -1648,6 +1817,10 @@
             const container = document.getElementById('truck-container');
             const scrollTop = window.scrollY;
             container.innerHTML = '';
+            window.__cartDetailMap = (result.allCarts || []).reduce((acc, cart) => {
+                if (cart && cart.id) acc[cart.id] = cart;
+                return acc;
+            }, {});
 
             // Get route analysis if available
             const routeAnalysis = result.routeAnalysis || {};
@@ -1865,6 +2038,8 @@
                         clients: cartClients,
                         colors: cartColors,
                         color: clientColor,
+                        cartId: cart.id,
+                        cartRef: cart,
                         route: route.key,
                         truckId: truckId
                     });
@@ -1962,10 +2137,11 @@
                                     ── ${slot.truckName} ──
                                 </div>`;
                             } else if (slot.type === 'standard') {
-                                const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'S';
                                 const standardCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart';
                                 const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
-                                const color = slot.color || route.color;
+                                const clients = Array.isArray(slot.clients) && slot.clients.length > 0 ? slot.clients : [slot.client || unknownText];
+                                const colors = Array.isArray(slot.colors) && slot.colors.length > 0 ? slot.colors : [slot.color || route.color];
+                                const color = colors[0] || route.color;
                                 const hexToRgb = (hex) => {
                                     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
                                     return result ? {
@@ -1976,14 +2152,21 @@
                                 };
                                 const rgb = hexToRgb(color);
                                 const darkerColor = rgb ? `rgb(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)})` : color;
-                                return `<div class="cart-slot filled-standard" 
+                                const clientIcons = clients.map((client, idx) => {
+                                    const initial = client ? client.charAt(0).toUpperCase() : 'S';
+                                    const iconColor = colors[idx] || route.color;
+                                    return `<span class="cart-client-dot" style="background:${iconColor}" title="${client}">${initial}</span>`;
+                                }).join('');
+                                return `<div class="cart-slot filled-standard cart-detail-trigger" 
+                                         data-cart-id="${slot.cartId || ''}"
                                          style="background: linear-gradient(135deg, ${color} 0%, ${darkerColor} 100%); border: 2px solid ${route.color}; border-left-width: 4px;" 
-                                         title="${standardCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
+                                         title="${standardCartText} - ${clients.join(', ')}">${clientIcons}</div>`;
                             } else if (slot.type === 'danish') {
-                                const clientInitial = slot.client ? slot.client.charAt(0).toUpperCase() : 'D';
                                 const danishCartText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart';
                                 const unknownText = typeof i18n !== 'undefined' ? i18n.t('common.unknown', 'Unknown') : 'Unknown';
-                                const color = slot.color || route.color;
+                                const clients = Array.isArray(slot.clients) && slot.clients.length > 0 ? slot.clients : [slot.client || unknownText];
+                                const colors = Array.isArray(slot.colors) && slot.colors.length > 0 ? slot.colors : [slot.color || route.color];
+                                const color = colors[0] || route.color;
                                 const hexToRgb = (hex) => {
                                     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
                                     return result ? {
@@ -1994,9 +2177,15 @@
                                 };
                                 const rgb = hexToRgb(color);
                                 const darkerColor = rgb ? `rgb(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)})` : color;
-                                return `<div class="cart-slot filled-danish" 
+                                const clientIcons = clients.map((client, idx) => {
+                                    const initial = client ? client.charAt(0).toUpperCase() : 'D';
+                                    const iconColor = colors[idx] || route.color;
+                                    return `<span class="cart-client-dot" style="background:${iconColor}" title="${client}">${initial}</span>`;
+                                }).join('');
+                                return `<div class="cart-slot filled-danish cart-detail-trigger" 
+                                         data-cart-id="${slot.cartId || ''}"
                                          style="background: linear-gradient(135deg, ${color} 0%, ${darkerColor} 100%); border: 2px solid ${route.color}; border-left-width: 4px;" 
-                                         title="${danishCartText} - ${slot.client || unknownText}">${clientInitial}</div>`;
+                                         title="${danishCartText} - ${clients.join(', ')}">${clientIcons}</div>`;
                             } else if (slot.type === 'overflow') {
                                 const overflowText = typeof i18n !== 'undefined' ? i18n.t('status.overflow', 'Overflow') : 'Overflow';
                                 return `<div class="cart-slot overflow" style="border-color: ${route.color};" title="${overflowText}">!</div>`;
@@ -2483,6 +2672,10 @@
         function updateCartList(allCarts) {
             const container = document.getElementById('cart-list-by-route');
             container.innerHTML = '';
+            window.__cartDetailMap = (allCarts || []).reduce((acc, cart) => {
+                if (cart && cart.id) acc[cart.id] = cart;
+                return acc;
+            }, {});
 
             const cartsByRoute = {
                 rijnsburg_morning: [],
@@ -2553,7 +2746,7 @@
                                         </span>`;
                             }).join('');
                             return `
-                                <div class="cart-item ${cart.type}">
+                                <div class="cart-item ${cart.type} cart-detail-trigger" data-cart-id="${cart.id || ''}">
                                     <div>
                                         <strong>${cartClients.length > 1 ? 'Multiple Clients' : cartClients[0]}</strong>
                                         <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
@@ -2563,10 +2756,13 @@
                                             ${clientBadges}
                                         </div>
                                     </div>
-                                    <div>
+                                    <div style="text-align:right;">
                                         <span class="badge ${cart.type === 'danish' ? 'primary' : 'info'}">
                                             ${cart.type === 'danish' ? 'D' : 'S'}
                                         </span>
+                                        <div style="margin-top:6px;font-size:0.75rem;color:var(--text-secondary);">
+                                            Click for layers
+                                        </div>
                                     </div>
                                 </div>
                             `;
@@ -2577,6 +2773,180 @@
                 container.appendChild(routeCard);
             });
         }
+
+        function getCartLayerConfig(cart) {
+            const fustTypeCode = String(cart.fustTypeCode || cart.fustType || '612').split(' ')[0];
+            const isDanish = cart.type === 'danish';
+            const capacity = cart.capacity || (window.RouteMapping && window.RouteMapping.getCartCapacity
+                ? window.RouteMapping.getCartCapacity(fustTypeCode, isDanish)
+                : 72);
+
+            if (isDanish) {
+                const danishLayers = {
+                    '902': { layers: 4, perLayer: 6 },
+                    '996': { layers: 4, perLayer: 8 },
+                    '612': { layers: 4, perLayer: Math.max(1, Math.round(capacity / 4)) },
+                    '614': { layers: 4, perLayer: Math.max(1, Math.round(capacity / 4)) }
+                };
+                const config = danishLayers[fustTypeCode] || { layers: 4, perLayer: Math.max(1, Math.round(capacity / 4)) };
+                return { ...config, capacity };
+            }
+
+            const standardLayers = {
+                '612': { layers: 3, perLayer: 24 },
+                '614': { layers: 3, perLayer: 24 },
+                '575': { layers: 2, perLayer: 16 },
+                '996': { layers: 2, perLayer: 16 },
+                '902': { layers: 4, perLayer: 10 },
+                '588': { layers: 4, perLayer: 10 },
+                '821': { layers: 4, perLayer: 10 },
+                '856': { layers: 4, perLayer: 5 }
+            };
+            const config = standardLayers[fustTypeCode] || { layers: 3, perLayer: Math.max(1, Math.round(capacity / 3)) };
+            return { ...config, capacity };
+        }
+
+        function buildCartLayers(cart) {
+            const { layers, perLayer, capacity } = getCartLayerConfig(cart);
+            const usedSlots = Math.max(0, Math.min(capacity, Math.round(cart.usedSlots || capacity)));
+            const clients = Array.isArray(cart.clients) && cart.clients.length > 0 ? cart.clients : [cart.client || 'Unknown'];
+            const clientColors = {};
+            clients.forEach((client, idx) => {
+                clientColors[client] = getClientColor(client, idx);
+            });
+
+            const slotClients = [];
+            for (let i = 0; i < usedSlots; i++) {
+                slotClients.push(clients[i % clients.length]);
+            }
+
+            const layerCaps = [];
+            let remaining = capacity;
+            for (let i = 0; i < layers; i++) {
+                const cap = i === layers - 1 ? remaining : Math.min(perLayer, remaining);
+                layerCaps.push(cap);
+                remaining = Math.max(0, remaining - cap);
+            }
+
+            const layerData = [];
+            let slotIndex = 0;
+            layerCaps.forEach((cap, idx) => {
+                const items = [];
+                for (let s = 0; s < cap; s++) {
+                    if (slotIndex < usedSlots) {
+                        const client = slotClients[slotIndex];
+                        items.push({
+                            client,
+                            color: clientColors[client],
+                            crateType: cart.fustTypeCode || String(cart.fustType || '612').split(' ')[0]
+                        });
+                        slotIndex += 1;
+                    } else {
+                        items.push(null);
+                    }
+                }
+                const used = items.filter(Boolean).length;
+                layerData.push({
+                    index: idx,
+                    capacity: cap,
+                    used,
+                    empty: cap - used,
+                    slots: items
+                });
+            });
+
+            return { layerData, clientColors, capacity, usedSlots };
+        }
+
+        function openCartDetail(cartId) {
+            const cart = window.__cartDetailMap ? window.__cartDetailMap[cartId] : null;
+            if (!cart) return;
+
+            const modal = document.getElementById('cart-detail-modal');
+            const title = document.getElementById('cart-detail-title');
+            const body = document.getElementById('cart-detail-body');
+            if (!modal || !title || !body) return;
+
+            const cartTypeText = cart.type === 'danish'
+                ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart')
+                : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart');
+            const routeLabel = `${cart.route || ''} ${cart.period || ''}`.trim();
+            title.textContent = `${cartTypeText} • ${routeLabel}`;
+
+            const { layerData, clientColors, capacity, usedSlots } = buildCartLayers(cart);
+            const emptySlots = Math.max(0, capacity - usedSlots);
+            const emptyLayers = layerData.filter(layer => layer.used === 0).length;
+            const clients = Array.isArray(cart.clients) && cart.clients.length > 0 ? cart.clients : [cart.client || 'Unknown'];
+            const crateType = cart.fustTypeCode || String(cart.fustType || '612').split(' ')[0];
+
+            const capacityNote = emptySlots === 0
+                ? 'No free shelves – next order creates new cart.'
+                : `${emptyLayers} shelves left`;
+
+            body.innerHTML = `
+                <div class="cart-detail-summary">
+                    <div><strong>Cart Type:</strong> ${cartTypeText}</div>
+                    <div><strong>Crate Type:</strong> ${crateType}</div>
+                    <div><strong>Used:</strong> ${usedSlots} / ${capacity}</div>
+                    <div><strong>Empty:</strong> ${emptySlots} (${emptyLayers} shelves)</div>
+                    <div><strong>Capacity Note:</strong> ${capacityNote}</div>
+                </div>
+                ${layerData.map(layer => `
+                    <div class="cart-layer">
+                        <div class="cart-layer-title">
+                            <span>Layer ${layer.index + 1} (top → bottom)</span>
+                            <span>${layer.used}/${layer.capacity} used, ${layer.empty} empty</span>
+                        </div>
+                        <div class="cart-layer-grid" style="grid-template-columns: repeat(${layer.capacity}, 22px);">
+                            ${layer.slots.map(slot => slot ? `
+                                <div class="cart-layer-slot" style="background:${slot.color}" title="${slot.client} • ${slot.crateType}">
+                                    ${slot.client ? slot.client.charAt(0).toUpperCase() : ''}
+                                </div>
+                            ` : `
+                                <div class="cart-layer-slot empty" title="Empty">—</div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+                <div class="cart-detail-legend">
+                    ${clients.map(client => `
+                        <div class="cart-detail-legend-item">
+                            <span class="cart-detail-legend-color" style="background:${clientColors[client]}"></span>
+                            <span>${client}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeCartDetail() {
+            const modal = document.getElementById('cart-detail-modal');
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        document.addEventListener('click', (event) => {
+            const trigger = event.target.closest('.cart-detail-trigger');
+            if (trigger) {
+                const cartId = trigger.getAttribute('data-cart-id');
+                if (cartId) openCartDetail(cartId);
+                return;
+            }
+            const modal = document.getElementById('cart-detail-modal');
+            if (modal && event.target === modal) {
+                closeCartDetail();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeCartDetail();
+            }
+        });
 
         function updateSummaryStats(result) {
             // CRITICAL: Use CACHED cart count from Dashboard, not allCarts.length!
@@ -2595,7 +2965,20 @@
             const truck1Capacity = cartLoadingOptimizer.getTruckCapacity('truck1');
             const truck2Capacity = cartLoadingOptimizer.getTruckCapacity('truck2');
             const totalOverflow = truck1Capacity.overflow + truck2Capacity.overflow;
-            const routesCovered = new Set([...result.truck1.routes, ...result.truck2.routes]).size;
+            let routesCovered = 0;
+            if (window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts) {
+                const globalData = window.CartCalculation.getGlobalOrdersAndCarts();
+                const cartResult = globalData.cartResult || {};
+                const routeNames = ['Rijnsburg', 'Aalsmeer', 'Naaldwijk'];
+                ['morning', 'evening'].forEach(period => {
+                    routeNames.forEach(routeName => {
+                        const count = cartResult?.[period]?.byRoute?.[routeName] || 0;
+                        if (count > 0) routesCovered += 1;
+                    });
+                });
+            } else {
+                routesCovered = new Set([...result.truck1.routes, ...result.truck2.routes]).size;
+            }
 
             // Use cached cart count (from Dashboard) instead of allCarts.length
             document.getElementById('total-carts').textContent = totalCartsFromCache;
