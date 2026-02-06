@@ -1365,6 +1365,104 @@
             return available;
         }
 
+        // Smart truck options for UI (single trucks with availability rules)
+        function getSmartTruckOptions(routeKey) {
+            const baseTrucks = [
+                { id: 'truck1', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1' },
+                { id: 'truck2', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2' },
+                { id: 'neighbor', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck' },
+                { id: 'external', name: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck' }
+            ];
+
+            const route1Trucks = parseTruckAssignment(routeTruckAssignments.rijnsburg || '');
+            const route2Trucks = parseTruckAssignment(routeTruckAssignments.aalsmeer || '');
+
+            const blocked = new Set();
+            let reason = null;
+            if (routeKey === 'aalsmeer') {
+                route1Trucks.forEach(id => blocked.add(id));
+                reason = 'Gebruikt door Route 1 (Rijnsburg)';
+            } else if (routeKey === 'naaldwijk') {
+                route2Trucks.forEach(id => blocked.add(id));
+                reason = 'Gebruikt door Route 2 (Aalsmeer)';
+            }
+
+            return baseTrucks.map(truck => ({
+                ...truck,
+                available: !blocked.has(truck.id),
+                reason: blocked.has(truck.id) ? reason : null
+            }));
+        }
+
+        function getSelectedTruckIds(routeKey) {
+            return parseTruckAssignment(routeTruckAssignments[routeKey] || '');
+        }
+
+        function renderSmartTruckSelector(routeKey) {
+            const availableTrucks = getSmartTruckOptions(routeKey);
+            const selectedTrucks = getSelectedTruckIds(routeKey);
+
+            return `
+                <div class="truck-selector-container">
+                    <label style="display:block; font-weight: 600; margin-bottom: 6px;">
+                        ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruck', 'Select Truck:') : 'Select Truck:'}
+                    </label>
+                    <div class="truck-options">
+                        ${availableTrucks.map(truck => `
+                            <label class="truck-option ${!truck.available ? 'disabled' : ''}">
+                                <input
+                                    type="checkbox"
+                                    value="${truck.id}"
+                                    ${selectedTrucks.includes(truck.id) ? 'checked' : ''}
+                                    ${!truck.available ? 'disabled' : ''}
+                                    onchange="handleSmartTruckChange('${routeKey}', this)"
+                                />
+                                <span class="truck-name">${truck.name}</span>
+                                ${!truck.available ? `<span class="truck-unavailable">(${truck.reason})</span>` : ''}
+                            </label>
+                        `).join('')}
+                    </div>
+                    <div class="selected-trucks-summary">
+                        <strong>Geselecteerd:</strong>
+                        ${selectedTrucks.length > 0
+                            ? selectedTrucks.map(id => availableTrucks.find(t => t.id === id)?.name || id).join(' + ')
+                            : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.noTruckSelected', 'Geen vrachtwagens geselecteerd') : 'Geen vrachtwagens geselecteerd')
+                        }
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleSmartTruckChange(routeKey, checkbox) {
+            let selectedTrucks = getSelectedTruckIds(routeKey);
+            const truckId = checkbox.value;
+
+            if (checkbox.checked) {
+                if (!selectedTrucks.includes(truckId)) {
+                    selectedTrucks.push(truckId);
+                }
+            } else {
+                selectedTrucks = selectedTrucks.filter(id => id !== truckId);
+            }
+
+            const options = getSmartTruckOptions(routeKey);
+            const unavailable = selectedTrucks.find(id => {
+                const opt = options.find(t => t.id === id);
+                return !opt || !opt.available;
+            });
+
+            if (unavailable) {
+                checkbox.checked = false;
+                alert(typeof i18n !== 'undefined'
+                    ? i18n.t('cartLoading.truckUnavailable', 'This truck is unavailable due to time conflict with another route.')
+                    : 'This truck is unavailable due to time conflict with another route.');
+                return;
+            }
+
+            const selection = selectedTrucks.length > 0 ? selectedTrucks.join('+') : '';
+            updateRouteTruck(routeKey, selection);
+        }
+
         function updateTruckVisualization(result) {
             const container = document.getElementById('truck-container');
             container.innerHTML = '';
@@ -1458,35 +1556,10 @@
                             </div>
                             ` : ''}
                             
-                            <div class="truck-selector">
-                                <label for="truck-select-${route.key}">
-                                    ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruck', 'Select Truck:') : 'Select Truck:'}
-                                </label>
-                                <select id="truck-select-${route.key}" onchange="updateRouteTruck('${route.key}', this.value)">
-                                    ${(() => {
-                                        const selectTruckText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruckOption', '-- Select Truck --') : '-- Select Truck --';
-                                        let options = [`<option value="" selected disabled>${selectTruckText}</option>`];
-                                        const availableOptions = getAvailableTruckOptions(route.key);
-                                        availableOptions.forEach(option => {
-                                            const disabled = !option.available ? 'disabled' : '';
-                                            const title = option.reason ? ` title="${option.reason}"` : '';
-                                            options.push(`<option value="${option.id}" ${disabled}${title}>
-                                                ${option.name}${!option.available ? ' (Unavailable)' : ''}
-                                            </option>`);
-                                        });
-                                        return options.join('');
-                                    })()}
-                                </select>
-                            </div>
+                            ${renderSmartTruckSelector(route.key)}
                         </div>
                     `;
                     container.appendChild(routeCard);
-                    
-                    // Restore saved truck selection in dropdown
-                    const selector = document.getElementById(`truck-select-${route.key}`);
-                    if (selector && routeTruckAssignments[route.key]) {
-                        selector.value = routeTruckAssignments[route.key];
-                    }
                     
                     return; // Skip showing carts/visualization until truck is selected
                 }
@@ -1532,11 +1605,6 @@
                 const routeCard = createRouteCard(route, updatedRouteInfo, routeCarts, routeCapacity, assignedTrucksStr, assignedTruckName, assignedTruckIds);
                 container.appendChild(routeCard);
                 
-                // Restore saved truck selection in dropdown (if not already selected)
-                const selector = document.getElementById(`truck-selector-${route.key}`);
-                if (selector && routeTruckAssignments[route.key] && selector.value !== routeTruckAssignments[route.key]) {
-                    selector.value = routeTruckAssignments[route.key];
-                }
             });
         }
         
@@ -1614,9 +1682,6 @@
                 }
             }
             
-            // Truck selector
-            const truckSelectorId = `truck-selector-${route.key}`;
-            
             card.innerHTML = `
                 <div class="truck-header">
                     <div>
@@ -1635,46 +1700,12 @@
                     </div>
                 </div>
                 
-                <div class="truck-selector">
-                    <label for="${truckSelectorId}">
-                        ${typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruck', 'Select Truck:') : 'Select Truck:'}
-                    </label>
-                    <select id="${truckSelectorId}" onchange="updateRouteTruck('${route.key}', this.value)">
-                        ${(() => {
-                            let options = [];
-                            // If no truck selected, show "-- Select Truck --" as first option
-                            if (!assignedTrucksStr) {
-                                const selectTruckText = typeof i18n !== 'undefined' ? i18n.t('cartLoading.selectTruckOption', '-- Select Truck --') : '-- Select Truck --';
-                                options.push(`<option value="" selected disabled>${selectTruckText}</option>`);
-                            }
-                            
-                            const availableOptions = getAvailableTruckOptions(route.key);
-                            availableOptions.forEach(option => {
-                                const selected = assignedTrucksStr === option.id ? 'selected' : '';
-                                const disabled = !option.available ? 'disabled' : '';
-                                const title = option.reason ? ` title="${option.reason}"` : '';
-                                options.push(`<option value="${option.id}" ${selected} ${disabled}${title}>
-                                    ${option.name}${!option.available ? ' (Unavailable)' : ''}
-                                </option>`);
-                            });
-                            return options.join('');
-                        })()}
-                    </select>
-                    ${(() => {
-                        const availableOptions = getAvailableTruckOptions(route.key);
-                        const unavailableOptions = availableOptions.filter(t => !t.available);
-                        if (unavailableOptions.length > 0) {
-                            return `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
-                                ${unavailableOptions.map(t => t.reason).join(', ')}
-                            </div>`;
-                        }
-                        return '';
-                    })()}
-                    ${routeCapacity.truckCount > 1 ? `
-                    <div style="font-size: 0.85rem; color: var(--success); margin-top: 8px; font-weight: 600;">
-                        ✓ Using ${routeCapacity.truckCount} trucks (${routeCapacity.perTruck} carts each)
-                    </div>
-                    ` : ''}
+                ${renderSmartTruckSelector(route.key)}
+                ${routeCapacity.truckCount > 1 ? `
+                <div style="font-size: 0.85rem; color: var(--success); margin-top: 8px; font-weight: 600;">
+                    ✓ Using ${routeCapacity.truckCount} trucks (${routeCapacity.perTruck} carts each)
+                </div>
+                ` : ''}
                     
                     ${!routeCapacity.fits && routeCapacity.overflow > 0 ? `
                     <div style="margin-top: 15px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
@@ -1805,6 +1836,8 @@
                 return;
             }
             
+            const previousSelection = routeTruckAssignments[routeKey] || null;
+            
             // Handle empty selection
             if (!truckSelection || truckSelection === '') {
                 routeTruckAssignments[routeKey] = null;
@@ -1827,18 +1860,30 @@
                 return;
             }
             
-            // Check if truck combination is available
-            const availableOptions = getAvailableTruckOptions(routeKey);
-            const selectedOption = availableOptions.find(t => t.id === truckSelection);
+            // Check each selected truck for availability
+            const selectedIds = parseTruckAssignment(truckSelection);
+            const availableOptions = getSmartTruckOptions(routeKey);
+            const unavailable = selectedIds.find(id => {
+                const option = availableOptions.find(t => t.id === id);
+                return !option || !option.available;
+            });
             
-            if (!selectedOption || !selectedOption.available) {
+            if (unavailable) {
                 alert(typeof i18n !== 'undefined' 
                     ? i18n.t('cartLoading.truckUnavailable', 'This truck combination is unavailable due to time conflict with another route.')
                     : 'This truck combination is unavailable due to time conflict with another route.');
-                // Reset to previous selection
-                const selector = document.getElementById(`truck-selector-${routeKey}`);
-                if (selector) {
-                    selector.value = routeTruckAssignments[routeKey] || '';
+                routeTruckAssignments[routeKey] = previousSelection;
+                // Refresh UI back to previous state
+                if (cartLoadingOptimizer && orderManager && orderManager.orders && orderManager.orders.length > 0) {
+                    try {
+                        const result = cartLoadingOptimizer.optimizeAssignment();
+                        if (result.routeAnalysis) {
+                            localStorage.setItem('zuidplas_route_analysis', JSON.stringify(result.routeAnalysis));
+                        }
+                        updateTruckVisualization(result);
+                    } catch (error) {
+                        console.error('Error updating visualization:', error);
+                    }
                 }
                 return;
             }
@@ -1883,7 +1928,7 @@
             }
             
             // Check if truck is available (not conflicting)
-            const availableOptions = getAvailableTruckOptions(routeKey);
+            const availableOptions = getSmartTruckOptions(routeKey);
             const truckOption = availableOptions.find(t => t.id === newTruckId);
             
             if (!truckOption || !truckOption.available) {
@@ -1895,46 +1940,7 @@
             
             // Add new truck to assignment
             const newAssignment = currentTrucks.concat([newTruckId]).join('+');
-            routeTruckAssignments[routeKey] = newAssignment;
-            
-            // Save to localStorage for Truck Management page
-            localStorage.setItem('zuidplas_route_truck_assignments', JSON.stringify(routeTruckAssignments));
-            
-            // Also save route analysis
-            if (cartLoadingOptimizer && orderManager && orderManager.orders && orderManager.orders.length > 0) {
-                const result = cartLoadingOptimizer.optimizeAssignment();
-                if (result.routeAnalysis) {
-                    localStorage.setItem('zuidplas_route_analysis', JSON.stringify(result.routeAnalysis));
-                }
-            }
-            
-            // Update dropdown to show new combination
-            const selector = document.getElementById(`truck-selector-${routeKey}`);
-            if (selector) {
-                // Create custom option if it doesn't exist
-                const optionExists = Array.from(selector.options).some(opt => opt.value === newAssignment);
-                if (!optionExists) {
-                    const option = document.createElement('option');
-                    option.value = newAssignment;
-                    const truckNames = {
-                        truck1: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck1', 'Truck 1') : 'Truck 1',
-                        truck2: typeof i18n !== 'undefined' ? i18n.t('cartLoading.truck2', 'Truck 2') : 'Truck 2',
-                        neighbor: typeof i18n !== 'undefined' ? i18n.t('cartLoading.neighborTruck', 'Neighbor\'s Truck') : 'Neighbor\'s Truck',
-                        external: typeof i18n !== 'undefined' ? i18n.t('cartLoading.externalTruck', 'External Truck') : 'External Truck'
-                    };
-                    const allTruckIds = parseTruckAssignment(newAssignment);
-                    option.textContent = allTruckIds.map(id => truckNames[id] || id).join(' + ');
-                    selector.appendChild(option);
-                }
-                selector.value = newAssignment;
-            }
-            
-            // Re-run optimization with new truck assignment
-            if (cartLoadingOptimizer && orderManager && orderManager.orders && orderManager.orders.length > 0) {
-                const result = cartLoadingOptimizer.optimizeAssignment();
-                // Update visualization (will refresh all route cards with updated availability)
-                updateTruckVisualization(result);
-            }
+            updateRouteTruck(routeKey, newAssignment);
         }
         
         // Make it global
