@@ -106,6 +106,8 @@ const CLIENT_ROUTE_MAPPING = {
     'Flowerportal',
     'FSF',
     'Flamingo Flowers',
+    'Liga Flor',
+    'Liga Flor B.V',
     'Goldman',
     'H. Star',
     'MD Agro Import',
@@ -340,6 +342,18 @@ function isKnownClient(customerName) {
   
   // Superflora - Danish cart client in Naaldwijk
   if (nameLower.includes('superflora')) {
+    const periodHint = getPeriodHintFromName(nameLower);
+    return makeRouteResult('naaldwijk', periodHint);
+  }
+
+  // Goldman - Naaldwijk (avoid L&M false positives like "Goldman LM Sro")
+  if (nameLower.includes('goldman')) {
+    const periodHint = getPeriodHintFromName(nameLower);
+    return makeRouteResult('naaldwijk', periodHint);
+  }
+
+  // H. Star - resolve Naaldwijk explicitly when location is present
+  if ((nameLower.includes('h. star') || nameLower.includes('h star')) && nameLower.includes('naaldwijk')) {
     const periodHint = getPeriodHintFromName(nameLower);
     return makeRouteResult('naaldwijk', periodHint);
   }
