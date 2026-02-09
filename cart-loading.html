@@ -2737,6 +2737,14 @@
                     ? `${routeKey}_morning`
                     : routeKey;
                 const carts = cartsByRoute[cartsKey] || [];
+                const routeClientSignatures = {};
+                carts.forEach(cart => {
+                    const cartClients = Array.isArray(cart.clients) && cart.clients.length > 0
+                        ? cart.clients
+                        : [cart.client || 'Unknown'];
+                    const signature = [...new Set(cartClients.map(c => String(c)))].sort().join('|');
+                    routeClientSignatures[signature] = (routeClientSignatures[signature] || 0) + 1;
+                });
                 
                 // Get the actual selected truck assignment for this route
                 const assignedTrucksStr = routeTruckAssignments[cartsKey] || null;
@@ -2764,9 +2772,14 @@
                             const cartTypeText = cart.type === 'danish' 
                                 ? (typeof i18n !== 'undefined' ? i18n.t('cartLoading.danishCart', 'Danish Cart') : 'Danish Cart')
                                 : (typeof i18n !== 'undefined' ? i18n.t('cartLoading.standardCart', 'Standard Cart') : 'Standard Cart');
-                            const cartClients = Array.isArray(cart.clients) && cart.clients.length > 0
+                            const cartClientsRaw = Array.isArray(cart.clients) && cart.clients.length > 0
                                 ? cart.clients
                                 : [cart.client || 'Unknown'];
+                            const signature = [...new Set(cartClientsRaw.map(c => String(c)))].sort().join('|');
+                            const repeatedMix = cartClientsRaw.length > 1 && routeClientSignatures[signature] > 1;
+                            const cartClients = repeatedMix
+                                ? [cart.client || cartClientsRaw[0] || 'Unknown']
+                                : cartClientsRaw;
                             const clientBadges = cartClients.map(client => {
                                 const color = getColorForClient(client);
                                 const initial = client ? client.charAt(0).toUpperCase() : '?';
@@ -2782,6 +2795,7 @@
                                         <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
                                             ${cartTypeText}
                                         </div>
+                                        ${repeatedMix ? `<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;">Mixed route load (see layers)</div>` : ''}
                                         <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px;">
                                             ${clientBadges}
                                         </div>
