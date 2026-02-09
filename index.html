@@ -1696,6 +1696,11 @@
                 } else {
                     carts = cartData.byRoute[routeName] || cartData.byRoute[route] || 0;
                 }
+
+                // If no orders/customers for this route+period, force carts to 0 to avoid stale cache.
+                if (uniqueOrdersCount === 0) {
+                    carts = 0;
+                }
                 
                 // CRITICAL: If we have orders but no carts, or vice versa, recalculate for this route
                 if (routeOrderrows.length > 0 && carts === 0) {
