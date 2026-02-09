@@ -384,6 +384,12 @@ function isKnownClient(customerName) {
     return makeRouteResult('naaldwijk', periodHint);
   }
 
+  // Astrafund / Astra Fund Holland - Naaldwijk
+  if (nameLower.includes('astrafund') || nameLower.includes('astra fund')) {
+    const periodHint = getPeriodHintFromName(nameLower);
+    return makeRouteResult('naaldwijk', periodHint);
+  }
+
   // Goldman - Naaldwijk (avoid L&M false positives like "Goldman LM Sro")
   if (nameLower.includes('goldman')) {
     const periodHint = getPeriodHintFromName(nameLower);
