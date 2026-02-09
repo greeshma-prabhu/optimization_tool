@@ -2352,9 +2352,44 @@
                 const uniqueCustomers = [...new Set(orders.map(o =>
                     o.customer_name || o.order?.customer_name || 'Unknown'
                 ))].filter(Boolean).sort();
+
+                const categories = {
+                    international: [],
+                    possibleMatches: [],
+                    genuine: []
+                };
+                uniqueCustomers.forEach(name => {
+                    const nameLower = String(name).toLowerCase();
+                    if (nameLower.includes('klia') ||
+                        nameLower.includes('florplant') ||
+                        nameLower.includes('moscow') ||
+                        nameLower.includes('gmbh') ||
+                        nameLower.includes('helis')) {
+                        categories.international.push(name);
+                    } else if (nameLower.includes('duyn') ||
+                               nameLower.includes('zuijlen') ||
+                               nameLower.includes('maat') ||
+                               nameLower.includes('karelz')) {
+                        categories.possibleMatches.push(name);
+                    } else {
+                        categories.genuine.push(name);
+                    }
+                });
                 const matchedCount = period && cartResult?.[period]?.matchedOrdersCount
                     ? cartResult[period].matchedOrdersCount
                     : (cartResult?.matchedOrdersCount || 0);
+                const renderCategory = (title, hint, items) => {
+                    if (!items || items.length === 0) return '';
+                    return `
+                        <div style="margin-top: 12px; padding: 10px; background: #fff8e1; border-radius: 6px;">
+                            <h4 style="margin: 0 0 6px 0; color: #856404;">${title} (${items.length})</h4>
+                            ${hint ? `<p style="margin: 0 0 6px 0; font-size: 12px; color: #666;">${hint}</p>` : ''}
+                            <div style="font-size: 13px; color: #333; line-height: 1.4;">
+                                ${items.map(c => `<div>${c}</div>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                };
                 return `
                     <div class="card" style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px; margin-top: 12px;">
                         <h3 style="margin-top: 0; color: #856404;">⚠️ DUMP BASKET - ${label} Unmatched Orders</h3>
@@ -2367,6 +2402,15 @@
                             <strong style="color: #856404;">Unique Unmatched Customers: ${uniqueCustomers.length}</strong>
                             ${cartResult ? `<br><small style="color: #856404;">Matched Orders (processed): ${matchedCount}</small>` : ''}
                         </div>
+                        ${renderCategory('🌍 International Orders',
+                            'These appear to be export customers (Czech/Russian/German).',
+                            categories.international)}
+                        ${renderCategory('🔍 Possible Name Variations',
+                            'These might match existing Excel clients with a different spelling.',
+                            categories.possibleMatches)}
+                        ${renderCategory('➕ New Customers',
+                            'These likely need to be added to the Excel sheet.',
+                            categories.genuine)}
                         <button onclick="viewUnmatchedOrdersDetail('${period}')" 
                                 style="background: #ffc107; color: #856404; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;">
                             📋 View Unmatched Orders List

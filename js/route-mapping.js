@@ -11,6 +11,7 @@ const CLIENT_ROUTE_MAPPING = {
   'rijnsburg_morning': [
     'A. Heemskerk',
     'Aad van Duijn',
+    'Bloemenhandel Aad v Duyn.',
     'Albert Noort',
     'Bohemen',
     'C van Klaveren',
@@ -22,19 +23,23 @@ const CLIENT_ROUTE_MAPPING = {
     'Hoek groothandel',
     'Hollandirect',
     'Kariflex',
+    'KarelZ Bloemen BV (vh Karel Zuidgeest Bloemen)',
     'kooter',
     'L&M',
     'L&M Rijnsburg',  // ADD: API variation
+    'L. Maat & Zn. Bl. exp. BV',
     'Maat & Zoon',
     'Nagel',
     'Nic den Heijer',
     'Jason Walters',
     'Retail Flower',
     'Sorisso Verde',
+    'Sorriso Verde BV',
     'Star T.',
     'Star v/d Gugten',
     'V/D PLAS',
     'V&E Export',
+    'V & E Bloemenexport BV',
     'Vianen',
     'St. Gabriel',
     'St.Gabriel'  // ADD: without space variation
@@ -73,6 +78,7 @@ const CLIENT_ROUTE_MAPPING = {
     'PS Flowers',
     'Roelofs',
     'salaba/barile',
+    'Salaba webshop',
     'Slikweid',
     'Spaargaren',
     'Transfleur',
@@ -123,6 +129,7 @@ const CLIENT_ROUTE_MAPPING = {
     'West Flora Export',
     'What If',
     'Zeester',
+    'G.J. v. Zuijlen Bl.exp BV',
     'Zuylen',
     'Denen',
     'Bosjes',
@@ -208,10 +215,25 @@ const CLIENT_ROUTE_MAPPING = {
     'Bosjes Overig',
     'Klok Dozen',
     'Klok Bosjes'
+  ],
+
+  // ========================================
+  // INTERNATIONAL ROUTE (export orders)
+  // ========================================
+  'international': [
+    'KLIA BRNO',
+    'KLIA PRAHA',
+    'KLIA BOHUSLAVICE',
+    'KLIA OSTRAVA',
+    'Florplant BRNO',
+    'Florplant OSTRAVA',
+    'Helis (CZ Helis)',
+    '7Flowers (Moscow)',
+    'Blumen Risse GmbH & Co.KG*'
   ]
 };
 
-// TOTAL: 105 clients across 3 routes (27 + 44 + 34)
+// TOTAL: 105 clients across 3 morning routes (27 + 44 + 34)
 
 // Danish cart clients (these use special larger carts)
 const DANISH_CART_CLIENTS = [
@@ -235,6 +257,7 @@ const ROUTE_DEPARTURE_TIMES = {
   'rijnsburg_evening': '17:00',
   'aalsmeer_evening': '18:00',
   'naaldwijk_evening': '19:00',
+  'international': 'Various / Export',
   'late_delivery': 'End middag / avond'
 };
 
@@ -272,6 +295,18 @@ function normalizeName(name) {
     .replace(/\([^)]*\)/g, ' ')  // Remove parentheses content (e.g., "(MINI)", "(GERBERA)")
     .replace(/\[[^\]]*\]/g, ' ')  // Remove bracket content
     .replace(/\{[^\}]*\}/g, ' ');  // Remove curly brace content
+
+  // Step 3b: Normalize common abbreviations and business terms
+  normalized = normalized
+    .replace(/\bbloemenhandel\b/gi, ' ')
+    .replace(/\bbloemenexp\.?\b/gi, ' ')
+    .replace(/\bbloemen\s+en\s+planten\b/gi, ' ')
+    .replace(/\bbl\.?\s*exp\b/gi, ' ')
+    .replace(/\bvd\b/gi, ' van der ')
+    .replace(/\bvh\b/gi, ' voorheen ')
+    .replace(/\bzn\.?\b/gi, ' zonen ')
+    .replace(/\b&\s*co\.?\b/gi, ' ')
+    .replace(/\bgmbh\b/gi, ' ');
   
   // Step 4: Remove legal suffixes (at end of string)
   normalized = normalized
@@ -583,7 +618,8 @@ function separateOrdersByClientMatch(orders) {
     CLIENT_ROUTE_MAPPING.naaldwijk_morning.length +
     CLIENT_ROUTE_MAPPING.rijnsburg_evening.length +
     CLIENT_ROUTE_MAPPING.aalsmeer_evening.length +
-    CLIENT_ROUTE_MAPPING.naaldwijk_evening.length;
+    CLIENT_ROUTE_MAPPING.naaldwijk_evening.length +
+    (CLIENT_ROUTE_MAPPING.international ? CLIENT_ROUTE_MAPPING.international.length : 0);
   console.log(`📊 Total clients in Excel: ${totalClientCount}`);
   
   // Optional logging for unmatched customers (for debugging)
@@ -689,13 +725,17 @@ if (typeof window !== 'undefined') {
   console.log('   Rijnsburg (evening):', CLIENT_ROUTE_MAPPING.rijnsburg_evening.length, 'clients');
   console.log('   Aalsmeer (evening):', CLIENT_ROUTE_MAPPING.aalsmeer_evening.length, 'clients');
   console.log('   Naaldwijk (evening):', CLIENT_ROUTE_MAPPING.naaldwijk_evening.length, 'clients');
+  if (CLIENT_ROUTE_MAPPING.international) {
+    console.log('   International:', CLIENT_ROUTE_MAPPING.international.length, 'clients');
+  }
   console.log('   TOTAL:',
     CLIENT_ROUTE_MAPPING.rijnsburg_morning.length +
     CLIENT_ROUTE_MAPPING.aalsmeer_morning.length +
     CLIENT_ROUTE_MAPPING.naaldwijk_morning.length +
     CLIENT_ROUTE_MAPPING.rijnsburg_evening.length +
     CLIENT_ROUTE_MAPPING.aalsmeer_evening.length +
-    CLIENT_ROUTE_MAPPING.naaldwijk_evening.length,
+    CLIENT_ROUTE_MAPPING.naaldwijk_evening.length +
+    (CLIENT_ROUTE_MAPPING.international ? CLIENT_ROUTE_MAPPING.international.length : 0),
     'Excel-mapped clients (ONLY these are processed)');
   console.log('   Danish cart clients:', DANISH_CART_CLIENTS.length);
   console.log('   ⚠️ CRITICAL: Only Excel-mapped clients are processed!');
