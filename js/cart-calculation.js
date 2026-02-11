@@ -191,6 +191,48 @@ function calculateCarts(orders) {
     const morningResult = calculateCartsForPeriod(morningOrders, 'morning');
     const eveningResult = calculateCartsForPeriod(eveningOrders, 'evening');
 
+    // VALIDATION: Check for routes with 0 orders (potential issue)
+    const validateEveningRoutes = (result) => {
+        const expectedRoutes = ['Aalsmeer', 'Naaldwijk', 'Rijnsburg'];
+        const issues = [];
+        
+        expectedRoutes.forEach(routeName => {
+            const cartCount = result.byRoute?.[routeName] || 0;
+            const orderCount = result.breakdown?.find(b => b.route === routeName)?.orders || 0;
+            
+            if (cartCount === 0 && orderCount === 0) {
+                issues.push({
+                    route: routeName,
+                    period: result.period,
+                    issue: 'ZERO_ORDERS',
+                    message: `${routeName} ${result.period} has 0 orders - check customer matching`
+                });
+            }
+        });
+        
+        if (issues.length > 0) {
+            console.warn('⚠️ ROUTE VALIDATION WARNINGS:');
+            issues.forEach(issue => {
+                console.warn(`   ${issue.route} ${issue.period}: ${issue.message}`);
+            });
+            console.warn('   → Run diagnoseEveningRoutes() in console for detailed analysis');
+        }
+        
+        return issues;
+    };
+    
+    // Validate both periods
+    const morningIssues = validateEveningRoutes(morningResult);
+    const eveningIssues = validateEveningRoutes(eveningResult);
+    
+    // Log critical issues
+    if (eveningIssues.length > 0) {
+        console.error('❌ EVENING ROUTES WITH ZERO ORDERS:');
+        eveningIssues.forEach(issue => {
+            console.error(`   ${issue.route} Evening: ${issue.message}`);
+        });
+    }
+
     const combinedByRoute = {
         Aalsmeer: (morningResult.byRoute?.Aalsmeer || 0) + (eveningResult.byRoute?.Aalsmeer || 0),
         Naaldwijk: (morningResult.byRoute?.Naaldwijk || 0) + (eveningResult.byRoute?.Naaldwijk || 0),

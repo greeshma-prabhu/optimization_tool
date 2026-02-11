@@ -550,24 +550,58 @@ function getRouteForCustomer(customerName) {
 }
 
 function inferPeriodFromOrder(order) {
+  // Check multiple time sources
   const timeCandidates = [
     order.delivery_time,
     order.order?.delivery_time,
     order.delivery_date,
     order.order?.delivery_date,
-    order.deliveryDate
+    order.deliveryDate,
+    order.time,
+    order.order?.time
   ].filter(Boolean);
 
   for (const candidate of timeCandidates) {
-    const match = String(candidate).match(/(\d{1,2}):(\d{2})/);
-    if (match) {
-      const hour = parseInt(match[1], 10);
+    const timeStr = String(candidate);
+    
+    // Try ISO format: "2026-02-09T18:00:00" or "2026-02-09T18:00:00.000Z"
+    const isoMatch = timeStr.match(/T(\d{1,2}):(\d{2})/);
+    if (isoMatch) {
+      const hour = parseInt(isoMatch[1], 10);
+      if (!Number.isNaN(hour)) {
+        // Evening routes: 15:00 (3 PM) and later
+        return hour >= 15 ? 'evening' : 'morning';
+      }
+    }
+    
+    // Try simple format: "18:00" or "18:00:00"
+    const simpleMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+    if (simpleMatch) {
+      const hour = parseInt(simpleMatch[1], 10);
       if (!Number.isNaN(hour)) {
         return hour >= 15 ? 'evening' : 'morning';
       }
     }
   }
-
+  
+  // Fallback: Check customer name for hints (avond, zaterdag, etc.)
+  const customerName = (order.customer_name || order.customer || '').toLowerCase();
+  if (customerName.includes('avond') || 
+      customerName.includes('zaterdag') || 
+      customerName.includes('evening') ||
+      customerName.includes('afternoon')) {
+    return 'evening';
+  }
+  
+  // Check if customer is in evening route mapping
+  if (window.RouteMapping && window.RouteMapping.isKnownClient) {
+    const matchResult = window.RouteMapping.isKnownClient(customerName);
+    if (matchResult && matchResult.matched && matchResult.period === 'evening') {
+      return 'evening';
+    }
+  }
+  
+  // Default to morning (conservative - better to miss evening than assign wrong)
   return 'morning';
 }
 
