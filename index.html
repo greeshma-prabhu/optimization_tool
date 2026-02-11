@@ -674,20 +674,28 @@
                     ? datePicker.value 
                     : new Date().toISOString().split('T')[0];
                 
-                // Show format selection
-                const format = confirm('Export to Excel format? (Click OK for Excel, Cancel for CSV)') 
+                // Default to CSV (more reliable, no external dependencies)
+                // User can choose Excel if they want
+                const format = confirm('Export format:\n\nOK = Excel (requires internet)\nCancel = CSV (works offline, recommended)') 
                     ? 'excel' 
                     : 'csv';
                 
                 if (format === 'excel') {
-                    await exporter.exportToExcel(selectedDate);
+                    try {
+                        await exporter.exportToExcel(selectedDate);
+                    } catch (excelError) {
+                        console.warn('Excel export failed, falling back to CSV:', excelError);
+                        // Automatically fall back to CSV
+                        alert('Excel export unavailable. Exporting as CSV instead...');
+                        exporter.exportToCSV(selectedDate);
+                    }
                 } else {
                     exporter.exportToCSV(selectedDate);
                 }
                 
             } catch (error) {
                 console.error('Export failed:', error);
-                alert(`Export failed: ${error.message}`);
+                alert(`Export failed: ${error.message}\n\nTry refreshing the page and syncing data first.`);
             }
         };
         

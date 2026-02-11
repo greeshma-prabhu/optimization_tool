@@ -18,15 +18,48 @@ class DataExporter {
     async loadSheetJS() {
         if (this.SheetJS) return this.SheetJS;
         
+        // Check if already loaded
+        if (window.XLSX) {
+            this.SheetJS = window.XLSX;
+            return this.SheetJS;
+        }
+        
         return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.full.min.js';
-            script.onload = () => {
-                this.SheetJS = window.XLSX;
-                resolve(this.SheetJS);
+            // Try multiple CDN sources
+            const cdnUrls = [
+                'https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.full.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.1/xlsx.full.min.js',
+                'https://unpkg.com/xlsx@0.20.1/dist/xlsx.full.min.js'
+            ];
+            
+            let currentIndex = 0;
+            const tryLoad = () => {
+                if (currentIndex >= cdnUrls.length) {
+                    reject(new Error('Failed to load SheetJS from all CDN sources. Using CSV export instead.'));
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = cdnUrls[currentIndex];
+                script.onload = () => {
+                    if (window.XLSX) {
+                        this.SheetJS = window.XLSX;
+                        console.log(`✅ SheetJS loaded from: ${cdnUrls[currentIndex]}`);
+                        resolve(this.SheetJS);
+                    } else {
+                        currentIndex++;
+                        tryLoad();
+                    }
+                };
+                script.onerror = () => {
+                    currentIndex++;
+                    tryLoad();
+                };
+                script.timeout = 10000; // 10 second timeout
+                document.head.appendChild(script);
             };
-            script.onerror = () => reject(new Error('Failed to load SheetJS'));
-            document.head.appendChild(script);
+            
+            tryLoad();
         });
     }
 
@@ -222,11 +255,19 @@ class DataExporter {
      */
     async exportToExcel(date = null, filename = null) {
         try {
-            console.log('📊 Starting data export...');
+            console.log('📊 Starting Excel export...');
             
-            // Load SheetJS
-            await this.loadSheetJS();
-            const XLSX = this.SheetJS;
+            // Try to load SheetJS, but fall back to CSV if it fails
+            let XLSX = null;
+            try {
+                await this.loadSheetJS();
+                XLSX = this.SheetJS;
+            } catch (error) {
+                console.warn('⚠️ Excel export not available, falling back to CSV:', error.message);
+                // Fall back to CSV
+                this.exportToCSV(date, filename);
+                return;
+            }
             
             // Get orders
             const orders = this.getOrdersFromGlobalState();
