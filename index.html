@@ -712,6 +712,64 @@
                 console.log('✅ findMissingOrders() is available inline. Run: findMissingOrders()');
             }, 1000);
         });
+        
+        // Inline compareExcelVsApi function
+        window.compareExcelVsApi = function() {
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log('📊 EXCEL VS API COMPARISON');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            
+            // Excel totals from your calculation
+            const excelTotals = {
+                morning: { rijnsburg: 255, aalsmeer: 439, naaldwijk: 64, total: 758 },
+                evening: { rijnsburg: 60, aalsmeer: 485, naaldwijk: 135, total: 680 },
+                grandTotal: 1438
+            };
+            
+            console.log(`\n📋 Excel Totals: ${excelTotals.grandTotal} orders`);
+            console.log(`   Morning: ${excelTotals.morning.total}, Evening: ${excelTotals.evening.total}`);
+            
+            // Get API data
+            let allOrders = [];
+            if (window.appState && window.appState.orders) {
+                allOrders = window.appState.orders;
+            } else {
+                const stored = localStorage.getItem('zuidplas_orders');
+                if (stored) allOrders = JSON.parse(stored);
+            }
+            
+            const uniqueOrderIds = new Set();
+            allOrders.forEach(order => {
+                const id = order.order_id || order.order?.id || order.id;
+                if (id) uniqueOrderIds.add(String(id));
+            });
+            
+            console.log(`\n📊 API Data:`);
+            console.log(`   Orderrows: ${allOrders.length}`);
+            console.log(`   Unique Orders: ${uniqueOrderIds.size}`);
+            
+            const difference = excelTotals.grandTotal - uniqueOrderIds.size;
+            const orderrowsPerUnique = allOrders.length / uniqueOrderIds.size;
+            
+            console.log(`\n📉 Difference: ${Math.abs(difference)} orders`);
+            console.log(`\n💡 Analysis:`);
+            console.log(`   Excel: ${excelTotals.grandTotal} (from Totaal section)`);
+            console.log(`   API Unique: ${uniqueOrderIds.size}`);
+            console.log(`   API Orderrows: ${allOrders.length}`);
+            console.log(`   Avg orderrows/order: ${orderrowsPerUnique.toFixed(2)}`);
+            
+            if (Math.abs(excelTotals.grandTotal - allOrders.length) < 100) {
+                console.log(`\n✅ Excel numbers likely = ORDERROWS (not unique orders)`);
+                console.log(`   Excel ${excelTotals.grandTotal} ≈ API ${allOrders.length} orderrows`);
+            } else {
+                console.log(`\n⚠️  Big difference! Excel might be counting something else:`);
+                console.log(`   - Crates/boxes instead of orders?`);
+                console.log(`   - Different date?`);
+                console.log(`   - Missing API data?`);
+            }
+            
+            console.log('═══════════════════════════════════════════════════════════════════');
+        };
     </script>
     <script>
         // Update last refreshed time
