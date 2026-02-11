@@ -204,6 +204,11 @@ const CLIENT_ROUTE_MAPPING = {
     'H. Star',
     'H.P Nieuwkerk & Zn.',
     'Hoekhuis',
+    'Hoekhuis Naaldwijk Houter',      // ADD: API variation (31 orders!)
+    'Hoekhuis Naaldwijk Klondike',    // ADD: API variation
+    'Hoekhuis Naaldwijk Koolhaas',    // ADD: API variation
+    'Hoekhuis Naaldwijk Villa',       // ADD: API variation
+    'Hoekhuis Naaldwijk Zuidplas',    // ADD: API variation
     'Kontikiflor',
     'Leeuwenburg',
     'Premium',
@@ -211,6 +216,7 @@ const CLIENT_ROUTE_MAPPING = {
     'Vliet',
     'Goedegeburen',
     'Zalam',
+    'Zalam BV',                        // ADD: API variation
     'CON',
     'Superflora',
     'F.T.C. Bleiswijk',
