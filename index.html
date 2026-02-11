@@ -1130,8 +1130,8 @@
                     }
                     
                     // STORE IN GLOBAL STATE (handles localStorage automatically)
-                    console.log(`🔄 Saving ${ordersWithCarts.length} orders to global state...`);
-                    window.appState.setOrders(ordersWithCarts, selectedDate);
+                    console.log(`🔄 Saving ${orders.length} orders to global state...`);
+                    window.appState.setOrders(orders, selectedDate);
                     
                     // Update debug panel
                     setTimeout(() => {
@@ -1149,11 +1149,11 @@
                         // Get matched/unmatched counts from cart result if available
                         const cartResult = window.__zuidplas_cart_cache?.cartResult;
                         // Match Excel counting: use orderrows, not unique orders
-                        const matchedOrderrows = cartResult?.matchedOrders || ordersWithCarts.filter(o => {
+                        const matchedOrderrows = cartResult?.matchedOrders || orders.filter(o => {
                             const route = o.route || o.routeKey;
                             return route && route !== 'unmatched';
                         });
-                        const matchedOrderrowsCount = matchedOrderrows ? matchedOrderrows.length : ordersWithCarts.length;
+                        const matchedOrderrowsCount = matchedOrderrows ? matchedOrderrows.length : orders.length;
                         const unmatchedCount = cartResult?.unmatchedOrdersCount || 0;
                         
                         if (hasChanges) {
@@ -1164,7 +1164,7 @@
                         statusMsg.classList.add('show', 'success');
                     }
                     
-                    console.log('✅ Today\'s orders refreshed:', ordersWithCarts.length, hasChanges ? '(updated)' : '(no changes)');
+                    console.log('✅ Today\'s orders refreshed:', orders.length, hasChanges ? '(updated)' : '(no changes)');
                 } else {
                     console.log('ℹ️ No orders for today\'s planning window');
                     if (statusMsg) {
