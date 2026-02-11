@@ -758,14 +758,38 @@
             console.log(`   API Orderrows: ${allOrders.length}`);
             console.log(`   Avg orderrows/order: ${orderrowsPerUnique.toFixed(2)}`);
             
-            if (Math.abs(excelTotals.grandTotal - allOrders.length) < 100) {
-                console.log(`\n✅ Excel numbers likely = ORDERROWS (not unique orders)`);
+            const excelVsOrderrows = Math.abs(excelTotals.grandTotal - allOrders.length);
+            const excelVsUnique = Math.abs(excelTotals.grandTotal - uniqueOrderIds.size);
+            
+            console.log(`\n📊 Closest Match:`);
+            console.log(`   Excel vs API Orderrows: ${excelVsOrderrows} difference`);
+            console.log(`   Excel vs API Unique: ${excelVsUnique} difference`);
+            
+            if (excelVsOrderrows < excelVsUnique) {
+                console.log(`\n✅ CONCLUSION: Excel numbers = ORDERROWS (product lines)`);
                 console.log(`   Excel ${excelTotals.grandTotal} ≈ API ${allOrders.length} orderrows`);
+                console.log(`   Difference: ${excelVsOrderrows} orderrows`);
+                console.log(`\n   This means:`);
+                console.log(`   - Excel counts each product line separately`);
+                console.log(`   - API has ${allOrders.length} orderrows = ${uniqueOrderIds.size} unique orders`);
+                console.log(`   - Average: ${orderrowsPerUnique.toFixed(2)} orderrows per order`);
+                
+                if (excelVsOrderrows < 500) {
+                    console.log(`\n   ✅ Close match! Excel might be missing ${excelVsOrderrows} orderrows,`);
+                    console.log(`      or API might have ${excelVsOrderrows} extra orderrows.`);
+                } else {
+                    console.log(`\n   ⚠️  Still a significant difference (${excelVsOrderrows} orderrows)`);
+                    console.log(`      Possible reasons:`);
+                    console.log(`      - Different date in Excel vs API`);
+                    console.log(`      - Excel excludes some orderrows`);
+                    console.log(`      - API includes extra orderrows`);
+                }
             } else {
-                console.log(`\n⚠️  Big difference! Excel might be counting something else:`);
-                console.log(`   - Crates/boxes instead of orders?`);
-                console.log(`   - Different date?`);
-                console.log(`   - Missing API data?`);
+                console.log(`\n⚠️  Excel numbers don't match orderrows OR unique orders closely`);
+                console.log(`   Excel might be counting:`);
+                console.log(`   - Crates/boxes (not orders or orderrows)`);
+                console.log(`   - Different date range`);
+                console.log(`   - Filtered subset of data`);
             }
             
             console.log('═══════════════════════════════════════════════════════════════════');
