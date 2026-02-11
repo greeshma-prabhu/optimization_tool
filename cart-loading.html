@@ -957,8 +957,19 @@
                         const period = routeData.period || (routeData.routeKey && routeData.routeKey.includes('_evening') ? 'evening' : 'morning');
                         const routeKey = routeData.routeKey || `${route}_${period}`;
 
+                        // CRITICAL: Skip routes with 0 carts (no orders for this route)
+                        const totalCartsForRoute = routeCartCount[routeKey] || 0;
+                        if (totalCartsForRoute === 0) {
+                            console.log(`   ⏭️  Skipping ${routeKey}: 0 carts (no orders)`);
+                            return; // Skip this route entirely
+                        }
+
                         if (routeData.fustBreakdown && Array.isArray(routeData.fustBreakdown)) {
                             routeData.fustBreakdown.forEach(fustData => {
+                                // Skip fust types with 0 carts
+                                if (!fustData.carts || fustData.carts === 0) {
+                                    return;
+                                }
                                 const fustTypeCode = String(fustData.fustType || '').split(' ')[0];
                                 const isDanish = String(fustData.fustType || '').toLowerCase().includes('danish');
                                 const capacity = window.RouteMapping && window.RouteMapping.getCartCapacity
@@ -1845,6 +1856,27 @@
             routes.forEach(route => {
                 // Get carts for this route only
                 const routeCarts = result.allCarts.filter(cart => cart.routeKey === route.key);
+                
+                // CRITICAL: Skip routes with 0 carts (no orders for this route)
+                if (routeCarts.length === 0) {
+                    // Check if route has any carts in the cached result
+                    const globalData = window.CartCalculation && window.CartCalculation.getGlobalOrdersAndCarts
+                        ? window.CartCalculation.getGlobalOrdersAndCarts(false)
+                        : null;
+                    const cartResult = globalData?.cartResult;
+                    if (cartResult) {
+                        const period = route.period || 'morning';
+                        const routeName = route.name;
+                        const routeCartCount = cartResult[period]?.byRoute?.[routeName] || 0;
+                        if (routeCartCount === 0) {
+                            console.log(`   ⏭️  Skipping ${route.key}: 0 carts (no orders)`);
+                            return; // Skip this route entirely
+                        }
+                    } else if (routeCarts.length === 0) {
+                        return; // Skip if no carts and no cache available
+                    }
+                }
+                
                 const routeInfo = routeAnalysis[route.key] || {
                     totalCarts: routeCarts.length,
                     standardCarts: routeCarts.filter(c => c.type !== 'danish').length,
@@ -2737,6 +2769,12 @@
                     ? `${routeKey}_morning`
                     : routeKey;
                 const carts = cartsByRoute[cartsKey] || [];
+                
+                // CRITICAL: Skip routes with 0 carts (no orders for this route)
+                if (carts.length === 0) {
+                    return; // Don't render route card if no carts
+                }
+                
                 const routeClientSignatures = {};
                 carts.forEach(cart => {
                     const cartClients = Array.isArray(cart.clients) && cart.clients.length > 0
