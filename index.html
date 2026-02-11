@@ -1148,13 +1148,18 @@
                     if (statusMsg) {
                         // Get matched/unmatched counts from cart result if available
                         const cartResult = window.__zuidplas_cart_cache?.cartResult;
-                        const matchedCount = cartResult?.matchedOrdersCount || ordersWithCarts.length;
+                        // Match Excel counting: use orderrows, not unique orders
+                        const matchedOrderrows = cartResult?.matchedOrders || ordersWithCarts.filter(o => {
+                            const route = o.route || o.routeKey;
+                            return route && route !== 'unmatched';
+                        });
+                        const matchedOrderrowsCount = matchedOrderrows ? matchedOrderrows.length : ordersWithCarts.length;
                         const unmatchedCount = cartResult?.unmatchedOrdersCount || 0;
                         
                         if (hasChanges) {
-                            statusMsg.innerHTML = `✅ Updated: Found ${matchedCount} orders from API - was ${existingCount}`;
+                            statusMsg.innerHTML = `✅ Updated: Found ${matchedOrderrowsCount} orders from API - was ${existingCount}`;
                         } else {
-                            statusMsg.innerHTML = `✅ Refreshed: ${matchedCount} orders from API - no changes`;
+                            statusMsg.innerHTML = `✅ Refreshed: ${matchedOrderrowsCount} orders from API - no changes`;
                         }
                         statusMsg.classList.add('show', 'success');
                     }
@@ -1464,9 +1469,10 @@
                                 if (orderId) uniqueUnmatchedIds.add(String(orderId));
                             });
                             
-                            const uniqueMatched = uniqueMatchedIds.size;
+                            // Match Excel counting: use orderrows, not unique orders
+                            const matchedOrderrowsCount = matchedOrderrows.length;
                             
-                            statusMsg.innerHTML = `✅ Found ${uniqueMatched} orders from API`;
+                            statusMsg.innerHTML = `✅ Found ${matchedOrderrowsCount} orders from API`;
                         }
                         statusMsg.classList.add('show', 'success');
                     }
@@ -1602,11 +1608,15 @@
                 
                 console.log(`   ✅ Got result: ${totalCarts} carts from ${uniqueMatchedOrders} unique matched orders`);
                 console.log(`   📥 API returned: ${totalUniqueOrders} unique orders (from ${actualOrders.length} orderrows)`);
-                console.log(`   ✅ Matched (Excel clients): ${uniqueMatchedOrders} unique orders`);
-                console.log(`   ⚠️ Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders`);
+                console.log(`   ✅ Matched (Excel clients): ${uniqueMatchedOrders} unique orders (${matchedOrderrows.length} orderrows)`);
+                console.log(`   ⚠️ Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders (${unmatchedOrderrows.length} orderrows)`);
                 
-                // Update stats with MATCHED unique orders only (Excel clients)
-                document.getElementById('total-orders-count').textContent = uniqueMatchedOrders;
+                // CRITICAL: Match Excel counting method - Excel counts ORDERROWS, not unique orders!
+                // Excel shows 1,438 = orderrows count, so Dashboard should show orderrows too
+                const matchedOrderrowsCount = matchedOrderrows.length;
+                document.getElementById('total-orders-count').textContent = matchedOrderrowsCount;
+                console.log(`   📊 Dashboard showing: ${matchedOrderrowsCount} orderrows (to match Excel counting method)`);
+                console.log(`   📊 Excel shows: 1,438 orderrows (difference: ${Math.abs(1438 - matchedOrderrowsCount)})`);
                 
                 console.log(`   Orders from global memory: ${actualOrders.length} orderrows (${totalUniqueOrders} unique orders)`);
                 console.log(`   Matched orders (displayed): ${uniqueMatchedOrders} unique orders`);
@@ -1655,9 +1665,13 @@
                 console.error('   getGlobalOrdersAndCarts available?', window.CartCalculation && typeof window.CartCalculation.getGlobalOrdersAndCarts === 'function');
                 // Don't use fallback - show error instead
                 document.getElementById('total-carts-needed').textContent = 'ERROR';
-                // Try to get matched orders count from cartResult if available
-                const matchedCount = cartResult?.matchedOrdersCount || (orders ? orders.length : 0);
-                document.getElementById('total-orders-count').textContent = matchedCount;
+                // Match Excel counting: use orderrows, not unique orders
+                const matchedOrderrows = cartResult?.matchedOrders || (orders ? orders.filter(o => {
+                    const route = o.route || o.routeKey;
+                    return route && route !== 'unmatched';
+                }) : []);
+                const matchedOrderrowsCount = matchedOrderrows ? matchedOrderrows.length : (orders ? orders.length : 0);
+                document.getElementById('total-orders-count').textContent = matchedOrderrowsCount;
             }
             console.log('═══════════════════════════════════════════════════════════════════');
             
