@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Debugging Tool - Zuidplas Logistics</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .debug-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .debug-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-section h2 {
+            margin-top: 0;
+            color: #1f2937;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        .debug-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .debug-table th,
+        .debug-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .debug-table th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        .debug-table tr:hover {
+            background: #f9fafb;
+        }
+        .status-ok { color: #10b981; font-weight: 600; }
+        .status-error { color: #ef4444; font-weight: 600; }
+        .status-warning { color: #f59e0b; font-weight: 600; }
+        .code-block {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .btn-debug {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .btn-debug:hover {
+            background: #2563eb;
+        }
+        .customer-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .customer-item {
+            padding: 5px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .customer-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔍 Route Debugging Tool</h1>
+        <p>Use this tool to debug why routes show 0 orders or mismatched data.</p>
+        
+        <div class="debug-section">
+            <h2>1. Select Route to Debug</h2>
+            <select id="route-select" style="padding: 10px; font-size: 16px; width: 300px;">
+                <option value="aalsmeer_evening">Aalsmeer Evening (Route 5) - 18:00</option>
+                <option value="rijnsburg_evening">Rijnsburg Evening (Route 4) - 17:00</option>
+                <option value="naaldwijk_evening">Naaldwijk Evening (Route 6) - 19:00</option>
+                <option value="aalsmeer_morning">Aalsmeer Morning (Route 2) - 10:00</option>
+                <option value="rijnsburg_morning">Rijnsburg Morning (Route 1) - 09:00</option>
+                <option value="naaldwijk_morning">Naaldwijk Morning (Route 3) - 11:00</option>
+            </select>
+            <button class="btn-debug" onclick="debugRoute()">🔍 Debug Route</button>
+            <button class="btn-debug" onclick="debugAllRoutes()">🔍 Debug All Routes</button>
+        </div>
+        
+        <div class="debug-section">
+            <h2>2. Route Analysis Results</h2>
+            <div id="debug-results"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h2>3. Customer Name Matching Test</h2>
+            <input type="text" id="customer-input" placeholder="Enter customer name to test" 
+                   style="padding: 10px; font-size: 16px; width: 400px;">
+            <button class="btn-debug" onclick="testCustomerMatch()">Test Match</button>
+            <div id="customer-test-results"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h2>4. Export Debug Data</h2>
+            <button class="btn-debug" onclick="exportDebugData()">📥 Export Debug Report</button>
+            <div id="export-status"></div>
+        </div>
+    </div>
+    
+    <script src="js/route-mapping.js"></script>
+    <script src="js/data-export.js"></script>
+    <script>
+        function debugRoute() {
+            const routeKey = document.getElementById('route-select').value;
+            const resultsDiv = document.getElementById('debug-results');
+            resultsDiv.innerHTML = '<p>Analyzing route...</p>';
+            
+            setTimeout(() => {
+                const analysis = performRouteAnalysis(routeKey);
+                displayRouteAnalysis(analysis, resultsDiv);
+            }, 100);
+        }
+        
+        function debugAllRoutes() {
+            const routes = [
+                'rijnsburg_morning', 'aalsmeer_morning', 'naaldwijk_morning',
+                'rijnsburg_evening', 'aalsmeer_evening', 'naaldwijk_evening'
+            ];
+            
+            const resultsDiv = document.getElementById('debug-results');
+            let html = '<h3>All Routes Analysis</h3><table class="debug-table"><thead><tr>';
+            html += '<th>Route</th><th>Expected Customers</th><th>API Orders</th><th>Matched</th><th>Status</th></tr></thead><tbody>';
+            
+            routes.forEach(routeKey => {
+                const analysis = performRouteAnalysis(routeKey);
+                const status = analysis.apiOrdersCount === 0 ? 'error' : 
+                              analysis.matchedCount === 0 ? 'warning' : 'ok';
+                const statusText = analysis.apiOrdersCount === 0 ? '❌ No Orders' :
+                                  analysis.matchedCount === 0 ? '⚠️ No Matches' : '✅ OK';
+                
+                html += `<tr>
+                    <td>${routeKey}</td>
+                    <td>${analysis.expectedCustomers.length}</td>
+                    <td>${analysis.apiOrdersCount}</td>
+                    <td>${analysis.matchedCount}</td>
+                    <td class="status-${status}">${statusText}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            resultsDiv.innerHTML = html;
+        }
+        
+        function performRouteAnalysis(routeKey) {
+            // Get expected customers from route mapping
+            let expectedCustomers = [];
+            if (window.RouteMapping && window.RouteMapping.CLIENT_ROUTE_MAPPING) {
+                expectedCustomers = window.RouteMapping.CLIENT_ROUTE_MAPPING[routeKey] || [];
+            }
+            
+            // Get orders from global state
+            let orders = [];
+            if (window.appState && window.appState.orders) {
+                orders = window.appState.orders;
+            } else if (window.AppData && window.AppData.orders) {
+                orders = window.AppData.orders;
+            } else {
+                const stored = localStorage.getItem('zuidplas_orders');
+                if (stored) {
+                    try {
+                        orders = JSON.parse(stored);
+                    } catch (e) {
+                        console.error('Failed to parse orders:', e);
+                    }
+                }
+            }
+            
+            // Filter orders for this route
+            const [route, period] = routeKey.split('_');
+            const routeOrders = orders.filter(o => 
+                (o.route || '').toLowerCase() === route && 
+                (o.period || 'morning') === period
+            );
+            
+            // Check which customers match
+            const matchedCustomers = new Set();
+            const unmatchedCustomers = new Set();
+            
+            routeOrders.forEach(order => {
+                const customerName = (order.customer_name || order.customer || '').toLowerCase();
+                const matched = expectedCustomers.some(expected => {
+                    const expectedLower = expected.toLowerCase();
+                    return expectedLower.includes(customerName) || 
+                           customerName.includes(expectedLower);
+                });
+                
+                if (matched) {
+                    matchedCustomers.add(order.customer_name || order.customer);
+                } else {
+                    unmatchedCustomers.add(order.customer_name || order.customer);
+                }
+            });
+            
+            // Check all API customers
+            const allApiCustomers = new Set(orders.map(o => o.customer_name || o.customer));
+            const potentiallyMatching = Array.from(allApiCustomers).filter(apiCustomer => {
+                const apiLower = apiCustomer.toLowerCase();
+                return expectedCustomers.some(expected => {
+                    const expectedLower = expected.toLowerCase();
+                    // Check for partial matches
+                    return apiLower.includes(expectedLower) || 
+                           expectedLower.includes(apiLower) ||
+                           apiLower.replace(/[^a-z0-9]/g, '') === expectedLower.replace(/[^a-z0-9]/g, '');
+                });
+            });
+            
+            return {
+                routeKey,
+                expectedCustomers,
+                apiOrdersCount: routeOrders.length,
+                routeOrders,
+                matchedCount: matchedCustomers.size,
+                matchedCustomers: Array.from(matchedCustomers),
+                unmatchedCount: unmatchedCustomers.size,
+                unmatchedCustomers: Array.from(unmatchedCustomers),
+                potentiallyMatching: potentiallyMatching,
+                allApiCustomers: Array.from(allApiCustomers)
+            };
+        }
+        
+        function displayRouteAnalysis(analysis, container) {
+            let html = `<h3>Route: ${analysis.routeKey}</h3>`;
+            
+            html += `<table class="debug-table">
+                <tr><th>Metric</th><th>Value</th></tr>
+                <tr><td>Expected Customers (in mapping)</td><td>${analysis.expectedCustomers.length}</td></tr>
+                <tr><td>API Orders Found</td><td class="${analysis.apiOrdersCount === 0 ? 'status-error' : 'status-ok'}">${analysis.apiOrdersCount}</td></tr>
+                <tr><td>Matched Customers</td><td class="${analysis.matchedCount === 0 ? 'status-warning' : 'status-ok'}">${analysis.matchedCount}</td></tr>
+                <tr><td>Unmatched Customers</td><td class="${analysis.unmatchedCount > 0 ? 'status-warning' : 'status-ok'}">${analysis.unmatchedCount}</td></tr>
+            </table>`;
+            
+            if (analysis.expectedCustomers.length > 0) {
+                html += `<h4>Expected Customers (from route mapping):</h4>`;
+                html += `<div class="customer-list">`;
+                analysis.expectedCustomers.slice(0, 20).forEach(customer => {
+                    html += `<div class="customer-item">${customer}</div>`;
+                });
+                if (analysis.expectedCustomers.length > 20) {
+                    html += `<div class="customer-item"><em>... and ${analysis.expectedCustomers.length - 20} more</em></div>`;
+                }
+                html += `</div>`;
+            }
+            
+            if (analysis.matchedCustomers.length > 0) {
+                html += `<h4>✅ Matched Customers (found in API):</h4>`;
+                html += `<div class="customer-list">`;
+                analysis.matchedCustomers.forEach(customer => {
+                    html += `<div class="customer-item">${customer}</div>`;
+                });
+                html += `</div>`;
+            }
+            
+            if (analysis.unmatchedCustomers.length > 0) {
+                html += `<h4>⚠️ Unmatched Customers (in API but not in mapping):</h4>`;
+                html += `<div class="customer-list">`;
+                analysis.unmatchedCustomers.forEach(customer => {
+                    html += `<div class="customer-item">${customer}</div>`;
+                });
+                html += `</div>`;
+            }
+            
+            if (analysis.potentiallyMatching.length > 0) {
+                html += `<h4>🔍 Potentially Matching Customers (similar names):</h4>`;
+                html += `<div class="customer-list">`;
+                analysis.potentiallyMatching.forEach(customer => {
+                    html += `<div class="customer-item">${customer}</div>`;
+                });
+                html += `</div>`;
+            }
+            
+            if (analysis.apiOrdersCount === 0) {
+                html += `<div class="code-block" style="background: #fee2e2; color: #991b1b;">
+                    <strong>❌ ISSUE DETECTED:</strong> This route has 0 orders in the API data.
+                    <br><br>
+                    <strong>Possible causes:</strong>
+                    <ul>
+                        <li>No orders exist for this route/date in the API</li>
+                        <li>Customer names don't match the route mapping</li>
+                        <li>Date filtering is excluding these orders</li>
+                        <li>Route assignment logic is incorrect</li>
+                    </ul>
+                    <br>
+                    <strong>Next steps:</strong>
+                    <ol>
+                        <li>Check if orders exist in API for this date</li>
+                        <li>Compare customer names in API with expected customers above</li>
+                        <li>Test customer name matching using the tool below</li>
+                        <li>Check route assignment logic in route-mapping.js</li>
+                    </ol>
+                </div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        function testCustomerMatch() {
+            const customerName = document.getElementById('customer-input').value;
+            if (!customerName) {
+                alert('Please enter a customer name');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('customer-test-results');
+            resultsDiv.innerHTML = '<p>Testing customer match...</p>';
+            
+            setTimeout(() => {
+                let html = `<h4>Customer: "${customerName}"</h4>`;
+                
+                // Test route mapping
+                if (window.RouteMapping && window.RouteMapping.getRouteInfoForCustomer) {
+                    const routeInfo = window.RouteMapping.getRouteInfoForCustomer(customerName);
+                    html += `<div class="code-block">`;
+                    html += `<strong>Route Mapping Result:</strong><br>`;
+                    html += `<pre>${JSON.stringify(routeInfo, null, 2)}</pre>`;
+                    html += `</div>`;
+                    
+                    if (routeInfo && routeInfo.matched) {
+                        html += `<p class="status-ok">✅ Customer is matched to route: ${routeInfo.route} (${routeInfo.period})</p>`;
+                    } else {
+                        html += `<p class="status-error">❌ Customer is NOT matched to any route</p>`;
+                    }
+                }
+                
+                // Check if customer exists in orders
+                let orders = [];
+                if (window.appState && window.appState.orders) {
+                    orders = window.appState.orders;
+                }
+                
+                const customerOrders = orders.filter(o => 
+                    (o.customer_name || o.customer || '').toLowerCase().includes(customerName.toLowerCase())
+                );
+                
+                html += `<p><strong>Orders found:</strong> ${customerOrders.length}</p>`;
+                if (customerOrders.length > 0) {
+                    html += `<table class="debug-table"><thead><tr>
+                        <th>Order ID</th><th>Customer</th><th>Route</th><th>Period</th>
+                    </tr></thead><tbody>`;
+                    customerOrders.slice(0, 10).forEach(order => {
+                        html += `<tr>
+                            <td>${order.order_id || order.id || 'N/A'}</td>
+                            <td>${order.customer_name || order.customer}</td>
+                            <td>${order.route || 'N/A'}</td>
+                            <td>${order.period || 'morning'}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table>`;
+                }
+                
+                resultsDiv.innerHTML = html;
+            }, 100);
+        }
+        
+        function exportDebugData() {
+            const statusDiv = document.getElementById('export-status');
+            statusDiv.innerHTML = '<p>Generating debug report...</p>';
+            
+            try {
+                if (!window.DataExporter) {
+                    statusDiv.innerHTML = '<p class="status-error">Export module not loaded</p>';
+                    return;
+                }
+                
+                const exporter = new DataExporter();
+                exporter.exportToCSV();
+                statusDiv.innerHTML = '<p class="status-ok">✅ Debug data exported!</p>';
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="status-error">❌ Export failed: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-run debug on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                debugRoute();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
+

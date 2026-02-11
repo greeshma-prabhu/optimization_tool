@@ -144,6 +144,14 @@
                             </svg>
                             <span data-i18n="dashboard.refresh">Refresh Data</span>
                         </button>
+                        <button type="button" class="btn-export" id="export-btn" title="Export orders to Excel/CSV" onclick="exportOrdersData()" style="background: #10b981; color: white;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Export Data</span>
+                        </button>
                         <button type="button" class="btn-demo" id="demo-btn" title="Load demo data" onclick="loadDemoData()">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -469,6 +477,7 @@
     <script src="js/orders.js"></script>
     <script src="js/optimizer.js"></script>
     <script src="js/navigation.js"></script>
+    <script src="js/data-export.js"></script> <!-- DATA EXPORT MODULE -->
     <script>
         // Update last refreshed time
         function updateLastRefreshed() {
@@ -648,6 +657,39 @@
             
             return filtered;
         }
+        
+        // Export orders data to Excel/CSV
+        window.exportOrdersData = async function() {
+            try {
+                if (!window.DataExporter) {
+                    alert('Export module not loaded. Please refresh the page.');
+                    return;
+                }
+                
+                const exporter = new DataExporter();
+                
+                // Get current date
+                const datePicker = document.getElementById('order-date-picker');
+                const selectedDate = datePicker && datePicker.value 
+                    ? datePicker.value 
+                    : new Date().toISOString().split('T')[0];
+                
+                // Show format selection
+                const format = confirm('Export to Excel format? (Click OK for Excel, Cancel for CSV)') 
+                    ? 'excel' 
+                    : 'csv';
+                
+                if (format === 'excel') {
+                    await exporter.exportToExcel(selectedDate);
+                } else {
+                    exporter.exportToCSV(selectedDate);
+                }
+                
+            } catch (error) {
+                console.error('Export failed:', error);
+                alert(`Export failed: ${error.message}`);
+            }
+        };
         
         // Sync data for selected date - uses date picker
         // Make it available globally immediately
