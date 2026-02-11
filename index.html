@@ -553,6 +553,153 @@
             console.log('═══════════════════════════════════════════════════════════════════');
         };
         
+        // Inline findMissingOrders function (backup)
+        window.findMissingOrders = function() {
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log('🔍 FINDING MISSING ORDERS (396 → 354)');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            
+            // Get all orders from memory
+            let allOrders = [];
+            if (window.appState && window.appState.orders) {
+                allOrders = window.appState.orders;
+            } else if (window.AppData && window.AppData.orders) {
+                allOrders = window.AppData.orders;
+            } else {
+                const stored = localStorage.getItem('zuidplas_orders');
+                if (stored) {
+                    allOrders = JSON.parse(stored);
+                }
+            }
+            
+            console.log(`\n📊 Step 1: Raw Data`);
+            console.log(`   Total orderrows in memory: ${allOrders.length}`);
+            
+            // Count unique orders
+            const uniqueOrderIds = new Set();
+            const ordersById = {};
+            
+            allOrders.forEach(order => {
+                const id = order.order_id || order.order?.id || order.id;
+                if (id) {
+                    uniqueOrderIds.add(String(id));
+                    if (!ordersById[String(id)]) {
+                        ordersById[String(id)] = [];
+                    }
+                    ordersById[String(id)].push(order);
+                }
+            });
+            
+            console.log(`   Unique orders: ${uniqueOrderIds.size}`);
+            
+            // Get cart cache to see what's displayed
+            const cartCache = window.__zuidplas_cart_cache;
+            let displayedOrderIds = new Set();
+            
+            if (cartCache && cartCache.orders) {
+                cartCache.orders.forEach(order => {
+                    const id = order.order_id || order.order?.id || order.id;
+                    if (id) displayedOrderIds.add(String(id));
+                });
+            } else {
+                // Try to get from matched orders
+                const matchedOrders = allOrders.filter(o => {
+                    const route = o.route || o.routeKey;
+                    return route && route !== 'unmatched' && route !== '';
+                });
+                matchedOrders.forEach(order => {
+                    const id = order.order_id || order.order?.id || order.id;
+                    if (id) displayedOrderIds.add(String(id));
+                });
+            }
+            
+            console.log(`\n📊 Step 2: Displayed Orders`);
+            console.log(`   Unique displayed orders: ${displayedOrderIds.size}`);
+            
+            // Find missing orders
+            const missingOrderIds = [];
+            uniqueOrderIds.forEach(id => {
+                if (!displayedOrderIds.has(id)) {
+                    missingOrderIds.push(id);
+                }
+            });
+            
+            console.log(`\n❌ Step 3: Missing Orders`);
+            console.log(`   Missing: ${missingOrderIds.length} orders`);
+            
+            if (missingOrderIds.length > 0) {
+                console.log(`\n   Missing Order IDs (first 20):`);
+                const missingDetails = [];
+                missingOrderIds.slice(0, 20).forEach(id => {
+                    const orders = ordersById[id] || [];
+                    const firstOrder = orders[0];
+                    if (firstOrder) {
+                        const customer = firstOrder.customer_name || firstOrder.customer || 'Unknown';
+                        const route = firstOrder.route || firstOrder.routeKey || 'unmatched';
+                        missingDetails.push({ id, customer, route });
+                        console.log(`      ID: ${id}, Customer: ${customer}, Route: ${route}`);
+                    }
+                });
+                
+                // Analyze why they're missing
+                console.log(`\n🔍 Step 4: Why Missing?`);
+                
+                const unmatched = missingDetails.filter(d => !d.route || d.route === 'unmatched');
+                const matched = missingDetails.filter(d => d.route && d.route !== 'unmatched');
+                
+                console.log(`   Unmatched (no route assigned): ${unmatched.length}`);
+                if (unmatched.length > 0) {
+                    console.log(`   Examples:`);
+                    unmatched.slice(0, 5).forEach(r => {
+                        console.log(`      - ${r.customer} (ID: ${r.id})`);
+                    });
+                }
+                
+                console.log(`   Matched but still missing: ${matched.length}`);
+                if (matched.length > 0) {
+                    console.log(`   Examples:`);
+                    matched.slice(0, 5).forEach(r => {
+                        console.log(`      - ${r.customer} (Route: ${r.route}, ID: ${r.id})`);
+                    });
+                }
+                
+                // Check route distribution
+                const missingByRoute = {};
+                missingDetails.forEach(d => {
+                    const route = d.route || 'unmatched';
+                    missingByRoute[route] = (missingByRoute[route] || 0) + 1;
+                });
+                
+                console.log(`\n📋 Missing Orders by Route:`);
+                Object.keys(missingByRoute).sort().forEach(route => {
+                    console.log(`   ${route}: ${missingByRoute[route]} orders`);
+                });
+            }
+            
+            // Summary
+            console.log(`\n═══════════════════════════════════════════════════════════════════`);
+            console.log('📊 SUMMARY');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log(`API Unique Orders: 396`);
+            console.log(`Dashboard Memory: ${uniqueOrderIds.size} unique orders`);
+            console.log(`Displayed Orders: ${displayedOrderIds.size} unique orders`);
+            console.log(`Missing: ${missingOrderIds.length} orders`);
+            
+            if (missingOrderIds.length === 42) {
+                console.log(`\n✅ FOUND THE 42 MISSING ORDERS!`);
+                console.log(`   These are likely unmatched orders excluded from cart calculation.`);
+                console.log(`   Check the "Dump Basket" section on the dashboard.`);
+            }
+            
+            console.log('═══════════════════════════════════════════════════════════════════');
+            
+            return {
+                totalUnique: uniqueOrderIds.size,
+                displayedUnique: displayedOrderIds.size,
+                missing: missingOrderIds.length
+            };
+        };
+        
         // Wait for page load, then check if functions are available
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
@@ -562,6 +709,7 @@
                 } else {
                     console.log('✅ Diagnostic functions loaded. Run: analyzeDateMismatch()');
                 }
+                console.log('✅ findMissingOrders() is available inline. Run: findMissingOrders()');
             }, 1000);
         });
     </script>
