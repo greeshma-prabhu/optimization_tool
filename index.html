@@ -484,6 +484,87 @@
     <script src="check_api_vs_dashboard.js"></script> <!-- API VS DASHBOARD COMPARISON -->
     <script src="analyze_date_mismatch.js"></script> <!-- DATE MISMATCH ANALYSIS -->
     <script>
+        // Inline diagnostic function (backup if external script fails)
+        window.quickDiagnostic = function() {
+            console.log('═══════════════════════════════════════════════════════════════════');
+            console.log('🔍 QUICK DIAGNOSTIC');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            
+            // Get orders from various sources
+            let orders = [];
+            if (window.appState && window.appState.orders) {
+                orders = window.appState.orders;
+                console.log('✅ Found orders in window.appState.orders');
+            } else if (window.AppData && window.AppData.orders) {
+                orders = window.AppData.orders;
+                console.log('✅ Found orders in window.AppData.orders');
+            } else {
+                const stored = localStorage.getItem('zuidplas_orders');
+                if (stored) {
+                    orders = JSON.parse(stored);
+                    console.log('✅ Found orders in localStorage');
+                }
+            }
+            
+            console.log(`\n📊 Dashboard State:`);
+            console.log(`   Total orders: ${orders.length}`);
+            
+            // Get date picker value
+            const datePicker = document.getElementById('order-date-picker');
+            const selectedDate = datePicker ? datePicker.value : 'N/A';
+            console.log(`   Selected date: ${selectedDate}`);
+            
+            // Count unique orders
+            const uniqueOrderIds = new Set();
+            orders.forEach(o => {
+                const id = o.order_id || o.order?.id || o.id;
+                if (id) uniqueOrderIds.add(String(id));
+            });
+            console.log(`   Unique order IDs: ${uniqueOrderIds.size}`);
+            
+            // Check delivery dates
+            const dateCounts = {};
+            orders.slice(0, 100).forEach(order => {
+                const deliveryDate = order.delivery_date || order.order?.delivery_date;
+                if (deliveryDate) {
+                    const datePart = deliveryDate.includes('T') 
+                        ? deliveryDate.split('T')[0] 
+                        : deliveryDate.split(' ')[0];
+                    dateCounts[datePart] = (dateCounts[datePart] || 0) + 1;
+                }
+            });
+            
+            console.log(`\n📅 Sample delivery dates (first 100 orders):`);
+            Object.keys(dateCounts).sort().slice(0, 5).forEach(date => {
+                console.log(`   ${date}: ${dateCounts[date]} orders`);
+            });
+            
+            // Check cart cache
+            const cartCache = window.__zuidplas_cart_cache;
+            if (cartCache) {
+                console.log(`\n🛒 Cart Cache:`);
+                console.log(`   Cached date: ${cartCache.date}`);
+                console.log(`   Total carts: ${cartCache.totalCarts || 'N/A'}`);
+            }
+            
+            console.log('\n═══════════════════════════════════════════════════════════════════');
+            console.log('💡 To get full analysis, run: analyzeDateMismatch()');
+            console.log('═══════════════════════════════════════════════════════════════════');
+        };
+        
+        // Wait for page load, then check if functions are available
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (typeof analyzeDateMismatch === 'undefined') {
+                    console.warn('⚠️ analyzeDateMismatch not loaded. Using quickDiagnostic() instead.');
+                    console.log('💡 Run: quickDiagnostic() for basic info');
+                } else {
+                    console.log('✅ Diagnostic functions loaded. Run: analyzeDateMismatch()');
+                }
+            }, 1000);
+        });
+    </script>
+    <script>
         // Update last refreshed time
         function updateLastRefreshed() {
             const lastRefresh = localStorage.getItem('zuidplas_last_refresh');
