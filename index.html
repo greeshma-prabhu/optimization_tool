@@ -1628,12 +1628,15 @@
                 console.log(`   ✅ Matched (Excel clients): ${uniqueMatchedOrders} unique orders (${matchedOrderrows.length} orderrows)`);
                 console.log(`   ⚠️ Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders (${unmatchedOrderrows.length} orderrows)`);
                 
-                // CRITICAL: Match Excel counting method - Excel counts UNIQUE ORDERS, not orderrows!
-                // Excel shows 886 = unique orders count, so Dashboard should show unique orders
-                document.getElementById('total-orders-count').textContent = uniqueMatchedOrders;
-                console.log(`   📊 Dashboard showing: ${uniqueMatchedOrders} unique orders (to match Excel counting method)`);
-                console.log(`   📊 Excel shows: 886 unique orders (difference: ${Math.abs(886 - uniqueMatchedOrders)})`);
-                console.log(`   📊 Orderrows count: ${matchedOrderrows.length} (for reference only)`);
+                // CRITICAL: Show ALL unique orders (matched + unmatched) to match script output (686)
+                // Script shows: 686 unique orders total
+                // Dashboard was showing: 574 matched only (missing 112 unmatched)
+                // Now showing: totalUniqueOrders (all unique orders, like script)
+                document.getElementById('total-orders-count').textContent = totalUniqueOrders;
+                console.log(`   📊 Dashboard showing: ${totalUniqueOrders} total unique orders (matches script output)`);
+                console.log(`   📊 Matched (Excel clients): ${uniqueMatchedOrders} unique orders`);
+                console.log(`   📊 Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders`);
+                console.log(`   📊 Orderrows count: ${actualOrders.length} (for reference only)`);
                 
                 console.log(`   Orders from global memory: ${actualOrders.length} orderrows (${totalUniqueOrders} unique orders)`);
                 console.log(`   Matched orders (displayed): ${uniqueMatchedOrders} unique orders`);
