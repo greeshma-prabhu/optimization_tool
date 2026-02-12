@@ -388,103 +388,81 @@ class FlorinetAPI {
     }
 
     /**
-     * Fetch ALL orderrows with pagination support
-     * CRITICAL: API returns paginated data - this fetches ALL pages
+     * Fetch ALL orderrows with SAFE pagination support
+     * CRITICAL: API may not support pagination params - try original format first!
      * @param {string} startDate - dd-mm-YYYY format
      * @param {string} endDate - dd-mm-YYYY format
      */
     async fetchAllOrderRowsPaginated(startDate, endDate) {
-        const allRows = [];
-        let page = 1;
-        let hasMorePages = true;
-        let lastPage = 1;
-        const perPage = 500; // Standard pagination size
+        console.log(`🔄 Fetching orders for date range ${startDate} to ${endDate}...`);
+        
+        // STEP 1: Try original working format FIRST (no pagination params)
+        // This is what worked before and got 3891 rows
+        try {
+            console.log(`   📄 Attempting fetch WITHOUT pagination params (original working format)...`);
+            
+            const firstPageData = await this.fetchWithAuth('/external/orderrows', {
+                deliveryStartDate: startDate,
+                deliveryEndDate: endDate
+                // NO page/per_page params - this is what worked before!
+            });
 
-        console.log(`🔄 Fetching ALL pages for date range ${startDate} to ${endDate}...`);
+            let allRows = [];
+            let hasPagination = false;
+            let lastPage = 1;
 
-        while (hasMorePages) {
-            try {
-                console.log(`   📄 Fetching page ${page}...`);
+            // Check response format
+            if (Array.isArray(firstPageData)) {
+                // API returns plain array - no pagination metadata
+                allRows = firstPageData;
+                console.log(`   ✅ Single response (no pagination): ${allRows.length} rows`);
+                hasPagination = false;
+            } else if (firstPageData && firstPageData.data && Array.isArray(firstPageData.data)) {
+                // API returns paginated object with metadata
+                allRows = firstPageData.data;
+                lastPage = firstPageData.last_page || firstPageData.total_pages || 1;
+                const currentPage = firstPageData.current_page || 1;
+                hasPagination = lastPage > 1;
                 
-                const pageData = await this.fetchWithAuth('/external/orderrows', {
-                    deliveryStartDate: startDate,
-                    deliveryEndDate: endDate,
-                    page: page,
-                    per_page: perPage
-                });
-
-                let rows = [];
-
-                // Handle different response formats
-                if (Array.isArray(pageData)) {
-                    // API returns plain array (no pagination metadata)
-                    rows = pageData;
-                    hasMorePages = rows.length === perPage; // If we got full page, might have more
-                    if (rows.length < perPage) {
-                        hasMorePages = false; // Last page
-                    }
-                    console.log(`   ✅ Page ${page}: ${rows.length} rows${hasMorePages ? ' (more pages expected)' : ' (last page)'}`);
-                } else if (pageData && pageData.data && Array.isArray(pageData.data)) {
-                    // API returns paginated object with metadata
-                    rows = pageData.data;
-                    lastPage = pageData.last_page || pageData.total_pages || 1;
-                    const currentPage = pageData.current_page || page;
-                    hasMorePages = currentPage < lastPage;
-                    console.log(`   ✅ Page ${currentPage}/${lastPage}: ${rows.length} rows`);
-                } else if (pageData && Array.isArray(pageData)) {
-                    // Fallback: treat as array
-                    rows = pageData;
-                    hasMorePages = rows.length === perPage;
-                    console.log(`   ✅ Page ${page}: ${rows.length} rows${hasMorePages ? ' (more pages expected)' : ' (last page)'}`);
+                if (hasPagination) {
+                    console.log(`   📄 API indicates pagination: ${currentPage}/${lastPage} pages`);
+                    console.log(`   ⚠️ WARNING: API supports pagination but adding page params causes 500 error`);
+                    console.log(`   ⚠️ Returning first page only (${allRows.length} rows)`);
+                    console.log(`   ⚠️ TODO: Contact API provider to fix pagination support`);
                 } else {
-                    // Unexpected format
-                    console.warn(`   ⚠️ Unexpected response format on page ${page}:`, typeof pageData);
-                    rows = [];
-                    hasMorePages = false;
+                    console.log(`   ✅ Single page response: ${allRows.length} rows`);
                 }
-
-                if (rows.length === 0) {
-                    // No more data
-                    hasMorePages = false;
-                } else {
-                    allRows.push(...rows);
-                    page++;
-                }
-
-                // Safety limit - never loop forever
-                if (page > 100) {
-                    console.warn(`   ⚠️ Safety limit reached at page 100 - stopping`);
-                    break;
-                }
-
-            } catch (error) {
-                console.error(`   ❌ Error on page ${page}:`, error.message);
-                // If it's the first page and it fails, throw the error
-                if (page === 1) {
-                    throw error;
-                }
-                // Otherwise, stop pagination but return what we have
-                console.warn(`   ⚠️ Stopping pagination due to error, returning ${allRows.length} rows fetched so far`);
-                break;
+            } else {
+                // Unexpected format - try to extract array
+                console.warn(`   ⚠️ Unexpected response format, attempting to extract data...`);
+                allRows = Array.isArray(firstPageData) ? firstPageData : [];
             }
+
+            // Count unique orders
+            const uniqueOrderIds = new Set();
+            allRows.forEach(row => {
+                const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                if (orderId) {
+                    uniqueOrderIds.add(String(orderId));
+                }
+            });
+
+            console.log(`✅ Fetch complete:`);
+            console.log(`   - Total orderrows: ${allRows.length}`);
+            console.log(`   - Unique orders: ${uniqueOrderIds.size}`);
+            if (hasPagination && lastPage > 1) {
+                console.log(`   - ⚠️ NOTE: API has ${lastPage} pages but pagination params cause 500 error`);
+                console.log(`   - ⚠️ Only first page fetched. Contact API provider to fix pagination.`);
+            }
+            console.log(`   - Average orderrows per order: ${uniqueOrderIds.size > 0 ? (allRows.length / uniqueOrderIds.size).toFixed(2) : 0}`);
+
+            return allRows;
+
+        } catch (error) {
+            console.error(`   ❌ Fetch failed:`, error.message);
+            console.error(`   ❌ This is the original working format - if this fails, API is down`);
+            throw error;
         }
-
-        // Count unique orders
-        const uniqueOrderIds = new Set();
-        allRows.forEach(row => {
-            const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
-            if (orderId) {
-                uniqueOrderIds.add(String(orderId));
-            }
-        });
-
-        console.log(`✅ Pagination complete:`);
-        console.log(`   - Total pages fetched: ${page - 1}`);
-        console.log(`   - Total orderrows: ${allRows.length}`);
-        console.log(`   - Unique orders: ${uniqueOrderIds.size}`);
-        console.log(`   - Average orderrows per order: ${uniqueOrderIds.size > 0 ? (allRows.length / uniqueOrderIds.size).toFixed(2) : 0}`);
-
-        return allRows;
     }
 
     /**
