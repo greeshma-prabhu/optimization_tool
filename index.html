@@ -1765,7 +1765,9 @@
                     }
                 });
                 const uniqueMatchedOrdersCount = uniqueMatchedOrderIds.size;
-                document.getElementById('total-orders-count').textContent = uniqueMatchedOrdersCount;
+                // Use RAW count if available (matches curl command), otherwise use matched count
+                const displayCount = window.__zuidplas_raw_unique_order_count || uniqueMatchedOrdersCount;
+                document.getElementById('total-orders-count').textContent = displayCount;
             }
             console.log('═══════════════════════════════════════════════════════════════════');
             
