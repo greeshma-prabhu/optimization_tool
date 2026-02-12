@@ -1096,7 +1096,22 @@
                 const apiOrders = await florinetAPI.fetchOrdersForDate(selectedDate);
                 
                 if (apiOrders && apiOrders.length > 0) {
+                    // CRITICAL: Count unique orders from RAW API response (BEFORE any filtering)
+                    // This matches the curl command output (300 unique orders)
+                    const rawUniqueOrderIds = new Set();
+                    apiOrders.forEach(row => {
+                        const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                        if (orderId) {
+                            rawUniqueOrderIds.add(String(orderId));
+                        }
+                    });
+                    const rawUniqueOrderCount = rawUniqueOrderIds.size;
+                    
+                    // Store raw count for Dashboard display (matches curl command)
+                    window.__zuidplas_raw_unique_order_count = rawUniqueOrderCount;
+                    
                     console.log('✅ Loaded', apiOrders.length, 'raw orders from API');
+                    console.log(`   📊 RAW unique orders: ${rawUniqueOrderCount} ← This should match curl command!`);
                     
                     // CRITICAL: Filter by delivery_date FIRST (same as Orders page)
                     const selectedDateStr = selectedDate.toISOString().split('T')[0];
@@ -1353,7 +1368,10 @@
                             console.log(`✅ Processing ${orders._uniqueOrderCount || orders.length} unique orders (${orders.length} orderrows)`);
                             
                             // ✅ CRITICAL: SAVE TO GLOBAL STATE FIRST (before calculating carts!)
+                            // Store raw count in window for Dashboard display (matches curl command)
+                            window.__zuidplas_raw_unique_order_count = rawUniqueOrderCount;
                             console.log(`🔄 Saving ${orders.length} orders to global state FIRST...`);
+                            console.log(`   📊 RAW unique order count stored: ${rawUniqueOrderCount} (matches curl command)`);
                             window.appState.setOrders(orders, selectedDate);
                             
                             // CRITICAL: Wait a tiny bit to ensure cache is cleared
