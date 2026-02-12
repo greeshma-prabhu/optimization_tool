@@ -565,8 +565,8 @@ class FlorinetAPI {
             const withLocation = enrichedOrders.filter(o => !o.location_name?.startsWith('Location ')).length;
             
             console.log(`✅ Enrichment complete:`);
-            console.log(`   - ${withCustomer}/${orderrows.length} orderrows have customer names`);
-            console.log(`   - ${withLocation}/${orderrows.length} orderrows have location names`);
+            console.log(`   - ${withCustomer}/${validOrderrows.length} orderrows have customer names`);
+            console.log(`   - ${withLocation}/${validOrderrows.length} orderrows have location names`);
             
             if (withCustomer < orderrows.length || withLocation < orderrows.length) {
                 console.warn('⚠️ Some orderrows missing enrichment data!');
