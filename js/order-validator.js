@@ -59,8 +59,8 @@ function filterValidOrderRows(rows) {
         }
         
         // MUST have valid delivery_location_id (32, 34, or 36)
-        const locationId = order.delivery_location_id || row.delivery_location_id;
-        if (!ZUIDPLAS_LOCATIONS.includes(locationId)) {
+        const locationId = order.delivery_location_id || row.delivery_location_id || row.order?.delivery_location_id;
+        if (!locationId || !ZUIDPLAS_LOCATIONS.includes(Number(locationId))) {
             stats.removed_wrong_location++;
             return false;
         }
