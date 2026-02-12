@@ -2275,9 +2275,20 @@
             console.log(`   Total matched orderrows: ${matchedOrders.length}`);
             console.log(`   Unmatched orders (excluded): ${(cartResult.unmatchedOrders || []).length}`);
             
-            // CRITICAL: Only show customers that have at least 1 UNIQUE ORDER (not just orderrows!)
+            // CRITICAL: Get ALL customers from route mapping (including those with 0 orders)
+            // Then count unique orders per customer
+            const routeKey = `${route}_${period}`;
+            const routeMapping = window.RouteMapping?.CLIENT_ROUTE_MAPPING?.[routeKey] || [];
+            
             // Group by customer and count unique orders per customer
             const customerOrderCounts = {};
+            
+            // Initialize all customers from route mapping with 0 orders
+            routeMapping.forEach(excelCustomerName => {
+                customerOrderCounts[excelCustomerName] = new Set();
+            });
+            
+            // Count orders for customers that have orders
             routeOrderrows.forEach(o => {
                 const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
                 if (!orderId) return; // Skip if no order ID
@@ -2285,23 +2296,81 @@
                 const customerName = o.customer_name || o.order?.customer_name || '';
                 if (!customerName) return; // Skip if no customer name
                 
-                if (!customerOrderCounts[customerName]) {
-                    customerOrderCounts[customerName] = new Set();
+                // Find matching customer (handle name variations)
+                let matchedCustomer = null;
+                
+                // Try exact match first
+                if (routeMapping.includes(customerName)) {
+                    matchedCustomer = customerName;
+                } else {
+                    // Try fuzzy matching using isKnownClient
+                    if (window.RouteMapping && window.RouteMapping.isKnownClient) {
+                        const matchResult = window.RouteMapping.isKnownClient(customerName);
+                        if (matchResult && matchResult.matched) {
+                            // Find the Excel customer name that matches
+                            for (const excelCustomer of routeMapping) {
+                                // Use isKnownClient to check if this Excel customer matches the API name
+                                const excelMatch = window.RouteMapping.isKnownClient(excelCustomer);
+                                if (excelMatch && excelMatch.route === matchResult.route) {
+                                    // Check if they normalize to the same
+                                    const normalize = (name) => (name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                                    const apiNorm = normalize(customerName);
+                                    const excelNorm = normalize(excelCustomer);
+                                    if (apiNorm === excelNorm || apiNorm.includes(excelNorm) || excelNorm.includes(apiNorm)) {
+                                        matchedCustomer = excelCustomer;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If still no match, try simple contains check
+                    if (!matchedCustomer) {
+                        const customerNameLower = customerName.toLowerCase();
+                        for (const excelCustomer of routeMapping) {
+                            const excelLower = excelCustomer.toLowerCase();
+                            if (customerNameLower.includes(excelLower) || excelLower.includes(customerNameLower)) {
+                                matchedCustomer = excelCustomer;
+                                break;
+                            }
+                        }
+                    }
                 }
-                customerOrderCounts[customerName].add(String(orderId));
+                
+                // If no match found, use API name directly (might be a variation not in mapping)
+                if (!matchedCustomer) {
+                    matchedCustomer = customerName;
+                    if (!customerOrderCounts[matchedCustomer]) {
+                        customerOrderCounts[matchedCustomer] = new Set();
+                    }
+                }
+                
+                customerOrderCounts[matchedCustomer].add(String(orderId));
             });
             
-            // Only include customers with at least 1 unique order
-            const customers = Object.keys(customerOrderCounts)
-                .filter(customerName => customerOrderCounts[customerName].size > 0) // Must have at least 1 unique order
-                .sort();
+            // Create customer list with order counts (INCLUDE customers with 0 orders!)
+            const customers = Object.entries(customerOrderCounts)
+                .map(([name, orderIds]) => ({
+                    name: name,
+                    orderCount: orderIds.size
+                }))
+                .sort((a, b) => {
+                    // Sort: customers with orders first, then by name
+                    if (a.orderCount > 0 && b.orderCount === 0) return -1;
+                    if (a.orderCount === 0 && b.orderCount > 0) return 1;
+                    return a.name.localeCompare(b.name);
+                });
             
-            // Debug: Log customers with 0 orders (should be filtered out)
-            const customersWithZeroOrders = Object.keys(customerOrderCounts)
-                .filter(customerName => customerOrderCounts[customerName].size === 0);
-            if (customersWithZeroOrders.length > 0) {
-                console.warn(`⚠️ Filtered out ${customersWithZeroOrders.length} customers with 0 unique orders:`, customersWithZeroOrders);
-            }
+            // Count total customers (including 0-order customers)
+            const totalCustomers = customers.length;
+            const customersWithOrders = customers.filter(c => c.orderCount > 0).length;
+            const customersWithZeroOrders = customers.filter(c => c.orderCount === 0).length;
+            
+            console.log(`📋 Customer list for ${route} ${period}:`);
+            console.log(`   - Total customers (from route mapping): ${totalCustomers}`);
+            console.log(`   - Customers with orders: ${customersWithOrders}`);
+            console.log(`   - Customers with 0 orders: ${customersWithZeroOrders}`);
             
             // Debug: Log order counts for specific customer if needed
             if (route === 'aalsmeer' && period === 'morning') {
@@ -2353,11 +2422,11 @@
                     <p><strong>🕐 Departure:</strong> ${departureTime}</p>
                     <p><strong>📦 Total Orders:</strong> ${uniqueOrdersCount}</p>
                     <p><strong>🚛 Carts Needed:</strong> ${carts}</p>
-                    <p><strong>👥 Customers:</strong> ${customers.length}</p>
+                    <p><strong>👥 Customers:</strong> ${totalCustomers} (${customersWithOrders} with orders, ${customersWithZeroOrders} with 0 orders)</p>
                 </div>
                 <div class="customer-list-container">
                     <ol>
-                        ${customers.map(customer => `<li>${customer}</li>`).join('')}
+                        ${customers.map(customer => `<li>${customer.name} <strong style="color: ${customer.orderCount > 0 ? '#059669' : '#dc2626'}; margin-left: 8px;">(${customer.orderCount} orders)</strong></li>`).join('')}
                     </ol>
                 </div>
                 <button class="modal-close-btn" onclick="this.closest('.customer-list-modal').remove(); document.querySelector('.modal-backdrop').remove()">
