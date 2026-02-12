@@ -165,34 +165,65 @@ const CLIENT_ROUTE_MAPPING = {
   ],
   'aalsmeer_evening': [
     'Akkus',
+    'Akkus BV',                    // ADD: API variation
+    'Akkus B.V.',                  // ADD: API variation
     'Albert Heijn',
+    'Albert Heijn BV',             // ADD: API variation
     'Bloem Fleurtiek',
+    'BLOEM! Fleurtiek',            // ADD: API variation
     'By Special Zaterdag',
     'By Special',
+    'Capitol Flowers (impuls/D. Martens)', // ADD: API variation (evening)
     'Dobbe',
+    'Dobbeflowers BV',             // ADD: API variation (if evening orders)
     'Fleura Metz',
+    'FleuraMetz Betula',           // ADD: API variation (if evening orders)
     'Floral Connection',
     'Flower Direct',
+    'Flower Direct BV',             // ADD: API variation
     'Greenflor',
+    'Greenflor BV',                 // ADD: API variation
     'FTC Aalsmeer',
+    'F.T.C. Aalsmeer',             // ADD: API variation
     'Guchtenaere',
     'Hans Visser SK-SV',
+    'Hans Visser ( AFD SK-SV))',   // ADD: API variation
     'Hans Visser B-SV',
+    'Hans Visser ( AFD B)',        // ADD: API variation
     'Hans Visser B',
     'Hans Visser P-SV',
+    'Hans Visser ( AFD P)',        // ADD: API variation
     'Hans Visser P',
     'Hoekhuis Aalsmeer',
+    'Hoekhuis Aalsmeer Houter',    // ADD: API variation
+    'Hoekhuis Aalsmeer Klondike',  // ADD: API variation
+    'Hoekhuis Aalsmeer Koolhaas',  // ADD: API variation
+    'Hoekhuis Aalsmeer Villa',     // ADD: API variation
+    'Hoekhuis Aalsmeer Zuidplas',  // ADD: API variation
     'Nijssen',
+    'Nijssen Junior',              // ADD: API variation
     'Hoorn',
+    'Hoorn A. vd',                 // ADD: API variation
     'Trans-Fleur',
+    'Trans-Fleur B.V.',            // ADD: API variation
+    'Transfleur',                  // ADD: API variation (no hyphen)
     'Slootman',
+    'Thom Slootman Bloemengroothandel', // ADD: API variation
     'Verbeek en Bol',
+    'Verbeek & Bol VOF (retail)',  // ADD: API variation
+    'Verbeek & Bol VOF (webshop)', // ADD: API variation
     'Waterdrinker',
+    'Waterdrinker Flowers',        // ADD: API variation
     'Willemsen',
+    'Willemsen webshop',           // ADD: API variation
     'Zurel',
+    'OZ Zurel',                    // ADD: API variation
     'Bosjes',
     'Klok Dozen',
+    'Klok Aalsmeer (GERBERA)',     // ADD: API variation
+    'Klok Aalsmeer (MINI)',        // ADD: API variation
     'MM Flowers',
+    'MM Flower',                   // ADD: API variation (singular)
     'Dijkflora'
   ],
   'naaldwijk_evening': [
@@ -625,8 +656,39 @@ function separateOrdersByClientMatch(orders) {
     
     if (result.matched) {
       order.route = result.route;
-      order.period = result.period || 'morning';
-      order.routeKey = result.routeKey || `${result.route}_${order.period}`;
+      
+      // CRITICAL FIX: Check if customer is in BOTH morning and evening lists
+      // If yes, use delivery_time to decide. If no, use the list period.
+      const baseRoute = result.route; // e.g., 'aalsmeer', 'rijnsburg', 'naaldwijk'
+      const morningList = CLIENT_ROUTE_MAPPING[`${baseRoute}_morning`] || [];
+      const eveningList = CLIENT_ROUTE_MAPPING[`${baseRoute}_evening`] || [];
+      
+      // Check if customer appears in both lists (normalized comparison)
+      const normalizedCustomer = normalizeName(customerName);
+      const inMorning = morningList.some(client => normalizeName(client) === normalizedCustomer);
+      const inEvening = eveningList.some(client => normalizeName(client) === normalizedCustomer);
+      
+      // Infer period from delivery_time
+      const inferredPeriod = inferPeriodFromOrder(order);
+      
+      // Decision logic:
+      if (inMorning && inEvening) {
+        // Customer in BOTH lists - use delivery_time to decide
+        order.period = inferredPeriod;
+      } else if (inEvening && !inMorning) {
+        // Customer ONLY in evening list - use evening (even if delivery_time suggests morning)
+        order.period = 'evening';
+      } else if (inMorning && !inEvening) {
+        // Customer ONLY in morning list - always use morning (even if delivery_time suggests evening)
+        // This is correct: if they're not in evening list, they shouldn't be in evening route
+        order.period = 'morning';
+      } else {
+        // Shouldn't happen if isKnownClient worked correctly, but fallback
+        order.period = inferredPeriod;
+      }
+      
+      // Construct routeKey based on route + actual period
+      order.routeKey = `${baseRoute}_${order.period}`;
       order.isKnownClient = true;
       matched.push(order);
     } else {
