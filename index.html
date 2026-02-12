@@ -2097,12 +2097,33 @@
                 });
                 const uniqueOrdersCount = uniqueOrderIds.size;
                 
-                // Count unique customers (ONLY customers that have orders - filter out 0-order customers)
-                const customersWithOrders = routeOrderrows
-                    .map(o => o.customer_name || o.order?.customer_name || '')
-                    .filter(Boolean)
-                    .filter((name, index, self) => self.indexOf(name) === index); // Unique only
+                // Count unique customers (ONLY customers that have at least 1 UNIQUE ORDER)
+                // Group by customer and count unique orders per customer
+                const customerOrderCounts = {};
+                routeOrderrows.forEach(o => {
+                    const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                    if (!orderId) return; // Skip if no order ID
+                    
+                    const customerName = o.customer_name || o.order?.customer_name || '';
+                    if (!customerName) return; // Skip if no customer name
+                    
+                    if (!customerOrderCounts[customerName]) {
+                        customerOrderCounts[customerName] = new Set();
+                    }
+                    customerOrderCounts[customerName].add(String(orderId));
+                });
+                
+                // Only count customers with at least 1 unique order
+                const customersWithOrders = Object.keys(customerOrderCounts)
+                    .filter(customerName => customerOrderCounts[customerName].size > 0);
                 const uniqueCustomers = new Set(customersWithOrders);
+                
+                // Debug: Log customers with 0 orders (should be filtered out)
+                const customersWithZeroOrders = Object.keys(customerOrderCounts)
+                    .filter(customerName => customerOrderCounts[customerName].size === 0);
+                if (customersWithZeroOrders.length > 0 && route === 'aalsmeer' && period === 'morning') {
+                    console.warn(`⚠️ Aalsmeer Morning: Filtered out ${customersWithZeroOrders.length} customers with 0 unique orders:`, customersWithZeroOrders);
+                }
                 
                 // Debug logging for Aalsmeer morning
                 if (route === 'aalsmeer' && period === 'morning') {
@@ -2209,13 +2230,43 @@
             console.log(`   Total matched orderrows: ${matchedOrders.length}`);
             console.log(`   Unmatched orders (excluded): ${(cartResult.unmatchedOrders || []).length}`);
             
-            // CRITICAL: Only show customers that actually have orders (filter out 0-order customers)
-            const customers = [...new Set(
-                routeOrderrows
-                    .filter(o => o.order_id || o.order?.id || o.order?.order_id || o.id) // Must have order ID
-                    .map(o => o.customer_name || o.order?.customer_name || '')
-                    .filter(Boolean)
-            )].sort();
+            // CRITICAL: Only show customers that have at least 1 UNIQUE ORDER (not just orderrows!)
+            // Group by customer and count unique orders per customer
+            const customerOrderCounts = {};
+            routeOrderrows.forEach(o => {
+                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                if (!orderId) return; // Skip if no order ID
+                
+                const customerName = o.customer_name || o.order?.customer_name || '';
+                if (!customerName) return; // Skip if no customer name
+                
+                if (!customerOrderCounts[customerName]) {
+                    customerOrderCounts[customerName] = new Set();
+                }
+                customerOrderCounts[customerName].add(String(orderId));
+            });
+            
+            // Only include customers with at least 1 unique order
+            const customers = Object.keys(customerOrderCounts)
+                .filter(customerName => customerOrderCounts[customerName].size > 0) // Must have at least 1 unique order
+                .sort();
+            
+            // Debug: Log customers with 0 orders (should be filtered out)
+            const customersWithZeroOrders = Object.keys(customerOrderCounts)
+                .filter(customerName => customerOrderCounts[customerName].size === 0);
+            if (customersWithZeroOrders.length > 0) {
+                console.warn(`⚠️ Filtered out ${customersWithZeroOrders.length} customers with 0 unique orders:`, customersWithZeroOrders);
+            }
+            
+            // Debug: Log order counts for specific customer if needed
+            if (route === 'aalsmeer' && period === 'morning') {
+                console.log(`🔍 Customer order counts for Aalsmeer Morning:`);
+                Object.entries(customerOrderCounts).forEach(([name, orderIds]) => {
+                    if (name.toLowerCase().includes('akkus')) {
+                        console.log(`   "${name}": ${orderIds.size} unique orders`);
+                    }
+                });
+            }
             const routeKey = `${route}_${period}`;
             const departureTime = window.RouteMapping.getDepartureTime(routeKey);
             const cartsEl = document.getElementById(`${route}-${period}-carts`);
