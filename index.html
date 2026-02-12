@@ -2142,32 +2142,67 @@
                 });
                 const uniqueOrdersCount = uniqueOrderIds.size;
                 
-                // Count unique customers (ONLY customers that have at least 1 UNIQUE ORDER)
+                // Count ALL customers from route mapping (including those with 0 orders)
+                const routeKey = `${route}_${period}`;
+                const routeMapping = window.RouteMapping?.CLIENT_ROUTE_MAPPING?.[routeKey] || [];
+                
                 // Group by customer and count unique orders per customer
                 const customerOrderCounts = {};
-                routeOrderrows.forEach(o => {
-                    const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
-                    if (!orderId) return; // Skip if no order ID
-                    
-                    const customerName = o.customer_name || o.order?.customer_name || '';
-                    if (!customerName) return; // Skip if no customer name
-                    
-                    if (!customerOrderCounts[customerName]) {
-                        customerOrderCounts[customerName] = new Set();
-                    }
-                    customerOrderCounts[customerName].add(String(orderId));
+                
+                // Initialize all customers from route mapping with 0 orders
+                routeMapping.forEach(excelCustomerName => {
+                    customerOrderCounts[excelCustomerName] = new Set();
                 });
                 
-                // Only count customers with at least 1 unique order
-                const customersWithOrders = Object.keys(customerOrderCounts)
-                    .filter(customerName => customerOrderCounts[customerName].size > 0);
-                const uniqueCustomers = new Set(customersWithOrders);
+                // Count orders for customers that have orders
+                routeOrderrows.forEach(o => {
+                    const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                    if (!orderId) return;
+                    
+                    const customerName = o.customer_name || o.order?.customer_name || '';
+                    if (!customerName) return;
+                    
+                    // Find matching customer (handle name variations)
+                    let matchedCustomer = null;
+                    
+                    // Try exact match first
+                    if (routeMapping.includes(customerName)) {
+                        matchedCustomer = customerName;
+                    } else {
+                        // Try fuzzy matching
+                        const customerNameLower = customerName.toLowerCase();
+                        for (const excelCustomer of routeMapping) {
+                            const excelLower = excelCustomer.toLowerCase();
+                            if (customerNameLower === excelLower || 
+                                customerNameLower.includes(excelLower) || 
+                                excelLower.includes(customerNameLower)) {
+                                matchedCustomer = excelCustomer;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // If no match found, use API name directly
+                    if (!matchedCustomer) {
+                        matchedCustomer = customerName;
+                        if (!customerOrderCounts[matchedCustomer]) {
+                            customerOrderCounts[matchedCustomer] = new Set();
+                        }
+                    }
+                    
+                    customerOrderCounts[matchedCustomer].add(String(orderId));
+                });
                 
-                // Debug: Log customers with 0 orders (should be filtered out)
-                const customersWithZeroOrders = Object.keys(customerOrderCounts)
-                    .filter(customerName => customerOrderCounts[customerName].size === 0);
-                if (customersWithZeroOrders.length > 0 && route === 'aalsmeer' && period === 'morning') {
-                    console.warn(`⚠️ Aalsmeer Morning: Filtered out ${customersWithZeroOrders.length} customers with 0 unique orders:`, customersWithZeroOrders);
+                // Count ALL customers (including 0-order customers)
+                const uniqueCustomers = new Set(Object.keys(customerOrderCounts));
+                const customersWithOrders = Object.keys(customerOrderCounts).filter(name => customerOrderCounts[name].size > 0).length;
+                const customersWithZeroOrders = Object.keys(customerOrderCounts).filter(name => customerOrderCounts[name].size === 0).length;
+                
+                if (route === 'aalsmeer' && period === 'morning') {
+                    console.log(`📊 Aalsmeer Morning customer count:`);
+                    console.log(`   - Total customers (from route mapping): ${uniqueCustomers.size}`);
+                    console.log(`   - Customers with orders: ${customersWithOrders}`);
+                    console.log(`   - Customers with 0 orders: ${customersWithZeroOrders}`);
                 }
                 
                 // Debug logging for Aalsmeer morning
