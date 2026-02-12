@@ -1671,10 +1671,15 @@
                 
                 // CRITICAL: Show RAW unique orders from API (BEFORE validation/filtering)
                 // This matches the curl command output exactly (300 for 12-02-2026)
-                // Use raw count from API if available, otherwise use calculated totalUniqueOrders
-                const displayCount = actualOrders._rawUniqueOrderCount || totalUniqueOrders;
-                document.getElementById('total-orders-count').textContent = displayCount;
-                console.log(`   📊 Dashboard showing: ${displayCount} total unique orders (matches curl command output)`);
+                // Get raw count from window (stored during sync) or from orders array
+                const rawCount = window.__zuidplas_raw_unique_order_count || 
+                                actualOrders._rawUniqueOrderCount || 
+                                (Array.isArray(actualOrders) && actualOrders.length > 0 && actualOrders[0]?._rawUniqueOrderCount) ||
+                                totalUniqueOrders;
+                
+                document.getElementById('total-orders-count').textContent = rawCount;
+                console.log(`   📊 Dashboard showing: ${rawCount} total unique orders (matches curl command output)`);
+                console.log(`   📊 Raw count source: ${window.__zuidplas_raw_unique_order_count ? 'window.__zuidplas_raw_unique_order_count' : actualOrders._rawUniqueOrderCount ? 'orders._rawUniqueOrderCount' : 'calculated'}`);
                 console.log(`   📊 Matched (Excel clients): ${uniqueMatchedOrders} unique orders`);
                 console.log(`   📊 Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders`);
                 console.log(`   📊 Total after validation: ${totalUniqueOrders} unique orders`);
