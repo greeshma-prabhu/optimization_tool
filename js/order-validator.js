@@ -15,6 +15,88 @@ function getRoute(order) {
 }
 
 /**
+ * Filter out deleted orders, contract orders, and invalid rows
+ * This is called BEFORE validateOrders to remove bad data from API
+ */
+function filterValidOrderRows(rows) {
+    const before = rows.length;
+    const ZUIDPLAS_LOCATIONS = [32, 34, 36]; // Aalsmeer, Naaldwijk, Rijnsburg
+    
+    const stats = {
+        removed_deleted: 0,
+        removed_contract: 0,
+        removed_no_company: 0,
+        removed_no_assembly: 0,
+        removed_wrong_location: 0
+    };
+    
+    const valid = rows.filter(row => {
+        const order = row.order || {};
+        
+        // EXCLUDE deleted orders
+        if (order.deleted_at) {
+            stats.removed_deleted++;
+            return false;
+        }
+        
+        // EXCLUDE contract/standing orders
+        const types = order.types || [];
+        if (types.includes('CONTRACT') || order.type === 32768) {
+            stats.removed_contract++;
+            return false;
+        }
+        
+        // EXCLUDE rows with no company_id AND no real order data
+        if (!row.company_id && !order.contact_name && !order.customer_id) {
+            stats.removed_no_company++;
+            return false;
+        }
+        
+        // EXCLUDE if assembly_amount is 0
+        if (!row.assembly_amount || row.assembly_amount === 0) {
+            stats.removed_no_assembly++;
+            return false;
+        }
+        
+        // MUST have valid delivery_location_id (32, 34, or 36)
+        const locationId = order.delivery_location_id || row.delivery_location_id;
+        if (!ZUIDPLAS_LOCATIONS.includes(locationId)) {
+            stats.removed_wrong_location++;
+            return false;
+        }
+        
+        return true;
+    });
+    
+    console.log(`🔍 filterValidOrderRows: ${before} rows → ${valid.length} valid rows`);
+    console.log(`   - Removed deleted: ${stats.removed_deleted}`);
+    console.log(`   - Removed contract: ${stats.removed_contract}`);
+    console.log(`   - Removed no company: ${stats.removed_no_company}`);
+    console.log(`   - Removed no assembly: ${stats.removed_no_assembly}`);
+    console.log(`   - Removed wrong location: ${stats.removed_wrong_location}`);
+    
+    return valid;
+}
+
+/**
+ * Get only De Zuidplas order rows (valid locations only)
+ */
+function getZuidplasOrderRows(allRows) {
+    // Step 1: Remove deleted and contract orders
+    const validRows = filterValidOrderRows(allRows);
+    
+    // Step 2: Count unique real orders
+    const uniqueIds = new Set(
+        validRows.map(r => r.order_id || r.order?.id || r.order?.order_id || r.id).filter(Boolean)
+    );
+    
+    console.log(`✅ De Zuidplas valid rows: ${validRows.length}`);
+    console.log(`✅ De Zuidplas unique orders: ${uniqueIds.size}`);
+    
+    return validRows;
+}
+
+/**
  * Validate and filter orders
  */
 function validateOrders(orders) {
@@ -224,7 +306,9 @@ if (typeof window !== 'undefined') {
     window.OrderValidator = {
         validateOrders: validateOrders,
         getOrderStats: getOrderStats,
-        removeDuplicates: removeDuplicates
+        removeDuplicates: removeDuplicates,
+        filterValidOrderRows: filterValidOrderRows,
+        getZuidplasOrderRows: getZuidplasOrderRows
     };
 }
 

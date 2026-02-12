@@ -502,10 +502,22 @@ class FlorinetAPI {
             
             console.log(`✅ Received ${orderrows.length} orderrows from API`);
             
+            // CRITICAL STEP: Filter out deleted orders, contract orders, and invalid rows
+            // This removes bad data BEFORE counting/processing
+            let validOrderrows = orderrows;
+            if (window.OrderValidator && typeof window.OrderValidator.getZuidplasOrderRows === 'function') {
+                console.log('');
+                console.log('🔍 Filtering valid De Zuidplas orders...');
+                validOrderrows = window.OrderValidator.getZuidplasOrderRows(orderrows);
+                console.log('');
+            } else {
+                console.warn('⚠️ OrderValidator.getZuidplasOrderRows not available - skipping filter');
+            }
+            
             // CRITICAL: Count unique orders (not orderrows!)
             // Multiple orderrows can belong to the same order
             const uniqueOrderIds = new Set();
-            orderrows.forEach(row => {
+            validOrderrows.forEach(row => {
                 // Try multiple possible locations for order_id
                 const orderId = row.order_id || 
                                row.order?.id || 
@@ -516,20 +528,21 @@ class FlorinetAPI {
                 }
             });
             
-            console.log(`📊 API Statistics:`);
-            console.log(`   - Total orderrows (product lines): ${orderrows.length}`);
+            console.log(`📊 API Statistics (AFTER FILTERING):`);
+            console.log(`   - Raw orderrows from API: ${orderrows.length}`);
+            console.log(`   - Valid De Zuidplas orderrows: ${validOrderrows.length}`);
             console.log(`   - Unique orders (by order_id): ${uniqueOrderIds.size}`);
-            console.log(`   - Average orderrows per order: ${uniqueOrderIds.size > 0 ? (orderrows.length / uniqueOrderIds.size).toFixed(2) : 0}`);
+            console.log(`   - Average orderrows per order: ${uniqueOrderIds.size > 0 ? (validOrderrows.length / uniqueOrderIds.size).toFixed(2) : 0}`);
             console.log('');
             
             // CRITICAL: Log sample order_ids for debugging
-            if (orderrows.length > 0) {
+            if (validOrderrows.length > 0) {
                 const sampleOrderIds = Array.from(uniqueOrderIds).slice(0, 5);
                 console.log(`   Sample order_ids: ${sampleOrderIds.join(', ')}`);
                 
                 // Check first orderrow structure
-                const firstRow = orderrows[0];
-                console.log(`   First orderrow structure check:`);
+                const firstRow = validOrderrows[0];
+                console.log(`   First valid orderrow structure check:`);
                 console.log(`     - row.order_id: ${firstRow.order_id || 'NOT FOUND'}`);
                 console.log(`     - row.order?.id: ${firstRow.order?.id || 'NOT FOUND'}`);
                 console.log(`     - row.order?.order_id: ${firstRow.order?.order_id || 'NOT FOUND'}`);
@@ -538,8 +551,9 @@ class FlorinetAPI {
             console.log('');
             
             // STEP 3: Enrich each orderrow with customer/location/product data
+            // Use FILTERED orderrows, not raw ones!
             console.log('🔄 Enriching orderrows with customer/location names...');
-            const enrichedOrders = orderrows.map(row => {
+            const enrichedOrders = validOrderrows.map(row => {
                 const enriched = this.enrichOrderrow(row);
                 // CRITICAL: Store order_id for unique counting
                 enriched.order_id = row.order_id || row.order?.id || row.order?.order_id;
