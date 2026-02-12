@@ -1149,18 +1149,27 @@
                     if (statusMsg) {
                         // Get matched/unmatched counts from cart result if available
                         const cartResult = window.__zuidplas_cart_cache?.cartResult;
-                        // Match Excel counting: use orderrows, not unique orders
+                        // Match Excel counting: use UNIQUE ORDERS, not orderrows
                         const matchedOrderrows = cartResult?.matchedOrders || orders.filter(o => {
                             const route = o.route || o.routeKey;
                             return route && route !== 'unmatched';
                         });
-                        const matchedOrderrowsCount = matchedOrderrows ? matchedOrderrows.length : orders.length;
+                        
+                        // Count unique matched orders
+                        const uniqueMatchedOrderIds = new Set();
+                        matchedOrderrows.forEach(row => {
+                            const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                            if (orderId) {
+                                uniqueMatchedOrderIds.add(String(orderId));
+                            }
+                        });
+                        const uniqueMatchedOrdersCount = uniqueMatchedOrderIds.size;
                         const unmatchedCount = cartResult?.unmatchedOrdersCount || 0;
                         
                         if (hasChanges) {
-                            statusMsg.innerHTML = `✅ Updated: Found ${matchedOrderrowsCount} orders from API - was ${existingCount}`;
+                            statusMsg.innerHTML = `✅ Updated: Found ${uniqueMatchedOrdersCount} orders from API - was ${existingCount}`;
                         } else {
-                            statusMsg.innerHTML = `✅ Refreshed: ${matchedOrderrowsCount} orders from API - no changes`;
+                            statusMsg.innerHTML = `✅ Refreshed: ${uniqueMatchedOrdersCount} orders from API - no changes`;
                         }
                         statusMsg.classList.add('show', 'success');
                     }
@@ -1470,10 +1479,17 @@
                                 if (orderId) uniqueUnmatchedIds.add(String(orderId));
                             });
                             
-                            // Match Excel counting: use orderrows, not unique orders
-                            const matchedOrderrowsCount = matchedOrderrows.length;
+                            // Match Excel counting: use UNIQUE ORDERS, not orderrows
+                            const uniqueMatchedOrderIds = new Set();
+                            matchedOrderrows.forEach(row => {
+                                const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                                if (orderId) {
+                                    uniqueMatchedOrderIds.add(String(orderId));
+                                }
+                            });
+                            const uniqueMatchedOrdersCount = uniqueMatchedOrderIds.size;
                             
-                            statusMsg.innerHTML = `✅ Found ${matchedOrderrowsCount} orders from API`;
+                            statusMsg.innerHTML = `✅ Found ${uniqueMatchedOrdersCount} orders from API`;
                         }
                         statusMsg.classList.add('show', 'success');
                     }
@@ -1612,12 +1628,12 @@
                 console.log(`   ✅ Matched (Excel clients): ${uniqueMatchedOrders} unique orders (${matchedOrderrows.length} orderrows)`);
                 console.log(`   ⚠️ Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders (${unmatchedOrderrows.length} orderrows)`);
                 
-                // CRITICAL: Match Excel counting method - Excel counts ORDERROWS, not unique orders!
-                // Excel shows 1,438 = orderrows count, so Dashboard should show orderrows too
-                const matchedOrderrowsCount = matchedOrderrows.length;
-                document.getElementById('total-orders-count').textContent = matchedOrderrowsCount;
-                console.log(`   📊 Dashboard showing: ${matchedOrderrowsCount} orderrows (to match Excel counting method)`);
-                console.log(`   📊 Excel shows: 1,438 orderrows (difference: ${Math.abs(1438 - matchedOrderrowsCount)})`);
+                // CRITICAL: Match Excel counting method - Excel counts UNIQUE ORDERS, not orderrows!
+                // Excel shows 886 = unique orders count, so Dashboard should show unique orders
+                document.getElementById('total-orders-count').textContent = uniqueMatchedOrders;
+                console.log(`   📊 Dashboard showing: ${uniqueMatchedOrders} unique orders (to match Excel counting method)`);
+                console.log(`   📊 Excel shows: 886 unique orders (difference: ${Math.abs(886 - uniqueMatchedOrders)})`);
+                console.log(`   📊 Orderrows count: ${matchedOrderrows.length} (for reference only)`);
                 
                 console.log(`   Orders from global memory: ${actualOrders.length} orderrows (${totalUniqueOrders} unique orders)`);
                 console.log(`   Matched orders (displayed): ${uniqueMatchedOrders} unique orders`);
@@ -1671,8 +1687,17 @@
                     const route = o.route || o.routeKey;
                     return route && route !== 'unmatched';
                 }) : []);
-                const matchedOrderrowsCount = matchedOrderrows ? matchedOrderrows.length : (orders ? orders.length : 0);
-                document.getElementById('total-orders-count').textContent = matchedOrderrowsCount;
+                
+                // Count unique matched orders (to match Excel)
+                const uniqueMatchedOrderIds = new Set();
+                matchedOrderrows.forEach(row => {
+                    const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+                    if (orderId) {
+                        uniqueMatchedOrderIds.add(String(orderId));
+                    }
+                });
+                const uniqueMatchedOrdersCount = uniqueMatchedOrderIds.size;
+                document.getElementById('total-orders-count').textContent = uniqueMatchedOrdersCount;
             }
             console.log('═══════════════════════════════════════════════════════════════════');
             
