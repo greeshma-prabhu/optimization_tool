@@ -413,16 +413,12 @@ class FlorinetAPI {
             }
             console.log('');
             
-            // STEP 2: Fetch orderrows
-            // CRITICAL: DO NOT use slim=1 - it removes location data!
-            console.log('📦 Fetching orderrows from API...');
-            const orderrows = await this.fetchWithAuth('/external/orderrows', {
-                deliveryStartDate: startDate,
-                deliveryEndDate: endDate
-                // REMOVED: slim: 1 - breaks data enrichment!
-            });
+            // STEP 2: Fetch orderrows WITH PAGINATION
+            // CRITICAL: API returns paginated data - must fetch ALL pages!
+            console.log('📦 Fetching ALL orderrows from API (with pagination)...');
+            const orderrows = await this.fetchAllOrderRowsPaginated(startDate, endDate);
             
-            console.log(`✅ Received ${orderrows.length} orderrows from API`);
+            console.log(`✅ Received ${orderrows.length} total orderrows from API (all pages)`);
             
             // CRITICAL: Count unique orders (not orderrows!)
             // Multiple orderrows can belong to the same order
