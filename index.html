@@ -1665,14 +1665,15 @@
                 console.log(`   ✅ Matched (Excel clients): ${uniqueMatchedOrders} unique orders (${matchedOrderrows.length} orderrows)`);
                 console.log(`   ⚠️ Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders (${unmatchedOrderrows.length} orderrows)`);
                 
-                // CRITICAL: Show ALL unique orders (matched + unmatched) to match script output (686)
-                // Script shows: 686 unique orders total
-                // Dashboard was showing: 574 matched only (missing 112 unmatched)
-                // Now showing: totalUniqueOrders (all unique orders, like script)
-                document.getElementById('total-orders-count').textContent = totalUniqueOrders;
-                console.log(`   📊 Dashboard showing: ${totalUniqueOrders} total unique orders (matches script output)`);
+                // CRITICAL: Show RAW unique orders from API (BEFORE validation/filtering)
+                // This matches the curl command output exactly (300 for 12-02-2026)
+                // Use raw count from API if available, otherwise use calculated totalUniqueOrders
+                const displayCount = actualOrders._rawUniqueOrderCount || totalUniqueOrders;
+                document.getElementById('total-orders-count').textContent = displayCount;
+                console.log(`   📊 Dashboard showing: ${displayCount} total unique orders (matches curl command output)`);
                 console.log(`   📊 Matched (Excel clients): ${uniqueMatchedOrders} unique orders`);
                 console.log(`   📊 Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders`);
+                console.log(`   📊 Total after validation: ${totalUniqueOrders} unique orders`);
                 console.log(`   📊 Orderrows count: ${actualOrders.length} (for reference only)`);
                 
                 console.log(`   Orders from global memory: ${actualOrders.length} orderrows (${totalUniqueOrders} unique orders)`);
