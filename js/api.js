@@ -388,6 +388,106 @@ class FlorinetAPI {
     }
 
     /**
+     * Fetch ALL orderrows with pagination support
+     * CRITICAL: API returns paginated data - this fetches ALL pages
+     * @param {string} startDate - dd-mm-YYYY format
+     * @param {string} endDate - dd-mm-YYYY format
+     */
+    async fetchAllOrderRowsPaginated(startDate, endDate) {
+        const allRows = [];
+        let page = 1;
+        let hasMorePages = true;
+        let lastPage = 1;
+        const perPage = 500; // Standard pagination size
+
+        console.log(`🔄 Fetching ALL pages for date range ${startDate} to ${endDate}...`);
+
+        while (hasMorePages) {
+            try {
+                console.log(`   📄 Fetching page ${page}...`);
+                
+                const pageData = await this.fetchWithAuth('/external/orderrows', {
+                    deliveryStartDate: startDate,
+                    deliveryEndDate: endDate,
+                    page: page,
+                    per_page: perPage
+                });
+
+                let rows = [];
+
+                // Handle different response formats
+                if (Array.isArray(pageData)) {
+                    // API returns plain array (no pagination metadata)
+                    rows = pageData;
+                    hasMorePages = rows.length === perPage; // If we got full page, might have more
+                    if (rows.length < perPage) {
+                        hasMorePages = false; // Last page
+                    }
+                    console.log(`   ✅ Page ${page}: ${rows.length} rows${hasMorePages ? ' (more pages expected)' : ' (last page)'}`);
+                } else if (pageData && pageData.data && Array.isArray(pageData.data)) {
+                    // API returns paginated object with metadata
+                    rows = pageData.data;
+                    lastPage = pageData.last_page || pageData.total_pages || 1;
+                    const currentPage = pageData.current_page || page;
+                    hasMorePages = currentPage < lastPage;
+                    console.log(`   ✅ Page ${currentPage}/${lastPage}: ${rows.length} rows`);
+                } else if (pageData && Array.isArray(pageData)) {
+                    // Fallback: treat as array
+                    rows = pageData;
+                    hasMorePages = rows.length === perPage;
+                    console.log(`   ✅ Page ${page}: ${rows.length} rows${hasMorePages ? ' (more pages expected)' : ' (last page)'}`);
+                } else {
+                    // Unexpected format
+                    console.warn(`   ⚠️ Unexpected response format on page ${page}:`, typeof pageData);
+                    rows = [];
+                    hasMorePages = false;
+                }
+
+                if (rows.length === 0) {
+                    // No more data
+                    hasMorePages = false;
+                } else {
+                    allRows.push(...rows);
+                    page++;
+                }
+
+                // Safety limit - never loop forever
+                if (page > 100) {
+                    console.warn(`   ⚠️ Safety limit reached at page 100 - stopping`);
+                    break;
+                }
+
+            } catch (error) {
+                console.error(`   ❌ Error on page ${page}:`, error.message);
+                // If it's the first page and it fails, throw the error
+                if (page === 1) {
+                    throw error;
+                }
+                // Otherwise, stop pagination but return what we have
+                console.warn(`   ⚠️ Stopping pagination due to error, returning ${allRows.length} rows fetched so far`);
+                break;
+            }
+        }
+
+        // Count unique orders
+        const uniqueOrderIds = new Set();
+        allRows.forEach(row => {
+            const orderId = row.order_id || row.order?.id || row.order?.order_id || row.id;
+            if (orderId) {
+                uniqueOrderIds.add(String(orderId));
+            }
+        });
+
+        console.log(`✅ Pagination complete:`);
+        console.log(`   - Total pages fetched: ${page - 1}`);
+        console.log(`   - Total orderrows: ${allRows.length}`);
+        console.log(`   - Unique orders: ${uniqueOrderIds.size}`);
+        console.log(`   - Average orderrows per order: ${uniqueOrderIds.size > 0 ? (allRows.length / uniqueOrderIds.size).toFixed(2) : 0}`);
+
+        return allRows;
+    }
+
+    /**
      * Fetch orders for a date range
      * @param {string} startDate - dd-mm-YYYY format
      * @param {string} endDate - dd-mm-YYYY format
