@@ -1332,6 +1332,9 @@
                                 // Fallback if validator not loaded - use filtered orders
                                 orders = filteredByDate;
                                 
+                                // Store RAW count for Dashboard display (matches curl command)
+                                orders._rawUniqueOrderCount = rawUniqueOrderCount;
+                                
                                 // Count unique orders
                                 const uniqueOrderIdsFallback = new Set();
                                 orders.forEach(row => {
@@ -1344,6 +1347,7 @@
                                 
                                 console.log('⚠️ Order validator not available, using filtered orders');
                                 console.log(`   Unique orders: ${orders._uniqueOrderCount} (from ${orders.length} orderrows)`);
+                                console.log(`   RAW unique orders (matches curl): ${rawUniqueOrderCount}`);
                             }
                             
                             console.log(`✅ Processing ${orders._uniqueOrderCount || orders.length} unique orders (${orders.length} orderrows)`);
