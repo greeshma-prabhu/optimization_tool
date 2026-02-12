@@ -414,11 +414,12 @@ class FlorinetAPI {
             console.log('');
             
             // STEP 2: Fetch orderrows
+            // CRITICAL: DO NOT use slim=1 - it removes location data!
             console.log('📦 Fetching orderrows from API...');
             const orderrows = await this.fetchWithAuth('/external/orderrows', {
                 deliveryStartDate: startDate,
-                deliveryEndDate: endDate,
-                slim: 1
+                deliveryEndDate: endDate
+                // REMOVED: slim: 1 - breaks data enrichment!
             });
             
             console.log(`✅ Received ${orderrows.length} orderrows from API`);
