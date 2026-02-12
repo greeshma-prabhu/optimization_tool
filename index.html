@@ -2075,12 +2075,16 @@
             routes.forEach(({ route, period, idPrefix }) => {
                 // Count orderrows for this route + period (ONLY from matched orders)
                 const routeOrderrows = matchedOrders.filter(o => {
-                    const routeFromOrder = o.route || (() => {
+                    const routeFromOrder = (o.route || (() => {
                         const customerName = o.customer_name || o.order?.customer_name || '';
                         return window.RouteMapping.getRouteForCustomer(customerName);
-                    })();
+                    })()).toLowerCase();
                     const periodFromOrder = o.period || 'morning';
-                    return routeFromOrder === route && periodFromOrder === period;
+                    const hasOrderId = !!(o.order_id || o.order?.id || o.order?.order_id || o.id);
+                    // CRITICAL: Case-insensitive route comparison + ensure order has data
+                    return routeFromOrder === route.toLowerCase() && 
+                           periodFromOrder === period &&
+                           hasOrderId; // Must have order ID
                 });
                 
                 // CRITICAL: Count unique orders (not orderrows!)
@@ -2093,8 +2097,22 @@
                 });
                 const uniqueOrdersCount = uniqueOrderIds.size;
                 
-                // Count unique customers (ONLY matched customers)
-                const uniqueCustomers = new Set(routeOrderrows.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean));
+                // Count unique customers (ONLY customers that have orders - filter out 0-order customers)
+                const customersWithOrders = routeOrderrows
+                    .map(o => o.customer_name || o.order?.customer_name || '')
+                    .filter(Boolean)
+                    .filter((name, index, self) => self.indexOf(name) === index); // Unique only
+                const uniqueCustomers = new Set(customersWithOrders);
+                
+                // Debug logging for Aalsmeer morning
+                if (route === 'aalsmeer' && period === 'morning') {
+                    console.log(`🔍 DEBUG Aalsmeer Morning:`);
+                    console.log(`   Total matched orders: ${matchedOrders.length}`);
+                    console.log(`   Route orderrows after filter: ${routeOrderrows.length}`);
+                    console.log(`   Unique orders: ${uniqueOrdersCount}`);
+                    console.log(`   Unique customers with orders: ${uniqueCustomers.size}`);
+                    console.log(`   Sample route values: ${[...new Set(matchedOrders.slice(0, 10).map(o => o.route))].join(', ')}`);
+                }
                 
                 const routeName = route.charAt(0).toUpperCase() + route.slice(1);
                 let carts = 0;
@@ -2166,12 +2184,15 @@
             // Filter route orderrows from MATCHED orders only
             const routeOrderrows = matchedOrders.filter(o => {
                 // Use route already set by separateOrdersByClientMatch, or getRouteForCustomer
-                const routeFromOrder = o.route || (() => {
+                const routeFromOrder = (o.route || (() => {
                     const customerName = o.customer_name || o.order?.customer_name || '';
                     return window.RouteMapping.getRouteForCustomer(customerName);
-                })();
+                })()).toLowerCase();
                 const periodFromOrder = o.period || 'morning';
-                return routeFromOrder === route && periodFromOrder === period;
+                // CRITICAL: Case-insensitive route comparison + ensure order has data
+                return routeFromOrder === route.toLowerCase() && 
+                       periodFromOrder === period &&
+                       (o.order_id || o.order?.id || o.order?.order_id || o.id); // Must have order ID
             });
             
             // CRITICAL: Count unique orders (not orderrows!)
@@ -2188,7 +2209,13 @@
             console.log(`   Total matched orderrows: ${matchedOrders.length}`);
             console.log(`   Unmatched orders (excluded): ${(cartResult.unmatchedOrders || []).length}`);
             
-            const customers = [...new Set(routeOrderrows.map(o => o.customer_name || o.order?.customer_name || '').filter(Boolean))].sort();
+            // CRITICAL: Only show customers that actually have orders (filter out 0-order customers)
+            const customers = [...new Set(
+                routeOrderrows
+                    .filter(o => o.order_id || o.order?.id || o.order?.order_id || o.id) // Must have order ID
+                    .map(o => o.customer_name || o.order?.customer_name || '')
+                    .filter(Boolean)
+            )].sort();
             const routeKey = `${route}_${period}`;
             const departureTime = window.RouteMapping.getDepartureTime(routeKey);
             const cartsEl = document.getElementById(`${route}-${period}-carts`);
