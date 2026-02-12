@@ -2452,7 +2452,7 @@
                     }
                 });
             }
-            const routeKey = `${route}_${period}`;
+            // routeKey already declared at line 2340, reuse it
             const departureTime = window.RouteMapping.getDepartureTime(routeKey);
             const cartsEl = document.getElementById(`${route}-${period}-carts`);
             const carts = cartsEl ? cartsEl.textContent : '0';
