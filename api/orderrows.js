@@ -28,14 +28,28 @@ export default async function handler(req, res) {
 
         const token = authHeader.replace('Bearer ', '');
 
-        // Get query parameters
-        const { deliveryStartDate, deliveryEndDate, slim } = req.query;
+        // Get query parameters - forward ALL params except page/per_page (they cause 500)
+        const { deliveryStartDate, deliveryEndDate, slim, page, per_page, ...otherParams } = req.query;
 
-        // Build URL
+        // Build URL - DO NOT include page/per_page (causes 500 error)
         const url = new URL(`${FLORINET_BASE_URL}/external/orderrows`);
         if (deliveryStartDate) url.searchParams.append('deliveryStartDate', deliveryStartDate);
         if (deliveryEndDate) url.searchParams.append('deliveryEndDate', deliveryEndDate);
         if (slim) url.searchParams.append('slim', slim);
+        
+        // Forward any other safe parameters (but NOT page/per_page)
+        Object.keys(otherParams).forEach(key => {
+            if (key !== 'page' && key !== 'per_page') {
+                url.searchParams.append(key, otherParams[key]);
+            }
+        });
+        
+        console.log('[Orderrows API] Forwarding params (excluding page/per_page):', {
+            deliveryStartDate,
+            deliveryEndDate,
+            slim,
+            otherParams: Object.keys(otherParams)
+        });
 
         console.log('[Orderrows API] Fetching from:', url.toString());
 

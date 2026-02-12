@@ -88,14 +88,20 @@ app.get('/api/external/orderrows', async (req, res) => {
       return res.status(401).json({ error: 'No authorization token' });
     }
     
+    // Forward ALL query params EXCEPT page/per_page (they cause 500 error)
     const params = new URLSearchParams();
-    if (req.query.deliveryStartDate) params.append('deliveryStartDate', req.query.deliveryStartDate);
-    if (req.query.deliveryEndDate) params.append('deliveryEndDate', req.query.deliveryEndDate);
-    if (req.query.deliveryDate) {
-      params.append('deliveryStartDate', req.query.deliveryDate);
-      params.append('deliveryEndDate', req.query.deliveryDate);
-    }
-    if (req.query.slim) params.append('slim', req.query.slim);
+    Object.keys(req.query).forEach(key => {
+      // Skip page/per_page - they cause HTTP 500
+      if (key !== 'page' && key !== 'per_page') {
+        if (key === 'deliveryDate') {
+          // Handle deliveryDate as both start and end
+          params.append('deliveryStartDate', req.query.deliveryDate);
+          params.append('deliveryEndDate', req.query.deliveryDate);
+        } else {
+          params.append(key, req.query[key]);
+        }
+      }
+    });
     
     const url = `${FLORINET_API_BASE}/external/orderrows?${params.toString()}`;
     console.log('   URL:', url);
