@@ -75,11 +75,22 @@ function validateOrders(orders) {
             return false;
         }
         
-        // Check 5: Filter out cancelled orders
-        if (order.state === 'cancelled' || 
-            order.state === 'deleted' || 
-            order.status === 'cancelled' || 
-            order.status === 'deleted') {
+        // Check 5: Filter out cancelled orders (English + Dutch states)
+        const state = (order.state || order.status || '').toLowerCase();
+        const cancelledStates = [
+            'cancelled', 'deleted', 'void', 'geannuleerd', 
+            'annuleer', 'afgezegd', 'afgewezen', 'rejected',
+            'refunded', 'terugbetaald', 'inactive', 'inactief'
+        ];
+        if (cancelledStates.some(cancelledState => state.includes(cancelledState))) {
+            validation.reasons.cancelled++;
+            validation.invalid++;
+            return false;
+        }
+        
+        // Also check order.order.state if it exists
+        const orderState = (order.order?.state || order.order?.status || '').toLowerCase();
+        if (cancelledStates.some(cancelledState => orderState.includes(cancelledState))) {
             validation.reasons.cancelled++;
             validation.invalid++;
             return false;

@@ -2264,6 +2264,17 @@
                 Object.entries(customerOrderCounts).forEach(([name, orderIds]) => {
                     if (name.toLowerCase().includes('akkus')) {
                         console.log(`   "${name}": ${orderIds.size} unique orders`);
+                        // Find the actual order for Akkus BV to check its state
+                        const akkusOrders = routeOrderrows.filter(o => {
+                            const customerName = o.customer_name || o.order?.customer_name || '';
+                            return customerName.toLowerCase().includes('akkus');
+                        });
+                        akkusOrders.forEach(akkusOrder => {
+                            const orderId = akkusOrder.order_id || akkusOrder.order?.id || akkusOrder.id;
+                            const state = akkusOrder.state || akkusOrder.status || akkusOrder.order?.state || akkusOrder.order?.status || 'unknown';
+                            const assembly = akkusOrder.assembly_amount || 0;
+                            console.log(`      Order ID: ${orderId}, State: "${state}", Assembly: ${assembly}`);
+                        });
                     }
                 });
             }
