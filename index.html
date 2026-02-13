@@ -2264,34 +2264,68 @@
                 }
                 
                 const routeName = route.charAt(0).toUpperCase() + route.slice(1);
-                let carts = 0;
-                if (cartData[period] && cartData[period].byRoute) {
-                    carts = cartData[period].byRoute[routeName] || 0;
-                } else {
-                    carts = cartData.byRoute[routeName] || cartData.byRoute[route] || 0;
-                }
-
-                // If no orders/customers for this route+period, force carts to 0 to avoid stale cache.
-                if (uniqueOrdersCount === 0) {
-                    carts = 0;
-                }
                 
-                // CRITICAL: If we have orders but no carts, or vice versa, recalculate for this route
-                if (routeOrderrows.length > 0 && carts === 0) {
-                    console.warn(`⚠️ Route ${route} has ${uniqueOrdersCount} unique orders but 0 carts - recalculating...`);
-                    // Recalculate carts for this route's orders
-                    if (window.CartCalculation && window.CartCalculation.calculateCarts) {
-                        const routeCartResult = window.CartCalculation.calculateCarts(routeOrderrows);
-                        carts = routeCartResult.byRoute[routeName] || routeCartResult.byRoute[route] || 0;
-                        console.log(`   Recalculated: ${carts} carts for ${uniqueOrdersCount} unique orders`);
+                // CRITICAL: Use CartDisplayManager.getRouteData() - SAME as Optimization page!
+                // This ensures we read carts from breakdown first, then byRoute, with all fallbacks
+                let carts = 0;
+                let trucks = 0;
+                
+                if (window.CartDisplayManager) {
+                    // Create or get CartDisplayManager instance
+                    if (!window._dashboardCartDisplayManager) {
+                        window._dashboardCartDisplayManager = new window.CartDisplayManager();
+                    }
+                    const cartDisplayManager = window._dashboardCartDisplayManager;
+                    
+                    // Use SAME method as Optimization page
+                    const routeData = cartDisplayManager.getRouteData(routeName, period);
+                    carts = routeData.carts || 0;
+                    trucks = routeData.trucks || 0;
+                    
+                    console.log(`📊 Dashboard: getRouteData(${routeName}, ${period}): carts=${carts}, trucks=${trucks}, orders=${routeData.orders || uniqueOrdersCount}`);
+                    
+                    // CRITICAL: If orders > 0 but carts = 0, this is IMPOSSIBLE!
+                    // Orders MUST have carts to transport goods!
+                    if (uniqueOrdersCount > 0 && carts === 0) {
+                        console.error(`❌ CRITICAL ERROR in Dashboard: Route ${routeName} ${period} has ${uniqueOrdersCount} orders but 0 carts!`);
+                        console.error(`   This is impossible - orders need carts!`);
+                        console.error(`   Forcing minimum 1 cart as safety fallback!`);
+                        carts = 1; // Force at least 1 cart for display
+                        trucks = Math.ceil(carts / 17); // Recalculate trucks
+                    }
+                } else {
+                    // Fallback: Try to read from cartData directly
+                    if (cartData[period] && cartData[period].byRoute) {
+                        carts = cartData[period].byRoute[routeName] || 0;
+                    } else {
+                        carts = cartData.byRoute[routeName] || cartData.byRoute[route] || 0;
+                    }
+                    
+                    // If no orders/customers for this route+period, force carts to 0 to avoid stale cache.
+                    if (uniqueOrdersCount === 0) {
+                        carts = 0;
+                    }
+                    
+                    // CRITICAL: If we have orders but no carts, or vice versa, recalculate for this route
+                    if (routeOrderrows.length > 0 && carts === 0) {
+                        console.warn(`⚠️ Route ${route} has ${uniqueOrdersCount} unique orders but 0 carts - recalculating...`);
+                        // Recalculate carts for this route's orders
+                        if (window.CartCalculation && window.CartCalculation.calculateCarts) {
+                            const routeCartResult = window.CartCalculation.calculateCarts(routeOrderrows);
+                            carts = routeCartResult.byRoute[routeName] || routeCartResult.byRoute[route] || 0;
+                            console.log(`   Recalculated: ${carts} carts for ${uniqueOrdersCount} unique orders`);
+                        }
                     }
                 }
                 
                 // CRITICAL: Only show trucks if there are actual orders AND carts > 0
                 // If no orders or no carts, trucks = 0
-                let trucks = 0;
-                if (uniqueOrdersCount > 0 && carts > 0) {
-                    trucks = Math.ceil(carts / 17);
+                // (trucks already calculated above if using CartDisplayManager)
+                if (!window.CartDisplayManager || !window._dashboardCartDisplayManager) {
+                    trucks = 0;
+                    if (uniqueOrdersCount > 0 && carts > 0) {
+                        trucks = Math.ceil(carts / 17);
+                    }
                 }
                 
                 // Update UI
