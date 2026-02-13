@@ -931,7 +931,9 @@ class FlorinetAPI {
         const startFlorinetDate = this.toFlorinetDate(startDate);
         const endFlorinetDate = this.toFlorinetDate(endDate);
         
-        console.log(`📅 Fetching orders for planning window: ${startDate} to ${endDate} (${startFlorinetDate} to ${endFlorinetDate})`);
+        console.log(`📅 DATE RANGE FIX V2.0: Fetching orders for planning window`);
+        console.log(`   Start: ${startDate} (${startFlorinetDate})`);
+        console.log(`   End: ${endDate} (${endFlorinetDate})`);
         console.log(`   Planning window: 7am ${startDate} to 7am ${endDate}`);
         
         return await this.getOrdersRange(startFlorinetDate, endFlorinetDate);
