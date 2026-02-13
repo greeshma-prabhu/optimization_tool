@@ -53,6 +53,27 @@ function filterValidRows(rows) {
             return false;
         }
         
+        // RULE 2b: Check for cancellation in multiple places
+        // Some orders are marked as 'Gereed' but are actually cancelled
+        const orderStatus = (order.status || order.state || '').toString().toLowerCase();
+        const rowStatus = (row.status || row.state || '').toString().toLowerCase();
+        const cancelledKeywords = [
+            'cancelled', 'geannuleerd', 'annuleer', 'afgezegd', 
+            'afgewezen', 'rejected', 'void', 'deleted', 'inactive'
+        ];
+        
+        if (cancelledKeywords.some(keyword => 
+            orderStatus.includes(keyword) || rowStatus.includes(keyword)
+        )) {
+            return false;
+        }
+        
+        // Check cancellation flags
+        if (order.cancelled === true || row.cancelled === true || 
+            order.is_cancelled === true || row.is_cancelled === true) {
+            return false;
+        }
+        
         // RULE 3: Only known route locations (32, 34, 36)
         const locationId = order.delivery_location_id || row.delivery_location_id;
         if (!locationId || ![32, 34, 36].includes(Number(locationId))) {

@@ -55,6 +55,45 @@ function filterValidOrderRows(rows) {
             return false;
         }
         
+        // CRITICAL: Check for cancellation in multiple places
+        // Some orders are marked as 'Gereed' but are actually cancelled
+        const orderStatus = (order.status || order.state || '').toString().toLowerCase();
+        const rowStatus = (row.status || row.state || '').toString().toLowerCase();
+        const cancelledKeywords = [
+            'cancelled', 'geannuleerd', 'annuleer', 'afgezegd', 
+            'afgewezen', 'rejected', 'void', 'deleted', 'inactive'
+        ];
+        
+        // Check if status contains cancellation keywords
+        if (cancelledKeywords.some(keyword => 
+            orderStatus.includes(keyword) || rowStatus.includes(keyword)
+        )) {
+            stats.removed_deleted++; // Count as deleted
+            return false;
+        }
+        
+        // Check if order has cancellation flag
+        if (order.cancelled === true || row.cancelled === true || 
+            order.is_cancelled === true || row.is_cancelled === true) {
+            stats.removed_deleted++;
+            return false;
+        }
+        
+        // DEBUG: Log Akkus orders for investigation
+        const customerName = (order.contact_name || row.customer_name || '').toLowerCase();
+        if (customerName.includes('akkus')) {
+            console.log(`🔍 DEBUG Akkus order:`, {
+                order_id: row.order_id || order.id,
+                state: row.state || order.state,
+                status: row.status || order.status,
+                deleted_at: order.deleted_at,
+                cancelled: order.cancelled || row.cancelled,
+                types: order.types,
+                type: order.type,
+                assembly_amount: row.assembly_amount
+            });
+        }
+        
         // EXCLUDE rows with no company_id AND no real order data
         if (!row.company_id && !order.contact_name && !order.customer_id) {
             stats.removed_no_company++;
