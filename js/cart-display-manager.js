@@ -189,6 +189,29 @@ class CartDisplayManager {
                    periodMatch;
         }).length;
         
+        // CRITICAL: If orders > 0 but carts = 0, this is IMPOSSIBLE!
+        // Orders MUST have carts to transport goods!
+        if (orders > 0 && carts === 0) {
+            console.error(`❌ CRITICAL ERROR: ${routeName} ${period} has ${orders} orders but 0 carts!`);
+            console.error(`   This is impossible - orders need carts!`);
+            console.error(`   Trying to recalculate from breakdown...`);
+            
+            // Try to get carts from breakdown as last resort
+            if (this.cartData && this.cartData[period] && this.cartData[period].breakdown) {
+                const routeBreakdown = this.cartData[period].breakdown.find(r => r.route === routeName);
+                if (routeBreakdown && routeBreakdown.carts > 0) {
+                    carts = routeBreakdown.carts;
+                    console.log(`   ✅ Found ${carts} carts from breakdown!`);
+                }
+            }
+            
+            // If still 0, this is a critical bug
+            if (carts === 0) {
+                console.error(`   ❌ STILL 0 carts after checking breakdown!`);
+                console.error(`   This is a BUG - orders cannot exist without carts!`);
+            }
+        }
+        
         // CRITICAL: Only show trucks if there are orders AND carts > 0
         let trucks = 0;
         if (orders > 0 && carts > 0) {
