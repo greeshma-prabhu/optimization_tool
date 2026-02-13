@@ -909,6 +909,8 @@ class FlorinetAPI {
 
     /**
      * Get orders for a specific date
+     * CRITICAL: Planning window is 7am previous day to 7am current day
+     * For date 12-02-2026, fetch orders from 11-02-2026 7am to 12-02-2026 7am
      * @param {Date|string} deliveryDate - Date object or YYYY-MM-DD string
      */
     async getOrders(deliveryDate) {
@@ -916,10 +918,23 @@ class FlorinetAPI {
             ? deliveryDate.toISOString().split('T')[0]
             : deliveryDate;
         
-        const florinetDate = this.toFlorinetDate(dateStr);
-        console.log(`📅 Fetching orders for ${dateStr} (${florinetDate})`);
+        // CRITICAL: Planning window is previous day to current day (7am-7am window)
+        // For date 12-02-2026, we need orders from 11-02-2026 to 12-02-2026
+        // The API will return orders, and we filter by delivery_date/time in post-processing
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const previousDay = new Date(dateObj);
+        previousDay.setDate(previousDay.getDate() - 1);
         
-        return await this.getOrdersRange(florinetDate, florinetDate);
+        const startDate = previousDay.toISOString().split('T')[0];
+        const endDate = dateStr;
+        
+        const startFlorinetDate = this.toFlorinetDate(startDate);
+        const endFlorinetDate = this.toFlorinetDate(endDate);
+        
+        console.log(`📅 Fetching orders for planning window: ${startDate} to ${endDate} (${startFlorinetDate} to ${endFlorinetDate})`);
+        console.log(`   Planning window: 7am ${startDate} to 7am ${endDate}`);
+        
+        return await this.getOrdersRange(startFlorinetDate, endFlorinetDate);
     }
     
     /**

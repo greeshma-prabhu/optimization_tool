@@ -135,7 +135,7 @@ function filterValidOrderRows(rows) {
  */
 function getZuidplasOrderRows(allRows) {
     // Step 1: Remove deleted and contract orders
-    const validRows = filterValidOrderRows(allRows);
+    let validRows = filterValidOrderRows(allRows);
     
     // Step 2: Filter by company_id to ONLY include "De Zuidplas" orders
     // TODO: Verify which company_id = "De Zuidplas" (might be 1, 2, 3, or 4)
