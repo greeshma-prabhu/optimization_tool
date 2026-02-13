@@ -143,49 +143,33 @@ class CartDisplayManager {
         }
         
         // CRITICAL: Get carts from period-specific data (morning/evening)
-        // Structure: cartData.morning.byRoute.Naaldwijk or cartData.evening.byRoute.Naaldwijk
+        // Dashboard shows correct carts, so data exists - we just need to read it correctly!
+        // METHOD 1: Try breakdown FIRST (this is what Dashboard uses and it works!)
         let carts = 0;
         
-        // CRITICAL FIX: Read from period-specific data FIRST
-        // Dashboard shows correct carts, so data exists - we just need to read it correctly!
-        if (period && this.cartData) {
-            // Check if period-specific data exists
-            const periodData = this.cartData[period];
-            if (periodData && periodData.byRoute) {
-                // Try period-specific first (morning/evening)
-                const periodCarts = periodData.byRoute[routeName];
-                if (periodCarts !== undefined && periodCarts !== null) {
-                    carts = periodCarts;
-                    console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from ${period}.byRoute.${routeName}`);
-                } else {
-                    console.warn(`⚠️ getRouteData(${routeName}, ${period}): ${period}.byRoute.${routeName} is ${periodCarts}`);
-                    console.warn(`   ${period}.byRoute keys:`, Object.keys(periodData.byRoute));
-                    console.warn(`   ${period}.byRoute full:`, periodData.byRoute);
-                }
-            } else {
-                console.warn(`⚠️ getRouteData(${routeName}, ${period}): ${period} data or byRoute not found`);
-                console.warn(`   cartData.${period}:`, periodData);
+        if (period && this.cartData && this.cartData[period] && this.cartData[period].breakdown) {
+            const routeBreakdown = this.cartData[period].breakdown.find(r => r.route === routeName);
+            if (routeBreakdown && routeBreakdown.carts !== undefined && routeBreakdown.carts !== null) {
+                carts = routeBreakdown.carts;
+                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from breakdown (Method 1)`);
             }
         }
         
-        // Fallback to combined totals if period-specific not found or is 0
-        if (carts === 0 && this.cartData && this.cartData.byRoute) {
-            const combinedCarts = this.cartData.byRoute[routeName];
-            if (combinedCarts !== undefined && combinedCarts !== null) {
-                // Only use combined if period-specific was truly not found
-                // But combined includes both morning+evening, so we can't use it for period-specific
-                console.warn(`⚠️ getRouteData(${routeName}, ${period}): Period-specific was 0, combined total is ${combinedCarts} (but includes both periods)`);
+        // METHOD 2: Try byRoute if breakdown didn't work
+        if (carts === 0 && period && this.cartData && this.cartData[period] && this.cartData[period].byRoute) {
+            const periodCarts = this.cartData[period].byRoute[routeName];
+            if (periodCarts !== undefined && periodCarts !== null && periodCarts > 0) {
+                carts = periodCarts;
+                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from byRoute (Method 2)`);
             }
         }
         
-        // CRITICAL: If we still have 0 carts but have orders, this is WRONG!
-        // Orders MUST have carts to transport goods!
+        // CRITICAL: If we still have 0 carts, log error
         if (carts === 0) {
-            console.error(`❌ getRouteData(${routeName}, ${period}): ZERO CARTS!`);
+            console.error(`❌ getRouteData(${routeName}, ${period}): ZERO CARTS after trying breakdown and byRoute!`);
             console.error(`   cartData exists:`, !!this.cartData);
-            console.error(`   cartData.${period} exists:`, !!(this.cartData && this.cartData[period]));
             if (this.cartData && this.cartData[period]) {
-                console.error(`   ${period}.byRoute exists:`, !!(this.cartData[period].byRoute));
+                console.error(`   ${period}.breakdown:`, this.cartData[period].breakdown);
                 console.error(`   ${period}.byRoute:`, this.cartData[period].byRoute);
             }
         }
