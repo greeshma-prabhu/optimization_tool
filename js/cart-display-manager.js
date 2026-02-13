@@ -167,8 +167,14 @@ class CartDisplayManager {
             console.error(`❌ getRouteData(${routeName}, ${period}): No cart data found!`);
         }
         
+        // CRITICAL: Use matchedOrders from cartResult if available (they have period property set)
+        // Otherwise use this.orders (but they might not have period set correctly)
+        const ordersToCount = (this.cartData && this.cartData.matchedOrders) 
+            ? this.cartData.matchedOrders 
+            : (this.orders || []);
+        
         // Count orders for this route FIRST
-        const orders = this.orders.filter(order => {
+        const orders = ordersToCount.filter(order => {
             const orderLocationId = order.delivery_location_id || order.order?.delivery_location_id;
             const periodMatch = period ? (order.period || 'morning') === period : true;
             return orderLocationId === locationId &&
