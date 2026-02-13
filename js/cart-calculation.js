@@ -1087,8 +1087,51 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     // CRITICAL FIX: Apply strict filtering BEFORE cart calculation
     // This ensures only valid De Zuidplas orders (Gereed, not deleted, valid location) are processed
     console.log('🔍 Applying strict filter to orders before cart calculation...');
-    const validOrders = filterValidRows(orders);
+    let validOrders = filterValidRows(orders);
     console.log(`   Filtered: ${orders.length} → ${validOrders.length} valid orders`);
+    
+    // CRITICAL: Also filter by company_id to ONLY include "De Zuidplas" orders
+    // Excel shows separate columns: "De Zuidplas" vs "Royal Flowers"
+    // Dashboard must match "De Zuidplas" column only!
+    if (window.OrderValidator && typeof window.OrderValidator.filterByCompanyId === 'function') {
+        const beforeCompanyFilter = validOrders.length;
+        validOrders = window.OrderValidator.filterByCompanyId(validOrders);
+        const afterCompanyFilter = validOrders.length;
+        if (beforeCompanyFilter !== afterCompanyFilter) {
+            console.log(`   Company filter: ${beforeCompanyFilter} → ${afterCompanyFilter} (removed ${beforeCompanyFilter - afterCompanyFilter} from other companies)`);
+        }
+    } else {
+        // Fallback: Apply company_id filter directly
+        const companyIds = {};
+        validOrders.forEach(row => {
+            const cid = row.company_id || row.order?.company_id || 'NULL';
+            companyIds[cid] = (companyIds[cid] || 0) + 1;
+        });
+        
+        if (Object.keys(companyIds).length > 1) {
+            console.log(`⚠️ Multiple company_ids in orders:`, companyIds);
+            // Use config or most common (excluding NULL)
+            const DE_ZUIDPLAS_COMPANY_ID = window.DE_ZUIDPLAS_COMPANY_ID || 
+                (() => {
+                    const sorted = Object.entries(companyIds)
+                        .filter(([id]) => id !== 'NULL')
+                        .sort((a, b) => b[1] - a[1]);
+                    return sorted.length > 0 ? Number(sorted[0][0]) : null;
+                })();
+            
+            if (DE_ZUIDPLAS_COMPANY_ID !== null) {
+                console.log(`🔍 Filtering to ONLY company_id ${DE_ZUIDPLAS_COMPANY_ID} (De Zuidplas)...`);
+                const before = validOrders.length;
+                validOrders = validOrders.filter(row => {
+                    const companyId = row.company_id || row.order?.company_id;
+                    return companyId === DE_ZUIDPLAS_COMPANY_ID;
+                });
+                console.log(`   Filtered: ${before} → ${validOrders.length} (removed ${before - validOrders.length} from other companies)`);
+            } else {
+                console.warn(`⚠️ Could not determine De Zuidplas company_id - set window.DE_ZUIDPLAS_COMPANY_ID = <number>`);
+            }
+        }
+    }
     
     // CRITICAL: This MUST run the FUST calculation function
     // Only pass valid orders (filtered) to calculateCarts

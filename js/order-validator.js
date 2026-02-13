@@ -164,27 +164,45 @@ function getZuidplasOrderRows(allRows) {
     if (Object.keys(companyIds).length > 1) {
         console.log(`⚠️ Multiple company_ids found:`, companyIds);
         
-        // CRITICAL FIX: Filter to ONLY company_id 4 (De Zuidplas)
-        // Based on data analysis: company_4 has the most orders and appears to be De Zuidplas
-        // If this is wrong, change DE_ZUIDPLAS_COMPANY_ID below
-        const DE_ZUIDPLAS_COMPANY_ID = 4; // TODO: Verify with Jeroen which company_id = "De Zuidplas"
+        // CRITICAL FIX: Filter to ONLY "De Zuidplas" company_id
+        // Excel shows separate columns: "De Zuidplas" vs "Royal Flowers"
+        // We need to identify which company_id is "De Zuidplas"
+        // Strategy: Exclude NULL (old contracts) and try to identify De Zuidplas by process of elimination
         
-        console.log(`🔍 Filtering to ONLY company_id ${DE_ZUIDPLAS_COMPANY_ID} (De Zuidplas)...`);
-        const beforeFilter = validRows.length;
+        // Get the most common company_id (likely De Zuidplas)
+        // But also check if we can identify it by customer names or other indicators
+        const companyIdCounts = Object.entries(companyIds).sort((a, b) => b[1] - a[1]);
+        const mostCommonCompanyId = companyIdCounts[0][0];
         
-        const zuidplasOnlyRows = validRows.filter(row => {
-            const companyId = row.company_id || row.order?.company_id;
-            return companyId === DE_ZUIDPLAS_COMPANY_ID;
-        });
+        // For now, use company_id from config or try to identify it
+        // Check if there's a config setting
+        const DE_ZUIDPLAS_COMPANY_ID = window.DE_ZUIDPLAS_COMPANY_ID || 
+                                      (mostCommonCompanyId !== 'NULL' ? Number(mostCommonCompanyId) : null);
         
-        const afterFilter = zuidplasOnlyRows.length;
-        const removed = beforeFilter - afterFilter;
-        
-        console.log(`   Filtered: ${beforeFilter} rows → ${afterFilter} rows (removed ${removed} from other companies)`);
-        console.log(`   ✅ Only "De Zuidplas" orders (company_id ${DE_ZUIDPLAS_COMPANY_ID}) included`);
-        console.log(`   ⚠️ Excluded: ${removed} orders from other companies (Royal Flowers, etc.)`);
-        
-        validRows = zuidplasOnlyRows;
+        if (DE_ZUIDPLAS_COMPANY_ID !== null) {
+            console.log(`🔍 Filtering to ONLY company_id ${DE_ZUIDPLAS_COMPANY_ID} (De Zuidplas)...`);
+            console.log(`   Company ID distribution:`, companyIds);
+            console.log(`   Using company_id ${DE_ZUIDPLAS_COMPANY_ID} (most common: ${mostCommonCompanyId})`);
+            
+            const beforeFilter = validRows.length;
+            
+            const zuidplasOnlyRows = validRows.filter(row => {
+                const companyId = row.company_id || row.order?.company_id;
+                return companyId === DE_ZUIDPLAS_COMPANY_ID;
+            });
+            
+            const afterFilter = zuidplasOnlyRows.length;
+            const removed = beforeFilter - afterFilter;
+            
+            console.log(`   Filtered: ${beforeFilter} rows → ${afterFilter} rows (removed ${removed} from other companies)`);
+            console.log(`   ✅ Only "De Zuidplas" orders (company_id ${DE_ZUIDPLAS_COMPANY_ID}) included`);
+            console.log(`   ⚠️ Excluded: ${removed} orders from other companies (Royal Flowers, etc.)`);
+            
+            validRows = zuidplasOnlyRows;
+        } else {
+            console.warn(`⚠️ Could not determine De Zuidplas company_id - including all valid rows`);
+            console.warn(`⚠️ Set window.DE_ZUIDPLAS_COMPANY_ID = <number> to filter correctly`);
+        }
     }
     
     // Step 3: Count unique real orders
@@ -403,6 +421,52 @@ function getOrderStats(orders) {
     return stats;
 }
 
+/**
+ * Filter orders by company_id to only include "De Zuidplas" orders
+ * Can be called on cached orders to apply filtering retroactively
+ */
+function filterByCompanyId(orders) {
+    if (!orders || orders.length === 0) return orders;
+    
+    const companyIds = {};
+    orders.forEach(row => {
+        const cid = row.company_id || row.order?.company_id || 'NULL';
+        companyIds[cid] = (companyIds[cid] || 0) + 1;
+    });
+    
+    if (Object.keys(companyIds).length <= 1) {
+        // Only one company_id, no filtering needed
+        return orders;
+    }
+    
+    // Determine De Zuidplas company_id
+    const DE_ZUIDPLAS_COMPANY_ID = window.DE_ZUIDPLAS_COMPANY_ID || 
+        (() => {
+            // Use most common company_id (excluding NULL)
+            const sorted = Object.entries(companyIds)
+                .filter(([id]) => id !== 'NULL')
+                .sort((a, b) => b[1] - a[1]);
+            return sorted.length > 0 ? Number(sorted[0][0]) : null;
+        })();
+    
+    if (DE_ZUIDPLAS_COMPANY_ID === null) {
+        console.warn(`⚠️ Could not determine De Zuidplas company_id - set window.DE_ZUIDPLAS_COMPANY_ID = <number>`);
+        return orders; // Return all if can't determine
+    }
+    
+    const before = orders.length;
+    const filtered = orders.filter(row => {
+        const companyId = row.company_id || row.order?.company_id;
+        return companyId === DE_ZUIDPLAS_COMPANY_ID;
+    });
+    
+    if (before !== filtered.length) {
+        console.log(`🔍 filterByCompanyId: ${before} → ${filtered.length} (company_id ${DE_ZUIDPLAS_COMPANY_ID})`);
+    }
+    
+    return filtered;
+}
+
 // Export for use in other files
 if (typeof window !== 'undefined') {
     window.OrderValidator = {
@@ -410,7 +474,8 @@ if (typeof window !== 'undefined') {
         getOrderStats: getOrderStats,
         removeDuplicates: removeDuplicates,
         filterValidOrderRows: filterValidOrderRows,
-        getZuidplasOrderRows: getZuidplasOrderRows
+        getZuidplasOrderRows: getZuidplasOrderRows,
+        filterByCompanyId: filterByCompanyId
     };
 }
 
