@@ -1083,12 +1083,23 @@
 
         // Auto-load today's orders on page load
         document.addEventListener('DOMContentLoaded', async () => {
-            // Wait for API to be ready
+            // Wait for ALL required scripts to be ready
             function checkAndLoadOrders() {
-                if (typeof florinetAPI === 'undefined') {
+                // Check if all required scripts are loaded
+                const required = [
+                    { name: 'florinetAPI', check: () => typeof florinetAPI !== 'undefined' },
+                    { name: 'OrderValidator', check: () => window.OrderValidator && typeof window.OrderValidator.getZuidplasOrderRows === 'function' },
+                    { name: 'CartCalculation', check: () => window.CartCalculation && typeof window.CartCalculation.calculateCarts === 'function' }
+                ];
+                
+                const missing = required.filter(r => !r.check());
+                if (missing.length > 0) {
+                    console.log(`⏳ Waiting for scripts: ${missing.map(r => r.name).join(', ')}...`);
                     setTimeout(checkAndLoadOrders, 100);
                     return;
                 }
+                
+                console.log('✅ All required scripts loaded!');
                 
                 // Set default date to today if not set
                 const datePicker = document.getElementById('order-date-picker');
@@ -1104,7 +1115,9 @@
                     try {
                         await window.syncOrders();
                     } catch (error) {
-                        console.error('Auto-load error:', error);
+                        console.error('❌ Auto-load error:', error);
+                        console.error('   Error details:', error.stack);
+                        alert('Error loading orders: ' + error.message);
                     }
                 }, 500);
             }
