@@ -3213,12 +3213,83 @@
         }
 
         // Make functions globally accessible
+        /**
+         * DIAGNOSTIC: Show which customers in Aalsmeer evening have orders
+         * Run: diagnoseAalsmeerEvening() in console
+         */
+        function diagnoseAalsmeerEvening() {
+            console.log('\n🔍 DIAGNOSTIC: Aalsmeer Evening Orders');
+            console.log('═══════════════════════════════════════════════════════════════════');
+            
+            const cartResult = window.__zuidplas_cart_cache?.cartResult;
+            if (!cartResult) {
+                console.error('❌ No cart data. Please sync first.');
+                return;
+            }
+            
+            const matchedOrders = cartResult.matchedOrders || [];
+            const aalsmeerEveningOrders = matchedOrders.filter(o => {
+                const route = (o.route || '').toLowerCase();
+                const period = o.period || 'morning';
+                return route === 'aalsmeer' && period === 'evening';
+            });
+            
+            console.log(`\n📊 Total Aalsmeer Evening Orders: ${aalsmeerEveningOrders.length} orderrows`);
+            
+            // Group by customer
+            const customerGroups = {};
+            aalsmeerEveningOrders.forEach(o => {
+                const customerName = o.customer_name || o.order?.customer_name || 'Unknown';
+                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                const companyId = o.company_id || o.order?.company_id || 'NULL';
+                
+                if (!customerGroups[customerName]) {
+                    customerGroups[customerName] = {
+                        orderIds: new Set(),
+                        companyIds: new Set(),
+                        orderrows: 0
+                    };
+                }
+                
+                if (orderId) customerGroups[customerName].orderIds.add(String(orderId));
+                customerGroups[customerName].companyIds.add(String(companyId));
+                customerGroups[customerName].orderrows++;
+            });
+            
+            const uniqueOrders = new Set();
+            aalsmeerEveningOrders.forEach(o => {
+                const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
+                if (orderId) uniqueOrders.add(String(orderId));
+            });
+            
+            console.log(`📊 Unique Orders: ${uniqueOrders.size}`);
+            console.log(`\n📋 Customers with orders:`);
+            
+            Object.entries(customerGroups)
+                .sort((a, b) => b[1].orderIds.size - a[1].orderIds.size)
+                .forEach(([customer, data]) => {
+                    const companyIds = Array.from(data.companyIds).join(', ');
+                    console.log(`   ${customer}:`);
+                    console.log(`      - Unique orders: ${data.orderIds.size}`);
+                    console.log(`      - Orderrows: ${data.orderrows}`);
+                    console.log(`      - Company IDs: ${companyIds}`);
+                    if (!companyIds.includes('4')) {
+                        console.log(`      ⚠️ WARNING: Not company_id 4!`);
+                    }
+                });
+            
+            console.log(`\n✅ Expected: 0 orders (Excel shows 0)`);
+            console.log(`❌ Actual: ${uniqueOrders.size} unique orders`);
+            console.log(`\n💡 These orders should be excluded if Excel shows 0 for Aalsmeer evening.`);
+        }
+        
         window.updateRouteSummary = updateRouteSummary;
         window.viewRouteDetails = viewRouteDetails;
         window.checkMismatchedOrders = checkMismatchedOrders;
         window.downloadMismatchReport = downloadMismatchReport;
         window.displayUnmatchedOrdersSection = displayUnmatchedOrdersSection;
         window.viewUnmatchedOrdersDetail = viewUnmatchedOrdersDetail;
+        window.diagnoseAalsmeerEvening = diagnoseAalsmeerEvening;
         
         
         // Logout function - MUST BE GLOBAL
