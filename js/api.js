@@ -909,8 +909,8 @@ class FlorinetAPI {
 
     /**
      * Get orders for a specific date
-     * CRITICAL: Planning window is 7am previous day to 7am current day
-     * For date 12-02-2026, fetch orders from 11-02-2026 7am to 12-02-2026 7am
+     * CRITICAL: API only accepts SINGLE date (not date range) - it crashes with HTTP 500 if we send a range!
+     * The 7am-7am planning window filtering happens in post-processing, not in API call
      * @param {Date|string} deliveryDate - Date object or YYYY-MM-DD string
      */
     async getOrders(deliveryDate) {
@@ -918,25 +918,13 @@ class FlorinetAPI {
             ? deliveryDate.toISOString().split('T')[0]
             : deliveryDate;
         
-        // CRITICAL: Planning window is previous day to current day (7am-7am window)
-        // For date 12-02-2026, we need orders from 11-02-2026 to 12-02-2026
-        // The API will return orders, and we filter by delivery_date/time in post-processing
-        const dateObj = new Date(dateStr + 'T00:00:00');
-        const previousDay = new Date(dateObj);
-        previousDay.setDate(previousDay.getDate() - 1);
+        // API CRASHES if we send date range! Must use single date only
+        const florinetDate = this.toFlorinetDate(dateStr);
+        console.log(`📅 Fetching orders for ${dateStr} (${florinetDate})`);
+        console.log(`   ⚠️ API limitation: Must use single date (API crashes with date ranges)`);
+        console.log(`   📝 Note: 7am-7am planning window filtering happens in post-processing`);
         
-        const startDate = previousDay.toISOString().split('T')[0];
-        const endDate = dateStr;
-        
-        const startFlorinetDate = this.toFlorinetDate(startDate);
-        const endFlorinetDate = this.toFlorinetDate(endDate);
-        
-        console.log(`📅 DATE RANGE FIX V2.0: Fetching orders for planning window`);
-        console.log(`   Start: ${startDate} (${startFlorinetDate})`);
-        console.log(`   End: ${endDate} (${endFlorinetDate})`);
-        console.log(`   Planning window: 7am ${startDate} to 7am ${endDate}`);
-        
-        return await this.getOrdersRange(startFlorinetDate, endFlorinetDate);
+        return await this.getOrdersRange(florinetDate, florinetDate);
     }
     
     /**
