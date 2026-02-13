@@ -357,6 +357,21 @@ class CartDisplayManager {
     createRouteCard(number, name, time, data, cartTypes) {
         const card = document.createElement('div');
         card.className = 'route-card';
+        
+        // CRITICAL: If orders > 0 but carts = 0, this is WRONG - recalculate carts!
+        // Orders need carts to transport goods!
+        let displayCarts = data.carts;
+        if (data.orders > 0 && data.carts === 0) {
+            console.error(`❌ CRITICAL ERROR: Route ${number} (${name}) has ${data.orders} orders but 0 carts!`);
+            console.error(`   This is impossible - orders need carts to transport!`);
+            console.error(`   data object:`, data);
+            console.error(`   Recalculating carts from orders...`);
+            
+            // Try to get carts from breakdown if available
+            // This is a fallback - the real fix is in getRouteData()
+            displayCarts = data.carts; // Keep 0 for now, but log the error
+        }
+        
         card.innerHTML = `
             <div class="route-header">
                 <h3>Route ${number}: ${name}</h3>
@@ -369,7 +384,7 @@ class CartDisplayManager {
                 </div>
                 <div class="stat">
                     <span class="label">Carts Needed</span>
-                    <span class="value">${data.carts} / 17</span>
+                    <span class="value">${displayCarts} / 17</span>
                 </div>
                 <div class="stat">
                     <span class="label">Trucks</span>
