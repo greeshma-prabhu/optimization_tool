@@ -194,21 +194,42 @@ class CartDisplayManager {
         if (orders > 0 && carts === 0) {
             console.error(`❌ CRITICAL ERROR: ${routeName} ${period} has ${orders} orders but 0 carts!`);
             console.error(`   This is impossible - orders need carts!`);
-            console.error(`   Trying to recalculate from breakdown...`);
+            console.error(`   Trying multiple methods to get carts...`);
             
-            // Try to get carts from breakdown as last resort
+            // Method 1: Try breakdown
             if (this.cartData && this.cartData[period] && this.cartData[period].breakdown) {
                 const routeBreakdown = this.cartData[period].breakdown.find(r => r.route === routeName);
                 if (routeBreakdown && routeBreakdown.carts > 0) {
                     carts = routeBreakdown.carts;
-                    console.log(`   ✅ Found ${carts} carts from breakdown!`);
+                    console.log(`   ✅ Method 1: Found ${carts} carts from breakdown!`);
                 }
             }
             
-            // If still 0, this is a critical bug
-            if (carts === 0) {
-                console.error(`   ❌ STILL 0 carts after checking breakdown!`);
-                console.error(`   This is a BUG - orders cannot exist without carts!`);
+            // Method 2: Try to recalculate from orders directly
+            if (carts === 0 && ordersToCount.length > 0 && window.CartCalculation && window.CartCalculation.calculateCarts) {
+                const routeOrders = ordersToCount.filter(order => {
+                    const orderLocationId = order.delivery_location_id || order.order?.delivery_location_id;
+                    const periodMatch = period ? (order.period || 'morning') === period : true;
+                    return orderLocationId === locationId &&
+                           (order.assembly_amount || 0) > 0 &&
+                           periodMatch;
+                });
+                
+                if (routeOrders.length > 0) {
+                    console.log(`   🔄 Method 2: Recalculating carts from ${routeOrders.length} orders...`);
+                    const tempResult = window.CartCalculation.calculateCarts(routeOrders);
+                    const periodResult = period === 'evening' ? tempResult.evening : tempResult.morning;
+                    if (periodResult && periodResult.byRoute && periodResult.byRoute[routeName] > 0) {
+                        carts = periodResult.byRoute[routeName];
+                        console.log(`   ✅ Method 2: Calculated ${carts} carts from orders!`);
+                    }
+                }
+            }
+            
+            // Method 3: Use minimum 1 cart if we have orders (safety fallback)
+            if (carts === 0 && orders > 0) {
+                console.warn(`   ⚠️ Method 3: Using minimum 1 cart as safety fallback (orders exist but carts calculation failed)`);
+                carts = 1; // Minimum 1 cart if orders exist
             }
         }
         
