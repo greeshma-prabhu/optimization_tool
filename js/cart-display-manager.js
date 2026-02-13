@@ -149,20 +149,25 @@ class CartDisplayManager {
         // METHOD 1: Try breakdown FIRST (this is what Dashboard uses and it works!)
         if (period && this.cartData && this.cartData[period] && this.cartData[period].breakdown) {
             // Breakdown uses route display names like "Naaldwijk", "Aalsmeer", "Rijnsburg"
-            const routeBreakdown = this.cartData[period].breakdown.find(r => {
-                // Match by route name (case-insensitive)
-                const breakdownRoute = (r.route || '').toString().trim();
-                const searchRoute = routeName.toString().trim();
-                return breakdownRoute.toLowerCase() === searchRoute.toLowerCase();
-            });
+            // Try exact match first
+            let routeBreakdown = this.cartData[period].breakdown.find(r => r.route === routeName);
+            
+            // If not found, try case-insensitive match
+            if (!routeBreakdown) {
+                routeBreakdown = this.cartData[period].breakdown.find(r => {
+                    const breakdownRoute = (r.route || '').toString().trim();
+                    const searchRoute = routeName.toString().trim();
+                    return breakdownRoute.toLowerCase() === searchRoute.toLowerCase();
+                });
+            }
             
             if (routeBreakdown && routeBreakdown.carts !== undefined && routeBreakdown.carts !== null) {
                 carts = routeBreakdown.carts;
                 console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from breakdown!`);
             } else {
-                console.warn(`⚠️ getRouteData(${routeName}, ${period}): Route not found in breakdown`);
-                console.warn(`   Looking for: "${routeName}"`);
-                console.warn(`   Available routes:`, this.cartData[period].breakdown.map(r => r.route));
+                console.error(`❌ getRouteData(${routeName}, ${period}): Route "${routeName}" NOT FOUND in breakdown!`);
+                console.error(`   Available routes in breakdown:`, this.cartData[period].breakdown.map(r => `"${r.route}" (${r.carts} carts)`));
+                console.error(`   Full breakdown:`, JSON.stringify(this.cartData[period].breakdown, null, 2));
             }
         }
         
