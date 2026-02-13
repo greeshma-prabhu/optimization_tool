@@ -212,6 +212,7 @@ function getZuidplasOrderRows(allRows) {
     
     console.log(`✅ De Zuidplas valid rows: ${validRows.length}`);
     console.log(`✅ De Zuidplas unique orders: ${uniqueIds.size}`);
+    console.log(`🔍 COMPANY FILTER VERSION: 2.0 - Applied company_id filtering`);
     
     return validRows;
 }
