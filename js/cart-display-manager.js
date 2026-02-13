@@ -45,6 +45,14 @@ class CartDisplayManager {
             console.log('   Naaldwijk:', this.cartData.byRoute.Naaldwijk || 0);
             console.log('   Rijnsburg:', this.cartData.byRoute.Rijnsburg || 0);
             console.log('   Orders:', this.orders.length);
+            
+            // CRITICAL: Log period-specific data to debug
+            if (this.cartData.morning && this.cartData.morning.byRoute) {
+                console.log('   Morning byRoute:', this.cartData.morning.byRoute);
+            }
+            if (this.cartData.evening && this.cartData.evening.byRoute) {
+                console.log('   Evening byRoute:', this.cartData.evening.byRoute);
+            }
         } else {
             console.error('❌ CartDisplayManager: getGlobalOrdersAndCarts() not available!');
             console.error('❌ Cannot get cart data - Dashboard must calculate first!');
@@ -137,14 +145,26 @@ class CartDisplayManager {
         // CRITICAL: Get carts from period-specific data (morning/evening)
         // Structure: cartData.morning.byRoute.Naaldwijk or cartData.evening.byRoute.Naaldwijk
         let carts = 0;
-        if (period && this.cartData[period] && this.cartData[period].byRoute) {
+        
+        // Debug: Log what we're looking for
+        console.log(`🔍 getRouteData(${routeName}, ${period}): Looking for carts...`);
+        console.log(`   cartData exists:`, !!this.cartData);
+        console.log(`   cartData.${period} exists:`, !!(this.cartData && this.cartData[period]));
+        if (this.cartData && this.cartData[period]) {
+            console.log(`   cartData.${period}.byRoute exists:`, !!this.cartData[period].byRoute);
+            console.log(`   cartData.${period}.byRoute:`, this.cartData[period].byRoute);
+        }
+        
+        if (period && this.cartData && this.cartData[period] && this.cartData[period].byRoute) {
             // Try period-specific first (morning/evening)
             carts = this.cartData[period].byRoute[routeName] || 0;
-            console.log(`📦 getRouteData(${routeName}, ${period}): Found ${carts} carts from ${period}.byRoute.${routeName}`);
-        } else if (this.cartData.byRoute) {
+            console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from ${period}.byRoute.${routeName}`);
+        } else if (this.cartData && this.cartData.byRoute) {
             // Fallback to combined totals
             carts = this.cartData.byRoute[routeName] || 0;
-            console.log(`📦 getRouteData(${routeName}, ${period}): Using combined total ${carts} carts from byRoute.${routeName}`);
+            console.log(`⚠️ getRouteData(${routeName}, ${period}): Using combined total ${carts} carts from byRoute.${routeName} (period-specific not found)`);
+        } else {
+            console.error(`❌ getRouteData(${routeName}, ${period}): No cart data found!`);
         }
         
         // Count orders for this route FIRST
