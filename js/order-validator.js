@@ -27,7 +27,8 @@ function filterValidOrderRows(rows) {
         removed_contract: 0,
         removed_no_company: 0,
         removed_no_assembly: 0,
-        removed_wrong_location: 0
+        removed_wrong_location: 0,
+        removed_wrong_state: 0
     };
     
     const valid = rows.filter(row => {
@@ -43,6 +44,14 @@ function filterValidOrderRows(rows) {
         const types = order.types || [];
         if (types.includes('CONTRACT') || order.type === 32768) {
             stats.removed_contract++;
+            return false;
+        }
+        
+        // EXCLUDE orders that are not 'Gereed' (Ready) state
+        // Only process ready/processed orders, not 'Nieuw' (New/Contract)
+        const state = (row.state || order.state || '').toString().trim();
+        if (state && state.toLowerCase() !== 'gereed' && state.toLowerCase() !== 'ready') {
+            stats.removed_wrong_state++;
             return false;
         }
         
@@ -71,6 +80,7 @@ function filterValidOrderRows(rows) {
     console.log(`🔍 filterValidOrderRows: ${before} rows → ${valid.length} valid rows`);
     console.log(`   - Removed deleted: ${stats.removed_deleted}`);
     console.log(`   - Removed contract: ${stats.removed_contract}`);
+    console.log(`   - Removed wrong state (not Gereed): ${stats.removed_wrong_state}`);
     console.log(`   - Removed no company: ${stats.removed_no_company}`);
     console.log(`   - Removed no assembly: ${stats.removed_no_assembly}`);
     console.log(`   - Removed wrong location: ${stats.removed_wrong_location}`);
