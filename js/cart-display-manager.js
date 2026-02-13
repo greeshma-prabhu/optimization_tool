@@ -212,13 +212,19 @@ class CartDisplayManager {
             console.error(`   This is impossible - orders need carts!`);
             console.error(`   Trying multiple methods to get carts...`);
             
-            // Method 1: Try breakdown
+            // Method 1: Try breakdown (MOST RELIABLE - this is what Dashboard uses!)
             if (this.cartData && this.cartData[period] && this.cartData[period].breakdown) {
                 const routeBreakdown = this.cartData[period].breakdown.find(r => r.route === routeName);
-                if (routeBreakdown && routeBreakdown.carts > 0) {
+                if (routeBreakdown && routeBreakdown.carts !== undefined && routeBreakdown.carts !== null) {
                     carts = routeBreakdown.carts;
                     console.log(`   ✅ Method 1: Found ${carts} carts from breakdown!`);
+                } else {
+                    console.warn(`   ⚠️ Method 1: Breakdown found but route ${routeName} not in breakdown`);
+                    console.warn(`   Breakdown routes:`, this.cartData[period].breakdown.map(r => r.route));
                 }
+            } else {
+                console.warn(`   ⚠️ Method 1: No ${period} breakdown found`);
+                console.warn(`   cartData.${period}:`, this.cartData && this.cartData[period]);
             }
             
             // Method 2: Try to recalculate from orders directly
