@@ -632,6 +632,11 @@ function calculateCartsForPeriod(orders, period) {
  * Calculate trucks needed
  */
 function calculateTrucks(totalCarts) {
+    // CRITICAL: Only show trucks if there are carts > 0
+    // If no carts, no trucks
+    if (!totalCarts || totalCarts <= 0) {
+        return 0;
+    }
     return Math.ceil(totalCarts / 17); // 17 carts per truck
 }
 

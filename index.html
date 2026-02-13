@@ -2287,7 +2287,12 @@
                     }
                 }
                 
-                const trucks = Math.ceil(carts / 17);
+                // CRITICAL: Only show trucks if there are actual orders AND carts > 0
+                // If no orders or no carts, trucks = 0
+                let trucks = 0;
+                if (uniqueOrdersCount > 0 && carts > 0) {
+                    trucks = Math.ceil(carts / 17);
+                }
                 
                 // Update UI
                 const ordersEl = document.getElementById(`${idPrefix}-orders`);
