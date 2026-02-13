@@ -3247,17 +3247,23 @@
                 const customerName = o.customer_name || o.order?.customer_name || 'Unknown';
                 const orderId = o.order_id || o.order?.id || o.order?.order_id || o.id;
                 const companyId = o.company_id || o.order?.company_id || 'NULL';
+                const deliveryDate = o.delivery_date || o.order?.delivery_date || 'Unknown';
+                const deliveryTime = o.delivery_time || o.order?.delivery_time || 'Unknown';
                 
                 if (!customerGroups[customerName]) {
                     customerGroups[customerName] = {
                         orderIds: new Set(),
                         companyIds: new Set(),
-                        orderrows: 0
+                        orderrows: 0,
+                        deliveryDates: new Set(),
+                        deliveryTimes: new Set()
                     };
                 }
                 
                 if (orderId) customerGroups[customerName].orderIds.add(String(orderId));
                 customerGroups[customerName].companyIds.add(String(companyId));
+                customerGroups[customerName].deliveryDates.add(deliveryDate);
+                customerGroups[customerName].deliveryTimes.add(deliveryTime);
                 customerGroups[customerName].orderrows++;
             });
             
@@ -3274,10 +3280,14 @@
                 .sort((a, b) => b[1].orderIds.size - a[1].orderIds.size)
                 .forEach(([customer, data]) => {
                     const companyIds = Array.from(data.companyIds).join(', ');
+                    const dates = Array.from(data.deliveryDates).join(', ');
+                    const times = Array.from(data.deliveryTimes).slice(0, 3).join(', ');
                     console.log(`   ${customer}:`);
                     console.log(`      - Unique orders: ${data.orderIds.size}`);
                     console.log(`      - Orderrows: ${data.orderrows}`);
                     console.log(`      - Company IDs: ${companyIds}`);
+                    console.log(`      - Delivery dates: ${dates}`);
+                    console.log(`      - Delivery times: ${times}...`);
                     if (!companyIds.includes('4')) {
                         console.log(`      ⚠️ WARNING: Not company_id 4!`);
                     }
@@ -3286,6 +3296,10 @@
             console.log(`\n✅ Expected: 0 orders (Excel shows 0)`);
             console.log(`❌ Actual: ${uniqueOrders.size} unique orders`);
             console.log(`\n💡 These orders should be excluded if Excel shows 0 for Aalsmeer evening.`);
+            console.log(`\n🔧 SOLUTION: If Excel shows 0, these orders might be:`);
+            console.log(`   1. Wrong date (not in 7am-7am planning window)`);
+            console.log(`   2. Wrong company_id (should be excluded)`);
+            console.log(`   3. Should be in morning route instead`);
         }
         
         window.updateRouteSummary = updateRouteSummary;
