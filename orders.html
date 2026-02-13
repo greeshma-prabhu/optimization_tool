@@ -547,14 +547,19 @@
                     console.log(`📅 Filtered by delivery date: ${apiOrders.length} → ${filteredByDate.length} orders`);
                     
                     // STEP 2: Validate orders using SAME validator as Dashboard
-                    // This ensures we filter out invalid/test/cancelled/duplicates the SAME way
+                    // CRITICAL: Use getZuidplasOrderRows() - this is what Dashboard uses!
+                    // This filters by company_id, state, deleted_at, location, etc.
                     let validatedOrders = filteredByDate;
-                    if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
+                    if (window.OrderValidator && typeof window.OrderValidator.getZuidplasOrderRows === 'function') {
+                        console.log('🔍 Orders page: Filtering orders using getZuidplasOrderRows() (SAME as Dashboard)...');
+                        validatedOrders = window.OrderValidator.getZuidplasOrderRows(filteredByDate);
+                        console.log(`✅ Orders page: ${validatedOrders.length} valid De Zuidplas orders (filtered from ${filteredByDate.length})`);
+                        console.log(`   Dashboard uses SAME filter - should show ${validatedOrders.length} orders`);
+                    } else if (window.OrderValidator && typeof window.OrderValidator.validateOrders === 'function') {
                         console.log('🔍 Orders page: Validating orders (same as Dashboard)...');
                         const validationResult = window.OrderValidator.validateOrders(filteredByDate);
                         validatedOrders = validationResult.orders;
                         console.log(`✅ Orders page: ${validatedOrders.length} valid orders (filtered from ${filteredByDate.length})`);
-                        console.log(`   Dashboard would also filter to ${validatedOrders.length} orders`);
                     } else {
                         console.warn('⚠️ OrderValidator not available - using all orders without validation');
                         // Fallback: Basic validation
