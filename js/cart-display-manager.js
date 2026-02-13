@@ -140,7 +140,11 @@ class CartDisplayManager {
         } else {
             carts = this.cartData.byRoute[routeName] || 0;
         }
-        const trucks = Math.ceil(carts / 17);
+        // CRITICAL: Only show trucks if there are orders AND carts > 0
+        let trucks = 0;
+        if (orders > 0 && carts > 0) {
+            trucks = Math.ceil(carts / 17);
+        }
         
         // Count orders for this route
         const orders = this.orders.filter(order => {
@@ -329,8 +333,12 @@ class CartDisplayManager {
                     <span class="value">${data.orders}</span>
                 </div>
                 <div class="stat">
-                    <span class="label">Cars Needed</span>
+                    <span class="label">Carts Needed</span>
                     <span class="value">${data.carts} / 17</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Trucks</span>
+                    <span class="value">${data.trucks}</span>
                 </div>
                 <div class="stat">
                     <span class="label">Car Types</span>
@@ -338,8 +346,8 @@ class CartDisplayManager {
                 </div>
                 <div class="stat">
                     <span class="label">Status</span>
-                    <span class="value status-${data.orders > 0 ? 'past' : 'pending'}">
-                        ${data.orders > 0 ? '✓ Past' : 'Pending'}
+                    <span class="value status-${data.orders > 0 ? 'ready' : 'pending'}">
+                        ${data.orders > 0 ? 'Ready' : 'Pending'}
                     </span>
                 </div>
             </div>
