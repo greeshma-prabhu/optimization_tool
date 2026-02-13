@@ -147,30 +147,46 @@ class CartDisplayManager {
         let carts = 0;
         
         // CRITICAL FIX: Read from period-specific data FIRST
-        if (period && this.cartData && this.cartData[period]) {
-            // Try period-specific first (morning/evening)
-            if (this.cartData[period].byRoute && this.cartData[period].byRoute[routeName] !== undefined) {
-                carts = this.cartData[period].byRoute[routeName];
-                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from ${period}.byRoute.${routeName}`);
+        // Dashboard shows correct carts, so data exists - we just need to read it correctly!
+        if (period && this.cartData) {
+            // Check if period-specific data exists
+            const periodData = this.cartData[period];
+            if (periodData && periodData.byRoute) {
+                // Try period-specific first (morning/evening)
+                const periodCarts = periodData.byRoute[routeName];
+                if (periodCarts !== undefined && periodCarts !== null) {
+                    carts = periodCarts;
+                    console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from ${period}.byRoute.${routeName}`);
+                } else {
+                    console.warn(`⚠️ getRouteData(${routeName}, ${period}): ${period}.byRoute.${routeName} is ${periodCarts}`);
+                    console.warn(`   ${period}.byRoute keys:`, Object.keys(periodData.byRoute));
+                    console.warn(`   ${period}.byRoute full:`, periodData.byRoute);
+                }
             } else {
-                console.warn(`⚠️ getRouteData(${routeName}, ${period}): ${period}.byRoute.${routeName} not found`);
-                console.warn(`   ${period}.byRoute:`, this.cartData[period].byRoute);
+                console.warn(`⚠️ getRouteData(${routeName}, ${period}): ${period} data or byRoute not found`);
+                console.warn(`   cartData.${period}:`, periodData);
             }
         }
         
-        // Fallback to combined totals if period-specific not found
-        if (carts === 0 && this.cartData && this.cartData.byRoute && this.cartData.byRoute[routeName] !== undefined) {
-            carts = this.cartData.byRoute[routeName];
-            console.log(`⚠️ getRouteData(${routeName}, ${period}): Using combined total ${carts} carts (period-specific was 0)`);
+        // Fallback to combined totals if period-specific not found or is 0
+        if (carts === 0 && this.cartData && this.cartData.byRoute) {
+            const combinedCarts = this.cartData.byRoute[routeName];
+            if (combinedCarts !== undefined && combinedCarts !== null) {
+                // Only use combined if period-specific was truly not found
+                // But combined includes both morning+evening, so we can't use it for period-specific
+                console.warn(`⚠️ getRouteData(${routeName}, ${period}): Period-specific was 0, combined total is ${combinedCarts} (but includes both periods)`);
+            }
         }
         
         // CRITICAL: If we still have 0 carts but have orders, this is WRONG!
         // Orders MUST have carts to transport goods!
         if (carts === 0) {
             console.error(`❌ getRouteData(${routeName}, ${period}): ZERO CARTS!`);
-            console.error(`   cartData structure:`, this.cartData);
+            console.error(`   cartData exists:`, !!this.cartData);
+            console.error(`   cartData.${period} exists:`, !!(this.cartData && this.cartData[period]));
             if (this.cartData && this.cartData[period]) {
-                console.error(`   ${period} structure:`, this.cartData[period]);
+                console.error(`   ${period}.byRoute exists:`, !!(this.cartData[period].byRoute));
+                console.error(`   ${period}.byRoute:`, this.cartData[period].byRoute);
             }
         }
         
