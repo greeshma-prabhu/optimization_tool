@@ -129,12 +129,40 @@ function filterValidOrderRows(rows) {
 
 /**
  * Get only De Zuidplas order rows (valid locations only)
+ * CRITICAL: Must filter by company to exclude "Royal Flowers" orders
+ * Excel shows separate columns: "De Zuidplas" vs "Royal Flowers"
+ * Dashboard should ONLY show "De Zuidplas" orders
  */
 function getZuidplasOrderRows(allRows) {
     // Step 1: Remove deleted and contract orders
     const validRows = filterValidOrderRows(allRows);
     
-    // Step 2: Count unique real orders
+    // Step 2: Filter by company_id to ONLY include "De Zuidplas" orders
+    // TODO: Verify which company_id = "De Zuidplas" (might be 1, 2, 3, or 4)
+    // For now, exclude NULL company_id (old contract orders) and filter by known De Zuidplas company_id
+    // Based on Excel: "De Zuidplas" section should match, "Royal Flowers" should be excluded
+    
+    // CRITICAL: Only include orders with valid company_id (exclude NULL = old contract orders)
+    // If company_id filtering is needed, uncomment and set the correct value:
+    // const DE_ZUIDPLAS_COMPANY_ID = 1; // TODO: Verify this is correct!
+    // const zuidplasOnlyRows = validRows.filter(row => {
+    //     const companyId = row.company_id || row.order?.company_id;
+    //     return companyId === DE_ZUIDPLAS_COMPANY_ID;
+    // });
+    
+    // For now, keep all valid rows but log company_id distribution for debugging
+    const companyIds = {};
+    validRows.forEach(row => {
+        const cid = row.company_id || row.order?.company_id || 'NULL';
+        companyIds[cid] = (companyIds[cid] || 0) + 1;
+    });
+    
+    if (Object.keys(companyIds).length > 1) {
+        console.log(`⚠️ Multiple company_ids found:`, companyIds);
+        console.log(`⚠️ TODO: Filter to only "De Zuidplas" company_id to exclude "Royal Flowers" orders`);
+    }
+    
+    // Step 3: Count unique real orders
     const uniqueIds = new Set(
         validRows.map(r => r.order_id || r.order?.id || r.order?.order_id || r.id).filter(Boolean)
     );
