@@ -140,13 +140,8 @@ class CartDisplayManager {
         } else {
             carts = this.cartData.byRoute[routeName] || 0;
         }
-        // CRITICAL: Only show trucks if there are orders AND carts > 0
-        let trucks = 0;
-        if (orders > 0 && carts > 0) {
-            trucks = Math.ceil(carts / 17);
-        }
         
-        // Count orders for this route
+        // Count orders for this route FIRST
         const orders = this.orders.filter(order => {
             const orderLocationId = order.delivery_location_id || order.order?.delivery_location_id;
             const periodMatch = period ? (order.period || 'morning') === period : true;
@@ -154,6 +149,12 @@ class CartDisplayManager {
                    (order.assembly_amount || 0) > 0 &&
                    periodMatch;
         }).length;
+        
+        // CRITICAL: Only show trucks if there are orders AND carts > 0
+        let trucks = 0;
+        if (orders > 0 && carts > 0) {
+            trucks = Math.ceil(carts / 17);
+        }
         
         return { carts, trucks, orders };
     }
