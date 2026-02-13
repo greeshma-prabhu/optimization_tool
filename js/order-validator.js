@@ -150,7 +150,11 @@ function getZuidplasOrderRows(allRows) {
     //     return companyId === DE_ZUIDPLAS_COMPANY_ID;
     // });
     
-    // For now, keep all valid rows but log company_id distribution for debugging
+    // CRITICAL: Filter by company_id to ONLY include "De Zuidplas" orders
+    // Excel shows separate columns: "De Zuidplas" (0 for Akkus) vs "Royal Flowers" (16 for Akkus)
+    // Dashboard must match "De Zuidplas" column only!
+    
+    // Log company_id distribution first
     const companyIds = {};
     validRows.forEach(row => {
         const cid = row.company_id || row.order?.company_id || 'NULL';
@@ -159,7 +163,28 @@ function getZuidplasOrderRows(allRows) {
     
     if (Object.keys(companyIds).length > 1) {
         console.log(`⚠️ Multiple company_ids found:`, companyIds);
-        console.log(`⚠️ TODO: Filter to only "De Zuidplas" company_id to exclude "Royal Flowers" orders`);
+        
+        // CRITICAL FIX: Filter to ONLY company_id 4 (De Zuidplas)
+        // Based on data analysis: company_4 has the most orders and appears to be De Zuidplas
+        // If this is wrong, change DE_ZUIDPLAS_COMPANY_ID below
+        const DE_ZUIDPLAS_COMPANY_ID = 4; // TODO: Verify with Jeroen which company_id = "De Zuidplas"
+        
+        console.log(`🔍 Filtering to ONLY company_id ${DE_ZUIDPLAS_COMPANY_ID} (De Zuidplas)...`);
+        const beforeFilter = validRows.length;
+        
+        const zuidplasOnlyRows = validRows.filter(row => {
+            const companyId = row.company_id || row.order?.company_id;
+            return companyId === DE_ZUIDPLAS_COMPANY_ID;
+        });
+        
+        const afterFilter = zuidplasOnlyRows.length;
+        const removed = beforeFilter - afterFilter;
+        
+        console.log(`   Filtered: ${beforeFilter} rows → ${afterFilter} rows (removed ${removed} from other companies)`);
+        console.log(`   ✅ Only "De Zuidplas" orders (company_id ${DE_ZUIDPLAS_COMPANY_ID}) included`);
+        console.log(`   ⚠️ Excluded: ${removed} orders from other companies (Royal Flowers, etc.)`);
+        
+        validRows = zuidplasOnlyRows;
     }
     
     // Step 3: Count unique real orders
