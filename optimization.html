@@ -466,6 +466,18 @@
             routes.forEach((route, index) => {
                 const routeData = cartDisplayManager.getRouteData(route.name, route.period);
                 const cartTypes = cartDisplayManager.getRouteCartTypes(route.name, route.period);
+                
+                // CRITICAL: Log what we got from getRouteData
+                console.log(`📊 Optimization page: Route ${index + 1} (${route.name}, ${route.period}):`, routeData);
+                
+                // CRITICAL: If orders > 0 but carts = 0, this is WRONG!
+                if (routeData.orders > 0 && routeData.carts === 0) {
+                    console.error(`❌ CRITICAL: Route ${route.name} ${route.period} has ${routeData.orders} orders but 0 carts!`);
+                    console.error(`   This is impossible - forcing minimum 1 cart!`);
+                    routeData.carts = 1; // Force minimum 1 cart if orders exist
+                    routeData.trucks = Math.ceil(routeData.carts / 17);
+                }
+                
                 const card = cartDisplayManager.createRouteCard(
                     index + 1,
                     `${route.name} (${route.period === 'evening' ? 'Avond' : 'Ochtend'})`,
