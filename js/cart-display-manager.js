@@ -172,11 +172,16 @@ class CartDisplayManager {
         }
         
         // METHOD 2: Try byRoute if breakdown didn't work
+        // CRITICAL: Don't check > 0 - if it's 0 that's valid, we just need to read it!
         if (carts === 0 && period && this.cartData && this.cartData[period] && this.cartData[period].byRoute) {
             const periodCarts = this.cartData[period].byRoute[routeName];
-            if (periodCarts !== undefined && periodCarts !== null && periodCarts > 0) {
+            if (periodCarts !== undefined && periodCarts !== null) {
                 carts = periodCarts;
-                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from byRoute!`);
+                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from byRoute (Method 2)!`);
+            } else {
+                console.warn(`⚠️ getRouteData(${routeName}, ${period}): byRoute.${routeName} is ${periodCarts}`);
+                console.warn(`   byRoute keys:`, Object.keys(this.cartData[period].byRoute));
+                console.warn(`   byRoute full:`, this.cartData[period].byRoute);
             }
         }
         
