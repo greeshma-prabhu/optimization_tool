@@ -144,14 +144,25 @@ class CartDisplayManager {
         
         // CRITICAL: Get carts from period-specific data (morning/evening)
         // Dashboard shows correct carts, so data exists - we just need to read it correctly!
-        // METHOD 1: Try breakdown FIRST (this is what Dashboard uses and it works!)
         let carts = 0;
         
+        // METHOD 1: Try breakdown FIRST (this is what Dashboard uses and it works!)
         if (period && this.cartData && this.cartData[period] && this.cartData[period].breakdown) {
-            const routeBreakdown = this.cartData[period].breakdown.find(r => r.route === routeName);
+            // Breakdown uses route display names like "Naaldwijk", "Aalsmeer", "Rijnsburg"
+            const routeBreakdown = this.cartData[period].breakdown.find(r => {
+                // Match by route name (case-insensitive)
+                const breakdownRoute = (r.route || '').toString().trim();
+                const searchRoute = routeName.toString().trim();
+                return breakdownRoute.toLowerCase() === searchRoute.toLowerCase();
+            });
+            
             if (routeBreakdown && routeBreakdown.carts !== undefined && routeBreakdown.carts !== null) {
                 carts = routeBreakdown.carts;
-                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from breakdown (Method 1)`);
+                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from breakdown!`);
+            } else {
+                console.warn(`⚠️ getRouteData(${routeName}, ${period}): Route not found in breakdown`);
+                console.warn(`   Looking for: "${routeName}"`);
+                console.warn(`   Available routes:`, this.cartData[period].breakdown.map(r => r.route));
             }
         }
         
@@ -160,13 +171,13 @@ class CartDisplayManager {
             const periodCarts = this.cartData[period].byRoute[routeName];
             if (periodCarts !== undefined && periodCarts !== null && periodCarts > 0) {
                 carts = periodCarts;
-                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from byRoute (Method 2)`);
+                console.log(`✅ getRouteData(${routeName}, ${period}): Found ${carts} carts from byRoute!`);
             }
         }
         
         // CRITICAL: If we still have 0 carts, log error
         if (carts === 0) {
-            console.error(`❌ getRouteData(${routeName}, ${period}): ZERO CARTS after trying breakdown and byRoute!`);
+            console.error(`❌ getRouteData(${routeName}, ${period}): ZERO CARTS!`);
             console.error(`   cartData exists:`, !!this.cartData);
             if (this.cartData && this.cartData[period]) {
                 console.error(`   ${period}.breakdown:`, this.cartData[period].breakdown);
