@@ -166,43 +166,42 @@ function getZuidplasOrderRows(allRows) {
         
         // CRITICAL FIX: Filter to ONLY "De Zuidplas" company_id
         // Excel shows separate columns: "De Zuidplas" vs "Royal Flowers"
-        // We need to identify which company_id is "De Zuidplas"
-        // Strategy: Exclude NULL (old contracts) and try to identify De Zuidplas by process of elimination
+        // Dashboard must match "De Zuidplas" column only!
         
-        // Get the most common company_id (likely De Zuidplas)
-        // But also check if we can identify it by customer names or other indicators
-        const companyIdCounts = Object.entries(companyIds).sort((a, b) => b[1] - a[1]);
-        const mostCommonCompanyId = companyIdCounts[0][0];
+        // Get the most common company_id (excluding NULL)
+        const companyIdCounts = Object.entries(companyIds)
+            .filter(([id]) => id !== 'NULL')
+            .sort((a, b) => b[1] - a[1]);
         
-        // For now, use company_id from config or try to identify it
-        // Check if there's a config setting
+        const mostCommonCompanyId = companyIdCounts.length > 0 ? companyIdCounts[0][0] : null;
+        
+        // Use config or most common (company_id 4 is most common based on logs)
         const DE_ZUIDPLAS_COMPANY_ID = window.DE_ZUIDPLAS_COMPANY_ID || 
-                                      (mostCommonCompanyId !== 'NULL' ? Number(mostCommonCompanyId) : null);
+                                      (mostCommonCompanyId ? Number(mostCommonCompanyId) : 4);
         
-        if (DE_ZUIDPLAS_COMPANY_ID !== null) {
-            console.log(`🔍 Filtering to ONLY company_id ${DE_ZUIDPLAS_COMPANY_ID} (De Zuidplas)...`);
-            console.log(`   Company ID distribution:`, companyIds);
-            console.log(`   Using company_id ${DE_ZUIDPLAS_COMPANY_ID} (most common: ${mostCommonCompanyId})`);
-            
-            const beforeFilter = validRows.length;
-            
-            const zuidplasOnlyRows = validRows.filter(row => {
-                const companyId = row.company_id || row.order?.company_id;
-                return companyId === DE_ZUIDPLAS_COMPANY_ID;
-            });
-            
-            const afterFilter = zuidplasOnlyRows.length;
-            const removed = beforeFilter - afterFilter;
-            
-            console.log(`   Filtered: ${beforeFilter} rows → ${afterFilter} rows (removed ${removed} from other companies)`);
-            console.log(`   ✅ Only "De Zuidplas" orders (company_id ${DE_ZUIDPLAS_COMPANY_ID}) included`);
-            console.log(`   ⚠️ Excluded: ${removed} orders from other companies (Royal Flowers, etc.)`);
-            
-            validRows = zuidplasOnlyRows;
-        } else {
-            console.warn(`⚠️ Could not determine De Zuidplas company_id - including all valid rows`);
-            console.warn(`⚠️ Set window.DE_ZUIDPLAS_COMPANY_ID = <number> to filter correctly`);
-        }
+        console.log(`🔍 FILTERING TO ONLY company_id ${DE_ZUIDPLAS_COMPANY_ID} (De Zuidplas)...`);
+        console.log(`   Company ID distribution:`, companyIds);
+        console.log(`   Most common (excluding NULL): ${mostCommonCompanyId}`);
+        console.log(`   Using company_id: ${DE_ZUIDPLAS_COMPANY_ID}`);
+        
+        const beforeFilter = validRows.length;
+        
+        const zuidplasOnlyRows = validRows.filter(row => {
+            const companyId = row.company_id || row.order?.company_id;
+            const matches = companyId === DE_ZUIDPLAS_COMPANY_ID;
+            return matches;
+        });
+        
+        const afterFilter = zuidplasOnlyRows.length;
+        const removed = beforeFilter - afterFilter;
+        
+        console.log(`   ✅ FILTERED: ${beforeFilter} rows → ${afterFilter} rows (removed ${removed} from other companies)`);
+        console.log(`   ✅ Only "De Zuidplas" orders (company_id ${DE_ZUIDPLAS_COMPANY_ID}) included`);
+        console.log(`   ⚠️ Excluded: ${removed} orders from other companies (Royal Flowers, etc.)`);
+        
+        validRows = zuidplasOnlyRows;
+    } else {
+        console.log(`✅ Only one company_id found:`, companyIds);
     }
     
     // Step 3: Count unique real orders
