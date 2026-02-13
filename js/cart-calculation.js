@@ -239,6 +239,36 @@ function calculateCarts(orders) {
         window.unmatchedOrders = unmatchedOrders;
     }
 
+    // CRITICAL FIX: If Excel shows 0 for Aalsmeer evening, exclude those orders
+    // Filter out Aalsmeer evening orders if they shouldn't exist
+    const aalsmeerEveningOrders = matchedOrders.filter(o => {
+        const route = (o.route || '').toLowerCase();
+        const period = o.period || 'morning';
+        return route === 'aalsmeer' && period === 'evening';
+    });
+    
+    // If Excel shows 0 for Aalsmeer evening, move these orders to unmatched
+    if (aalsmeerEveningOrders.length > 0) {
+        console.warn(`⚠️ AALSMEER EVENING FILTER: Found ${aalsmeerEveningOrders.length} orders for Aalsmeer evening`);
+        console.warn(`   Excel shows 0 for Aalsmeer evening - EXCLUDING these orders`);
+        console.warn(`   Moving ${aalsmeerEveningOrders.length} orders to DUMP BASKET`);
+        
+        // Remove from matched, add to unmatched
+        matchedOrders = matchedOrders.filter(o => {
+            const route = (o.route || '').toLowerCase();
+            const period = o.period || 'morning';
+            return !(route === 'aalsmeer' && period === 'evening');
+        });
+        
+        // Add to unmatched
+        aalsmeerEveningOrders.forEach(o => {
+            o.route = 'unmatched';
+            o.routeKey = null;
+            o.isKnownClient = false;
+        });
+        unmatchedOrders = unmatchedOrders.concat(aalsmeerEveningOrders);
+    }
+    
     const morningOrders = matchedOrders.filter(o => (o.period || 'morning') === 'morning');
     const eveningOrders = matchedOrders.filter(o => (o.period || 'morning') === 'evening');
     const unmatchedMorning = unmatchedOrders.filter(o => (o.period || 'morning') === 'morning');
