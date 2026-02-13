@@ -1027,6 +1027,35 @@
             
             console.log('🔄 Sync data for selected date');
             
+            // CRITICAL FIX 1: ALWAYS clear cache before fresh fetch
+            const oldCache = window.__zuidplas_cart_cache;
+            if (oldCache) {
+                console.log(`🗑️ Clearing old cache (date: ${oldCache.date || 'unknown'}, orders: ${oldCache.ordersCount || 'unknown'})`);
+            }
+            window.__zuidplas_cart_cache = null;
+            
+            // Also clear localStorage cache
+            const datePicker = document.getElementById('order-date-picker');
+            let selectedDate = null;
+            if (datePicker && datePicker.value) {
+                selectedDate = datePicker.value; // YYYY-MM-DD format
+            } else {
+                selectedDate = new Date().toISOString().split('T')[0];
+            }
+            
+            // Clear all cache keys for this date
+            try {
+                const cacheKeys = ['ZUIDPLAS_CART_' + selectedDate, 'ZUIDPLAS_LATEST_CART_DATA', 'cachedCartResult'];
+                cacheKeys.forEach(key => {
+                    localStorage.removeItem(key);
+                    console.log(`🗑️ Removed localStorage cache: ${key}`);
+                });
+            } catch (e) {
+                console.warn('Could not clear localStorage cache:', e);
+            }
+            
+            console.log('✅ Cache cleared, fetching fresh data...');
+            
             window.isRefreshing = true;
             const btn = document.getElementById('sync-btn');
             if (btn) {

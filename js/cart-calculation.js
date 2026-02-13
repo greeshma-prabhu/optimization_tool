@@ -758,17 +758,36 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
         if (!cachedCartResult) {
             const windowCache = window.__zuidplas_cart_cache || window._zuidplas_cart_cache;
             if (windowCache && windowCache.cartResult) {
-                cachedCartResult = windowCache.cartResult;
-                cacheSource = 'window.__zuidplas_cart_cache';
-                cacheDate = windowCache.date || '';
-                console.log(`   ✅ Found cache in window.__zuidplas_cart_cache (DASHBOARD'S CACHE)`);
-                console.log(`   Cache hash: ${windowCache.ordersHash || 'N/A'}`);
-                console.log(`   Cache date: ${cacheDate || 'unknown'}`);
-                console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
-                console.log(`   Cached by: ${windowCache.source || 'unknown'}`);
-                console.log(`   Cached at: ${windowCache.timestamp || 'unknown'}`);
-                console.log(`   Matched orders: ${windowCache.matchedOrdersCount || 'N/A'}`);
-                console.log(`   ✅ USING DASHBOARD'S CACHE - This is the SINGLE SOURCE OF TRUTH!`);
+                // CRITICAL FIX: Verify cache date matches current date
+                const cacheDateFromWindow = windowCache.date || '';
+                let normalizedCacheDate = cacheDateFromWindow;
+                if (normalizedCacheDate instanceof Date) {
+                    normalizedCacheDate = normalizedCacheDate.toISOString().split('T')[0];
+                } else if (typeof normalizedCacheDate === 'string' && normalizedCacheDate.includes('GMT')) {
+                    try {
+                        normalizedCacheDate = new Date(normalizedCacheDate).toISOString().split('T')[0];
+                    } catch (e) {
+                        normalizedCacheDate = String(normalizedCacheDate);
+                    }
+                }
+                
+                // If date mismatch, ignore cache
+                if (normalizedCacheDate !== currentDate && currentDate !== 'unknown') {
+                    console.log(`   ⚠️ Cache date mismatch: ${normalizedCacheDate} vs ${currentDate} - ignoring cache`);
+                    window.__zuidplas_cart_cache = null;
+                } else {
+                    cachedCartResult = windowCache.cartResult;
+                    cacheSource = 'window.__zuidplas_cart_cache';
+                    cacheDate = normalizedCacheDate;
+                    console.log(`   ✅ Found cache in window.__zuidplas_cart_cache (DASHBOARD'S CACHE)`);
+                    console.log(`   Cache hash: ${windowCache.ordersHash || 'N/A'}`);
+                    console.log(`   Cache date: ${cacheDate || 'unknown'}`);
+                    console.log(`   Cache result: ${cachedCartResult.total || 'unknown'} carts`);
+                    console.log(`   Cached by: ${windowCache.source || 'unknown'}`);
+                    console.log(`   Cached at: ${windowCache.timestamp || 'unknown'}`);
+                    console.log(`   Matched orders: ${windowCache.matchedOrdersCount || 'N/A'}`);
+                    console.log(`   ✅ USING DASHBOARD'S CACHE - This is the SINGLE SOURCE OF TRUTH!`);
+                }
             }
             // Location 2: appState.cartResult (for compatibility)
             else if (window.appState && window.appState.cartResult) {
@@ -839,7 +858,12 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
                 dateMatch = true;
             }
             
-            if (hashMatch && countMatch && dateMatch) {
+            // CRITICAL FIX: Always verify date match before using cache
+            if (!dateMatch && currentDate !== 'unknown') {
+                console.log(`   ⚠️ Cache date mismatch: ${cacheDate} vs ${currentDate} - ignoring cache`);
+                window.__zuidplas_cart_cache = null;
+                cachedCartResult = null;
+            } else if (hashMatch && countMatch && dateMatch) {
                 // Perfect match - use cache
                 console.log('═══════════════════════════════════════════════════════════════════');
                 console.log(`✅ getGlobalOrdersAndCarts: Using CACHED FUST calculation result from ${cacheSource}`);
