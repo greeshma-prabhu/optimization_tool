@@ -1717,23 +1717,18 @@
                 console.log(`   ⚠️ Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders (${unmatchedOrderrows.length} orderrows)`);
                 
                 // CRITICAL: Show RAW unique orders from API (BEFORE validation/filtering)
-                // This matches the curl command output exactly (300 for 12-02-2026)
-                // Get raw count from window (stored during sync) or from orders array
-                const rawCount = window.__zuidplas_raw_unique_order_count || 
-                                actualOrders._rawUniqueOrderCount || 
-                                (Array.isArray(actualOrders) && actualOrders.length > 0 && actualOrders[0]?._rawUniqueOrderCount) ||
-                                totalUniqueOrders;
-                
-                document.getElementById('total-orders-count').textContent = rawCount;
-                console.log(`   📊 Dashboard showing: ${rawCount} total unique orders (matches curl command output)`);
-                console.log(`   📊 Raw count source: ${window.__zuidplas_raw_unique_order_count ? 'window.__zuidplas_raw_unique_order_count' : actualOrders._rawUniqueOrderCount ? 'orders._rawUniqueOrderCount' : 'calculated'}`);
+                // CRITICAL: Show ONLY matched orders (Excel clients) - exclude unmatched customers!
+                // User wants to see only matched orders with their carts, not unmatched/new customers
+                document.getElementById('total-orders-count').textContent = uniqueMatchedOrders;
+                console.log(`   📊 Dashboard showing: ${uniqueMatchedOrders} matched orders (Excel clients only)`);
                 console.log(`   📊 Matched (Excel clients): ${uniqueMatchedOrders} unique orders`);
-                console.log(`   📊 Unmatched (DUMP BASKET): ${uniqueUnmatchedOrders} unique orders`);
+                console.log(`   📊 Unmatched (DUMP BASKET - HIDDEN): ${uniqueUnmatchedOrders} unique orders`);
                 console.log(`   📊 Total after validation: ${totalUniqueOrders} unique orders`);
                 console.log(`   📊 Orderrows count: ${actualOrders.length} (for reference only)`);
                 
                 console.log(`   Orders from global memory: ${actualOrders.length} orderrows (${totalUniqueOrders} unique orders)`);
                 console.log(`   Matched orders (displayed): ${uniqueMatchedOrders} unique orders`);
+                console.log(`   ⚠️ Unmatched orders (hidden from dashboard): ${uniqueUnmatchedOrders} unique orders`);
                 console.log(`   Aalsmeer: ${cartResult.byRoute.Aalsmeer || 0} carts`);
                 console.log(`   Naaldwijk: ${cartResult.byRoute.Naaldwijk || 0} carts`);
                 console.log(`   Rijnsburg: ${cartResult.byRoute.Rijnsburg || 0} carts`);
@@ -1794,9 +1789,8 @@
                     }
                 });
                 const uniqueMatchedOrdersCount = uniqueMatchedOrderIds.size;
-                // Use RAW count if available (matches curl command), otherwise use matched count
-                const displayCount = window.__zuidplas_raw_unique_order_count || uniqueMatchedOrdersCount;
-                document.getElementById('total-orders-count').textContent = displayCount;
+                // CRITICAL: Show ONLY matched orders (Excel clients) - exclude unmatched customers!
+                document.getElementById('total-orders-count').textContent = uniqueMatchedOrdersCount;
             }
             console.log('═══════════════════════════════════════════════════════════════════');
             
