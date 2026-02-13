@@ -34,6 +34,45 @@ const LOCATION_ID_TO_ROUTE = {
 };
 
 /**
+ * STRICT FILTER: Only valid De Zuidplas orders (Gereed state, not deleted, valid location)
+ * This must be applied BEFORE any route assignment or cart calculation
+ */
+function filterValidRows(rows) {
+    const before = rows.length;
+    const valid = rows.filter(row => {
+        const order = row.order || {};
+        
+        // RULE 1: Only 'Gereed' state - exclude 'Nieuw' (contract orders)
+        const state = (row.state || order.state || '').toString().trim();
+        if (state && state.toLowerCase() !== 'gereed' && state.toLowerCase() !== 'ready') {
+            return false;
+        }
+        
+        // RULE 2: Not deleted
+        if (order.deleted_at) {
+            return false;
+        }
+        
+        // RULE 3: Only known route locations (32, 34, 36)
+        const locationId = order.delivery_location_id || row.delivery_location_id;
+        if (!locationId || ![32, 34, 36].includes(Number(locationId))) {
+            return false;
+        }
+        
+        // RULE 4: Must have assembly_amount > 0
+        if (!row.assembly_amount || row.assembly_amount <= 0) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    const unique = new Set(valid.map(r => r.order_id || r.order?.id || r.order?.order_id || r.id).filter(Boolean));
+    console.log(`🔍 filterValidRows: ${before} rows → ${valid.length} valid rows → ${unique.size} unique orders`);
+    return valid;
+}
+
+/**
  * Get route from customer name mapping
  * Uses RouteMapping.getRouteForCustomer() which maps client names to routes
  * Falls back to location_id if RouteMapping is not available
@@ -1024,8 +1063,15 @@ function getGlobalOrdersAndCarts(forceRefresh = false) {
     console.log(`   🔵 STARTING FUST CALCULATION NOW...`);
     console.log('');
     
+    // CRITICAL FIX: Apply strict filtering BEFORE cart calculation
+    // This ensures only valid De Zuidplas orders (Gereed, not deleted, valid location) are processed
+    console.log('🔍 Applying strict filter to orders before cart calculation...');
+    const validOrders = filterValidRows(orders);
+    console.log(`   Filtered: ${orders.length} → ${validOrders.length} valid orders`);
+    
     // CRITICAL: This MUST run the FUST calculation function
-    const cartResult = calculateCarts(orders);
+    // Only pass valid orders (filtered) to calculateCarts
+    const cartResult = calculateCarts(validOrders);
     
     console.log('');
     console.log(`✅ FUST CALCULATION COMPLETE!`);
@@ -1183,7 +1229,8 @@ if (typeof window !== 'undefined') {
         FUST_CAPACITY: FUST_CAPACITY,
         getGlobalOrdersAndCarts: getGlobalOrdersAndCarts,
         clearCartCache: clearCartCache,
-        initAppData: initAppData
+        initAppData: initAppData,
+        filterValidRows: filterValidRows  // Export filter function
     };
     
     // Initialize AppData on load
