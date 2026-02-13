@@ -134,11 +134,17 @@ class CartDisplayManager {
             return { carts: 0, trucks: 0, orders: 0 };
         }
         
+        // CRITICAL: Get carts from period-specific data (morning/evening)
+        // Structure: cartData.morning.byRoute.Naaldwijk or cartData.evening.byRoute.Naaldwijk
         let carts = 0;
-        if (period && this.cartData[period]?.byRoute) {
+        if (period && this.cartData[period] && this.cartData[period].byRoute) {
+            // Try period-specific first (morning/evening)
             carts = this.cartData[period].byRoute[routeName] || 0;
-        } else {
+            console.log(`📦 getRouteData(${routeName}, ${period}): Found ${carts} carts from ${period}.byRoute.${routeName}`);
+        } else if (this.cartData.byRoute) {
+            // Fallback to combined totals
             carts = this.cartData.byRoute[routeName] || 0;
+            console.log(`📦 getRouteData(${routeName}, ${period}): Using combined total ${carts} carts from byRoute.${routeName}`);
         }
         
         // Count orders for this route FIRST
@@ -155,6 +161,8 @@ class CartDisplayManager {
         if (orders > 0 && carts > 0) {
             trucks = Math.ceil(carts / 17);
         }
+        
+        console.log(`📊 getRouteData(${routeName}, ${period}): orders=${orders}, carts=${carts}, trucks=${trucks}`);
         
         return { carts, trucks, orders };
     }
