@@ -127,8 +127,13 @@ class CartDisplayManager {
      * Get route-specific data
      */
     getRouteData(routeName, period = null) {
+        // CRITICAL: Always recalculate to ensure fresh data
+        // Don't rely on cached cartData - it might be stale
+        this.calculate();
+        
         if (!this.cartData) {
-            this.calculate();
+            console.error(`❌ getRouteData(${routeName}, ${period}): cartData is NULL after calculate()!`);
+            return { carts: 0, trucks: 0, orders: 0 };
         }
         
         const locationIdMap = {
